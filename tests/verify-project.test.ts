@@ -30,8 +30,7 @@ describe("verifyProject", () => {
       path.join(dir, "versionary.json"),
       JSON.stringify({
         version: 1,
-        mode: "standard",
-        packages: [{ path: "crates" }],
+        packages: { crates: {} },
       }),
       "utf8",
     );
@@ -47,8 +46,7 @@ describe("verifyProject", () => {
       path.join(dir, "versionary.json"),
       JSON.stringify({
         version: 1,
-        mode: "standard",
-        packages: [{ path: "does-not-exist" }],
+        packages: { "does-not-exist": {} },
       }),
       "utf8",
     );
@@ -58,19 +56,18 @@ describe("verifyProject", () => {
     expect(result.checks.some((c) => c.name.includes("does-not-exist") && !c.ok)).toBe(true);
   });
 
-  it("fails in simple mode when version file is missing", () => {
+  it("fails when version file is missing", () => {
     const dir = makeTempDir();
     fs.writeFileSync(
       path.join(dir, "versionary.json"),
       JSON.stringify({
         version: 1,
-        mode: "simple",
       }),
       "utf8",
     );
 
     const result = verifyProject(dir);
     expect(result.ok).toBe(false);
-    expect(result.checks.some((c) => c.name.includes("simple-version-file") && !c.ok)).toBe(true);
+    expect(result.checks.some((c) => c.name.includes("version-file") && !c.ok)).toBe(true);
   });
 });

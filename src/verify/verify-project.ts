@@ -17,24 +17,22 @@ export function verifyProject(cwd = process.cwd()): VerifyResult {
     details: `Loaded ${path.basename(config.path)} (${config.format})`,
   });
 
-  if ((config.config.mode ?? "simple") === "simple") {
-    const versionFile = config.config.simple?.versionFile ?? "version.txt";
-    const exists = fs.existsSync(path.join(cwd, versionFile));
-    checks.push({
-      name: `simple-version-file:${versionFile}`,
-      ok: exists,
-      details: exists ? "Version file exists" : `Missing ${versionFile} for simple mode`,
-    });
-  }
+  const versionFile = config.config["version-file"] ?? "version.txt";
+  const exists = fs.existsSync(path.join(cwd, versionFile));
+  checks.push({
+    name: `version-file:${versionFile}`,
+    ok: exists,
+    details: exists ? "Version file exists" : `Missing ${versionFile}`,
+  });
 
   if (config.config.packages) {
-    for (const pkg of config.config.packages) {
-      const pkgPath = path.join(cwd, pkg.path);
+    for (const pkgPathRaw of Object.keys(config.config.packages)) {
+      const pkgPath = path.join(cwd, pkgPathRaw);
       const exists = fs.existsSync(pkgPath);
       checks.push({
-        name: `package-path:${pkg.path}`,
+        name: `package-path:${pkgPathRaw}`,
         ok: exists,
-        details: exists ? "Path exists" : `Missing path: ${pkg.path}`,
+        details: exists ? "Path exists" : `Missing path: ${pkgPathRaw}`,
       });
     }
   }

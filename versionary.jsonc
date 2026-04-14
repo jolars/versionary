@@ -2,16 +2,14 @@
   // Versionary config version
   "$schema": "https://raw.githubusercontent.com/jolars/versionary/main/schemas/versionary-schema.json",
   "version": 1,
-  "mode": "simple",
-  "releaseFlow": {
-    "mode": "review"
-  },
+  "review-mode": "review",
+  "version-file": "version.txt",
+  "changelog-file": "CHANGELOG.md",
+  "release-branch": "versionary/release",
+  "baseline-file": ".versionary-manifest.json",
   "bootstrap-sha": "f46f767",
-
-  "simple": {
-    "versionFile": "version.txt",
-    "changelogFile": "CHANGELOG.md",
-    "releaseBranchPrefix": "versionary/release",
-    "baselineShaFile": ".versionary-manifest.json"
+  "monorepo-mode": "independent",
+  "packages": {
+    ".": {}
   }
 }

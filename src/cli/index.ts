@@ -3,7 +3,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { loadConfig } from "../config/load-config.js";
 import { createSimplePlan } from "../simple/plan.js";
 import { renderSimpleChangelog } from "../simple/changelog.js";
 import {
@@ -29,12 +28,6 @@ function printVerifyResult(): number {
 async function main(): Promise<number> {
   const [, , command, ...args] = process.argv;
   if (!command || command === "run") {
-    const loaded = loadConfig();
-    const mode = loaded.config.mode ?? "simple";
-    if (mode !== "simple") {
-      throw new Error(`Unsupported mode "${mode}" for default run orchestration.`);
-    }
-
     const subject = execFileSync("git", ["log", "-1", "--pretty=%s"], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],

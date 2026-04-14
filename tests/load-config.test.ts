@@ -47,31 +47,27 @@ describe("config loading", () => {
     expect(loaded.config.version).toBe(1);
   });
 
-  it("loads simple.releaseBranchPrefix", () => {
+  it("loads release-branch from canonical config", () => {
     const dir = makeTempDir();
     fs.writeFileSync(
       path.join(dir, "versionary.json"),
       JSON.stringify({
         version: 1,
-        mode: "simple",
-        simple: {
-          releaseBranchPrefix: "release/please",
-        },
+        "release-branch": "release/please",
       }),
       "utf8",
     );
 
     const loaded = loadConfig(dir);
-    expect(loaded.config.simple?.releaseBranchPrefix).toBe("release/please");
+    expect(loaded.config["release-branch"]).toBe("release/please");
   });
 
-  it("normalizes release-please style plugin and bootstrap aliases", () => {
+  it("loads manifest-style top-level knobs", () => {
     const dir = makeTempDir();
     fs.writeFileSync(
       path.join(dir, "versionary.jsonc"),
       JSON.stringify({
         version: 1,
-        mode: "simple",
         "bootstrap-sha": "abc123",
         "bump-minor-pre-major": true,
         "include-commit-authors": true,
@@ -81,19 +77,18 @@ describe("config loading", () => {
     );
 
     const loaded = loadConfig(dir);
-    expect(loaded.config.history?.bootstrap?.sha).toBe("abc123");
-    expect(loaded.config.defaults?.versioning?.bumpMinorPreMajor).toBe(true);
-    expect(loaded.config.defaults?.changelog?.includeAuthors).toBe(true);
-    expect(loaded.config.defaults?.strategy).toBe("node");
+    expect(loaded.config["bootstrap-sha"]).toBe("abc123");
+    expect(loaded.config["bump-minor-pre-major"]).toBe(true);
+    expect(loaded.config["include-commit-authors"]).toBe(true);
+    expect(loaded.config["release-type"]).toBe("node");
   });
 
-  it("normalizes manifest-style packages object", () => {
+  it("loads manifest-style packages object", () => {
     const dir = makeTempDir();
     fs.writeFileSync(
       path.join(dir, "versionary.json"),
       JSON.stringify({
         version: 1,
-        mode: "simple",
         packages: {
           ".": {
             "exclude-paths": ["crates", "editors"],
@@ -109,16 +104,14 @@ describe("config loading", () => {
     );
 
     const loaded = loadConfig(dir);
-    expect(loaded.config.packages).toHaveLength(2);
-    expect(loaded.config.packages?.[0]).toEqual({
-      path: ".",
-      excludePaths: ["crates", "editors"],
+    expect(Object.keys(loaded.config.packages ?? {})).toHaveLength(2);
+    expect(loaded.config.packages?.["."]).toEqual({
+      "exclude-paths": ["crates", "editors"],
     });
-    expect(loaded.config.packages?.[1]).toEqual({
-      path: "editors/zed",
-      strategy: "rust",
-      packageName: "panache-zed",
-      artifacts: [{ file: "extension.toml", format: "toml", path: "$.version" }],
+    expect(loaded.config.packages?.["editors/zed"]).toEqual({
+      "release-type": "rust",
+      "package-name": "panache-zed",
+      "extra-files": [{ type: "toml", path: "extension.toml", jsonpath: "$.version" }],
     });
   });
 });

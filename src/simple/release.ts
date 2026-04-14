@@ -36,8 +36,7 @@ function readReleaseNotes(cwd: string, version: string, changelogFile: string): 
 
   const content = fs.readFileSync(changelogPath, "utf8");
   const lines = content.split("\n");
-  const header = `## ${version} -`;
-  const start = lines.findIndex((line) => line.startsWith(header));
+  const start = lines.findIndex((line) => line.startsWith(`## ${version} -`) || line.startsWith(`## [${version}](`));
   if (start < 0) {
     return `Automated release for v${version}`;
   }
@@ -61,8 +60,8 @@ export async function runSimpleRelease(cwd = process.cwd()): Promise<string> {
   }
 
   const loaded = loadConfig(cwd);
-  const versionFile = loaded.config.simple?.versionFile ?? "version.txt";
-  const changelogFile = loaded.config.simple?.changelogFile ?? "CHANGELOG.md";
+  const versionFile = loaded.config["version-file"] ?? "version.txt";
+  const changelogFile = loaded.config["changelog-file"] ?? "CHANGELOG.md";
   const version = fs.readFileSync(path.join(cwd, versionFile), "utf8").trim();
   const tag = `v${version}`;
   createTagIfMissing(cwd, tag);

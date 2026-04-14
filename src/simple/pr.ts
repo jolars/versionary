@@ -184,7 +184,7 @@ export async function openOrUpdateSimpleReviewRequest(
   commits: CommitInfo[],
 ): Promise<string> {
   const loaded = loadConfig(cwd);
-  const releaseFlow = loaded.config.releaseFlow?.mode ?? "direct";
+  const releaseFlow = loaded.config["review-mode"] ?? "direct";
   if (releaseFlow !== "review") {
     return "Release flow mode is direct; skipping review request creation.";
   }
@@ -192,7 +192,7 @@ export async function openOrUpdateSimpleReviewRequest(
   const plugins = loadRuntimePlugins();
   const scmPlugins = findPluginsByCapability(plugins, "scm.reviewRequest");
   if (scmPlugins.length === 0) {
-    throw new Error("releaseFlow.mode is review but no scm.reviewRequest plugin is available.");
+    throw new Error("review-mode is review but no scm.reviewRequest plugin is available.");
   }
 
   const plugin = scmPlugins[0];

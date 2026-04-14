@@ -49,9 +49,11 @@ describe("simple monorepo planning", () => {
       "versionary.jsonc",
       JSON.stringify({
         version: 1,
-        mode: "simple",
-        monorepo: { mode: "independent" },
-        packages: [{ path: "packages/a" }, { path: "packages/b" }],
+        "monorepo-mode": "independent",
+        packages: {
+          "packages/a": {},
+          "packages/b": {},
+        },
       }),
     );
     write(cwd, "packages/a/index.ts", "export const a = 1;\n");
@@ -90,9 +92,11 @@ describe("simple monorepo planning", () => {
       "versionary.jsonc",
       JSON.stringify({
         version: 1,
-        mode: "simple",
-        monorepo: { mode: "fixed" },
-        packages: [{ path: "packages/a" }, { path: "packages/b" }],
+        "monorepo-mode": "fixed",
+        packages: {
+          "packages/a": {},
+          "packages/b": {},
+        },
       }),
     );
     write(cwd, "packages/a/index.ts", "export const a = 1;\n");

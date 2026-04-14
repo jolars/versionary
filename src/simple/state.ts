@@ -9,7 +9,7 @@ interface SimpleStateFile {
 
 export function getBaselineStatePath(cwd: string): string {
   const loaded = loadConfig(cwd);
-  const configured = loaded.config.simple?.baselineShaFile;
+  const configured = loaded.config["baseline-file"];
   if (configured) {
     return path.join(cwd, configured);
   }

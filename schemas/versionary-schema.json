@@ -10,46 +10,101 @@
     "version": {
       "const": 1
     },
-    "mode": {
+    "review-mode": {
       "type": "string",
       "enum": [
-        "simple",
-        "standard"
+        "direct",
+        "review"
       ]
     },
-    "releaseFlow": {
-      "type": "object",
-      "properties": {
-        "mode": {
-          "type": "string",
-          "enum": [
-            "direct",
-            "review"
-          ]
-        }
-      },
-      "additionalProperties": false
+    "version-file": {
+      "type": "string"
+    },
+    "changelog-file": {
+      "type": "string"
+    },
+    "release-branch": {
+      "type": "string"
+    },
+    "baseline-file": {
+      "type": "string"
     },
     "bootstrap-sha": {
       "type": "string"
     },
-    "simple": {
+    "monorepo-mode": {
+      "type": "string",
+      "enum": [
+        "independent",
+        "fixed"
+      ]
+    },
+    "bump-minor-pre-major": {
+      "type": "boolean"
+    },
+    "include-commit-authors": {
+      "type": "boolean"
+    },
+    "release-type": {
+      "type": "string"
+    },
+    "packages": {
       "type": "object",
-      "properties": {
-        "versionFile": {
-          "type": "string"
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "release-type": {
+            "type": "string"
+          },
+          "package-name": {
+            "type": "string"
+          },
+          "exclude-paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "extra-files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "json",
+                    "toml",
+                    "yaml",
+                    "regex"
+                  ]
+                },
+                "path": {
+                  "type": "string"
+                },
+                "jsonpath": {
+                  "type": "string"
+                },
+                "pattern": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "path"
+              ],
+              "additionalProperties": true
+            }
+          }
         },
-        "changelogFile": {
-          "type": "string"
-        },
-        "releaseBranchPrefix": {
-          "type": "string"
-        },
-        "baselineShaFile": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
+        "additionalProperties": true
+      }
+    },
+    "plugins": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "additionalProperties": true

@@ -9,20 +9,19 @@ Schema URL for editor support:
 
 - `https://raw.githubusercontent.com/jolars/versionary/main/schemas/versionary-schema.json`
 
-## Simple mode (MVP)
+## Config (manifest style)
 
 For a quick trial, use:
 
-- `versionary.jsonc` with `"mode": "simple"`
-- `version.txt` as the version source
-- `CHANGELOG.md` as release notes output
-- stable release branch (`simple.releaseBranchPrefix`, default:
+- `version-file` (default `version.txt`) as version source
+- `changelog-file` (default `CHANGELOG.md`) as release notes output
+- stable release branch (`release-branch`, default:
   `versionary/release`) so release PRs are updated in-place
-- `.versionary-manifest.json` tracks baseline SHA for deterministic commit
+- `baseline-file` (default `.versionary-manifest.json`) tracks baseline SHA for deterministic commit
   ranges independent of tags
-- release flow mode (`releaseFlow.mode`): `review` (PR/MR style) or `direct` (no
+- review mode (`review-mode`): `review` (PR/MR style) or `direct` (no
   review request)
-- optional monorepo planning with `monorepo.mode` and `packages`:
+- optional monorepo planning with `monorepo-mode` and `packages`:
   - `independent` computes package bumps per path
   - `fixed` computes one shared bump across configured package paths
 
@@ -40,17 +39,8 @@ Commands:
 via SCM plugin capability. `pnpm run` is the recommended CI entrypoint and
 auto-dispatches between PR/update and release publish.
 
-For first-run bootstrapping, you can optionally set `history.bootstrap.sha` in
-config (similar to release-please `bootstrap-sha` behavior). Subsequent runs use
-manifest state.
-
-Versionary also accepts release-please-style aliases and normalizes them:
-
-- `bootstrap-sha` -> `history.bootstrap.sha`
-- `bump-minor-pre-major` -> `defaults.versioning.bumpMinorPreMajor`
-- `include-commit-authors` -> `defaults.changelog.includeAuthors`
-- `release-type` -> `defaults.strategy`
-- `packages` object map (manifest style) -> internal package list
+For first-run bootstrapping, set `bootstrap-sha` (similar to release-please). Subsequent runs use
+the baseline state file.
 
 ## Built-in plugins
 

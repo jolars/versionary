@@ -8,10 +8,7 @@ const BUILTIN_PLUGIN_FACTORIES: Record<string, () => VersionaryPluginRuntime> = 
 
 export function loadRuntimePlugins(cwd = process.cwd()): VersionaryPluginRuntime[] {
   const loaded = loadConfig(cwd);
-  const configured =
-    loaded.config.pluginConfig?.plugins?.map((plugin) => plugin.name) ??
-    loaded.config.plugins?.map((plugin) => plugin.name) ??
-    [];
+  const configured = loaded.config.plugins ?? [];
 
   const plugins: VersionaryPluginRuntime[] = [createGitHubPlugin()];
   const seen = new Set(plugins.map((plugin) => plugin.name));

@@ -1,8 +1,6 @@
 export type {
   VersionaryConfig,
-  VersionaryReleaseFlow,
   VersionaryPackage,
-  VersionaryPluginRef,
   VersionaryArtifactRule,
 } from "./types/config.js";
 export type {
