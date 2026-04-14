@@ -58,7 +58,7 @@ You can install directly from a git ref:
 ```json
 {
   "devDependencies": {
-    "@jolars/versionary": "github:jolars/versionary#<commit-or-tag>"
+    "versionary": "github:jolars/versionary#<commit-or-tag>"
   }
 }
 ```
