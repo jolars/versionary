@@ -8,17 +8,54 @@ import { createSimplePlan } from "./plan.js";
 import { prependChangelog, renderSimpleChangelog } from "./changelog.js";
 import { getBaselineStatePath, writeBaselineSha } from "./state.js";
 
-function ensureCleanWorktree(cwd: string): void {
+const SAFE_DIRTY_FILES = new Set([
+  "pnpm-lock.yaml",
+  "package-lock.json",
+  "yarn.lock",
+  "bun.lockb",
+  "npm-shrinkwrap.json",
+]);
+
+function listTrackedDirtyFiles(cwd: string): string[] {
   const status = execFileSync("git", ["status", "--porcelain", "--untracked-files=no"], {
     cwd,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "ignore"],
-  }).trim();
+  });
 
-  if (status.length > 0) {
+  return status
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((line) => line.slice(3));
+}
+
+export function splitSafeDirtyFiles(files: string[]): { ignored: string[]; blocking: string[] } {
+  const ignored: string[] = [];
+  const blocking: string[] = [];
+  for (const file of files) {
+    const basename = path.basename(file);
+    if (SAFE_DIRTY_FILES.has(basename)) {
+      ignored.push(file);
+      continue;
+    }
+    blocking.push(file);
+  }
+  return { ignored, blocking };
+}
+
+function ensureCleanWorktree(cwd: string): void {
+  const dirtyFiles = listTrackedDirtyFiles(cwd);
+  const { ignored, blocking } = splitSafeDirtyFiles(dirtyFiles);
+
+  if (blocking.length > 0) {
     throw new Error(
-      `Working tree has tracked modifications before versionary pr:\n${status}\nCommit/stash tracked changes first.`,
+      `Working tree has tracked modifications before versionary pr:\n${blocking.join("\n")}\nCommit/stash tracked changes first.`,
     );
+  }
+
+  if (ignored.length > 0) {
+    console.warn(`Ignoring safe tracked changes before versionary pr:\n${ignored.join("\n")}`);
   }
 }
 
