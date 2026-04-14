@@ -7,7 +7,7 @@
     "semantic versioning",
     "conventional commits"
   ],
-  "homepage": "https://github.com/jolars/versionary#readme",
+  "homepage": "https://github.com/jolars/versionary",
   "bugs": {
     "url": "https://github.com/jolars/versionary/issues"
   },
@@ -19,9 +19,16 @@
   "author": "Johan Larsson",
   "type": "commonjs",
   "packageManager": "pnpm@10.33.0",
+  "bin": {
+    "versionary": "dist/cli/index.js"
+  },
+  "files": [
+    "dist"
+  ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
+    "prepare": "pnpm run build",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",

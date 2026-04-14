@@ -18,3 +18,17 @@ Commands:
 - `pnpm plan`
 - `pnpm changelog -- --write`
 - `pnpm pr`
+
+## Install from GitHub
+
+You can install directly from a git ref:
+
+```json
+{
+  "devDependencies": {
+    "versionary": "github:jolars/versionary#<commit-or-tag>"
+  }
+}
+```
+
+The package runs a `prepare` build during git installation so the `versionary` CLI binary is available after `pnpm install`.
