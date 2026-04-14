@@ -4,10 +4,8 @@
   "description": "Automatic release framework based on conventional commits and semantic versioning",
   "keywords": [
     "releasing",
-    "semantic",
-    "versioning",
-    "conventional",
-    "commits"
+    "semantic versioning",
+    "conventional commits"
   ],
   "homepage": "https://github.com/jolars/versionary#readme",
   "bugs": {
