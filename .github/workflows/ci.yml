@@ -35,9 +35,6 @@ jobs:
       - name: Install deps
         run: pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Verify lockfile unchanged
-        run: git diff --exit-code -- pnpm-lock.yaml
-
       - name: Typecheck
         run: pnpm typecheck
 
@@ -74,9 +71,6 @@ jobs:
 
       - name: Install deps
         run: pnpm install --frozen-lockfile --ignore-scripts
-
-      - name: Verify lockfile unchanged
-        run: git diff --exit-code -- pnpm-lock.yaml
 
       - name: Run Versionary
         env:
