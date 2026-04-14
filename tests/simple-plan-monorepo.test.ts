@@ -119,4 +119,31 @@ describe("simple monorepo planning", () => {
     expect(plan.packages?.every((pkg) => pkg.releaseType === "minor")).toBe(true);
     expect(plan.packages?.every((pkg) => pkg.nextVersion === "2.1.0")).toBe(true);
   });
+
+  it("falls back safely when bootstrap-sha is stale", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "version.txt", "1.0.0\n");
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "bootstrap-sha": "deadbeef",
+        packages: {
+          ".": {},
+        },
+      }),
+    );
+    write(cwd, "src/index.ts", "export const ok = true;\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "feat: initial");
+
+    const plan = createSimplePlan(cwd);
+    expect(plan.releaseType).toBe("minor");
+    expect(plan.nextVersion).toBe("1.1.0");
+  });
 });

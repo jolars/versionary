@@ -40,6 +40,30 @@ function resolveBaseRef(cwd: string, baselineSha?: string | null): string {
   return baseRef;
 }
 
+function isValidCommitish(cwd: string, ref: string): boolean {
+  try {
+    execFileSync("git", ["rev-parse", "--verify", `${ref}^{commit}`], {
+      cwd,
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function resolveRange(cwd: string, baselineSha?: string | null): string {
+  const baseRef = resolveBaseRef(cwd, baselineSha);
+  if (!baseRef) {
+    return "HEAD";
+  }
+  if (isValidCommitish(cwd, baseRef)) {
+    return `${baseRef}..HEAD`;
+  }
+
+  return "HEAD";
+}
+
 function readGitLog(cwd: string, range: string, pathspecs: string[] = []): CommitInfo[] {
   const output = execFileSync("git", ["log", range, "--pretty=format:%H%x09%s", "--", ...pathspecs], {
     cwd,
@@ -61,8 +85,7 @@ function readGitLog(cwd: string, range: string, pathspecs: string[] = []): Commi
 }
 
 export function getCommitsSinceLastTag(cwd = process.cwd(), baselineSha?: string | null): CommitInfo[] {
-  const baseRef = resolveBaseRef(cwd, baselineSha);
-  const range = baseRef ? `${baseRef}..HEAD` : "HEAD";
+  const range = resolveRange(cwd, baselineSha);
   return readGitLog(cwd, range);
 }
 
@@ -72,8 +95,7 @@ export function getCommitsForPath(
   packagePath = ".",
   excludePaths: string[] = [],
 ): CommitInfo[] {
-  const baseRef = resolveBaseRef(cwd, baselineSha);
-  const range = baseRef ? `${baseRef}..HEAD` : "HEAD";
+  const range = resolveRange(cwd, baselineSha);
   const normalizedPackagePath = packagePath === "." ? "." : packagePath;
 
   const excludes = excludePaths.map((excludePath) => {
