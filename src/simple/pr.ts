@@ -7,6 +7,7 @@ import { loadRuntimePlugins } from "../plugins/runtime.js";
 import { createSimplePlan } from "./plan.js";
 import type { CommitInfo } from "./git.js";
 import { inferReleaseTypeFromSubject } from "./git.js";
+import { resolveRepositoryWebBaseUrl } from "./repo-url.js";
 import { prependChangelog, renderSimpleChangelog } from "./changelog.js";
 import { getBaselineStatePath, writeBaselineSha } from "./state.js";
 
@@ -108,30 +109,6 @@ export function prepareSimpleReleasePr(cwd = process.cwd()): {
   };
 }
 
-function resolveCommitWebBaseUrl(cwd: string): string | null {
-  const server = process.env.GITHUB_SERVER_URL;
-  const slug = process.env.GITHUB_REPOSITORY;
-  if (server && slug) {
-    return `${server.replace(/\/+$/u, "")}/${slug}`;
-  }
-
-  try {
-    const remote = execFileSync("git", ["remote", "get-url", "origin"], {
-      cwd,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-    const httpsMatch = remote.match(/^(?:https?:\/\/|git@)([^:/]+)[:/]([^/]+\/[^/]+?)(?:\.git)?$/u);
-    if (!httpsMatch) {
-      return null;
-    }
-    const [, host, repoPath] = httpsMatch;
-    return `https://${host}/${repoPath}`;
-  } catch {
-    return null;
-  }
-}
-
 function formatCommitMessage(subject: string): { label: string; message: string } {
   const conventional = subject.match(/^[a-z]+(?:\(([^)]+)\))?!?:\s+(.+)$/iu);
   if (!conventional) {
@@ -148,7 +125,7 @@ export function renderSimpleReviewRequestBody(version: string, commits: CommitIn
   const breaking: string[] = [];
   const features: string[] = [];
   const fixes: string[] = [];
-  const commitBaseUrl = resolveCommitWebBaseUrl(cwd);
+  const commitBaseUrl = resolveRepositoryWebBaseUrl(cwd);
 
   for (const commit of commits) {
     const subject = commit.subject;

@@ -9,8 +9,6 @@ export type {
   VersionaryPluginCapability,
   VersionaryPluginContext,
   VersionaryPluginRuntime,
-  VersionaryPublishPackageInput,
-  VersionaryPublishPackageResult,
   VersionaryScmReviewRequestInput,
   VersionaryScmReviewRequestResult,
   VersionaryScmReleaseMetadataInput,

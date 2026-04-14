@@ -23,10 +23,24 @@ function makePlan(): SimplePlan {
 
 describe("simple changelog rendering", () => {
   it("includes releasable commits and excludes ci/chore", () => {
-    const changelog = renderSimpleChangelog(makePlan());
+    const prevServer = process.env.GITHUB_SERVER_URL;
+    const prevRepo = process.env.GITHUB_REPOSITORY;
+    let changelog = "";
+    try {
+      process.env.GITHUB_SERVER_URL = "https://github.com";
+      process.env.GITHUB_REPOSITORY = "jolars/versionary";
+      changelog = renderSimpleChangelog(makePlan());
+    } finally {
+      process.env.GITHUB_SERVER_URL = prevServer;
+      process.env.GITHUB_REPOSITORY = prevRepo;
+    }
+
     expect(changelog).toContain("feat: add feature");
     expect(changelog).toContain("fix: patch bug");
     expect(changelog).not.toContain("ci: update workflow");
     expect(changelog).not.toContain("chore: bump deps");
+    expect(changelog).toContain("## [0.2.0](https://github.com/jolars/versionary/compare/v0.1.0...v0.2.0)");
+    expect(changelog).toContain("[`3333333`](https://github.com/jolars/versionary/commit/3333333)");
+    expect(changelog).toContain("[`4444444`](https://github.com/jolars/versionary/commit/4444444)");
   });
 });

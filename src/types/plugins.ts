@@ -1,7 +1,6 @@
 export type VersionaryPluginCapability =
   | "scm.reviewRequest"
-  | "scm.releaseMetadata"
-  | "publish.package";
+  | "scm.releaseMetadata";
 
 export interface VersionaryScmReviewRequestInput {
   baseBranch: string;
@@ -28,17 +27,6 @@ export interface VersionaryScmReleaseMetadataResult {
   url: string;
 }
 
-export interface VersionaryPublishPackageInput {
-  version: string;
-  tag: string;
-}
-
-export interface VersionaryPublishPackageResult {
-  packageManager: "npm";
-  packageName: string;
-  version: string;
-}
-
 export interface VersionaryPluginContext {
   cwd: string;
   logger?: {
@@ -59,8 +47,4 @@ export interface VersionaryPluginRuntime {
     input: VersionaryScmReleaseMetadataInput,
     context: VersionaryPluginContext,
   ) => Promise<VersionaryScmReleaseMetadataResult>;
-  publishPackage?: (
-    input: VersionaryPublishPackageInput,
-    context: VersionaryPluginContext,
-  ) => Promise<VersionaryPublishPackageResult>;
 }

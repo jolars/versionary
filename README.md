@@ -43,7 +43,6 @@ manifest state.
 
 Versionary also accepts release-please-style aliases and normalizes them:
 
-- `plugins: ["npm"]` (string array) -> internal plugin refs
 - `bootstrap-sha` -> `history.bootstrap.sha`
 - `bump-minor-pre-major` -> `defaults.versioning.bumpMinorPreMajor`
 - `include-commit-authors` -> `defaults.changelog.includeAuthors`
@@ -52,29 +51,12 @@ Versionary also accepts release-please-style aliases and normalizes them:
 
 ## Built-in plugins
 
-Versionary ships with built-in SCM and publish plugins:
+Versionary ships with built-in SCM plugin support:
 
 - `github` (default): review request + release metadata
-- `npm` (opt-in): publishes package to npm during `release`
 
-Enable npm publish:
-
-```jsonc
-{
-  "version": 1,
-  "mode": "simple",
-  "pluginConfig": {
-    "plugins": [{ "name": "npm" }]
-  }
-}
-```
-
-Environment variables for npm plugin:
-
-- `NPM_TOKEN` (required unless skipping publish)
-- `VERSIONARY_NPM_ACCESS` (`public` default, `restricted` optional)
-- `VERSIONARY_SKIP_NPM_PUBLISH` (`true/1/yes` skips actual `npm publish`, useful
-  for dry runs)
+Package publication is intentionally out of scope in the current release flow.
+Use separate CI workflows for publishing after Versionary has prepared/tagged the release.
 
 ## Install from GitHub
 

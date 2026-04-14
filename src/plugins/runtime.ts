@@ -1,11 +1,9 @@
 import { loadConfig } from "../config/load-config.js";
-import { createNpmPlugin } from "../publish/npm-plugin.js";
 import { createGitHubPlugin } from "../scm/github-plugin.js";
 import type { VersionaryPluginRuntime } from "../types/plugins.js";
 
 const BUILTIN_PLUGIN_FACTORIES: Record<string, () => VersionaryPluginRuntime> = {
   github: createGitHubPlugin,
-  npm: createNpmPlugin,
 };
 
 export function loadRuntimePlugins(cwd = process.cwd()): VersionaryPluginRuntime[] {

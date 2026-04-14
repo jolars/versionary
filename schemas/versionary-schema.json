@@ -30,55 +30,6 @@
       },
       "additionalProperties": false
     },
-    "pluginConfig": {
-      "type": "object",
-      "properties": {
-        "plugins": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": [
-              "name"
-            ],
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "options": {
-                "type": "object"
-              }
-            },
-            "additionalProperties": true
-          }
-        }
-      },
-      "additionalProperties": true
-    },
-    "plugins": {
-      "type": "array",
-      "items": {
-        "oneOf": [
-          {
-            "type": "string"
-          },
-          {
-            "type": "object",
-            "required": [
-              "name"
-            ],
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "options": {
-                "type": "object"
-              }
-            },
-            "additionalProperties": true
-          }
-        ]
-      }
-    },
     "bootstrap-sha": {
       "type": "string"
     },

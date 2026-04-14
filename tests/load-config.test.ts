@@ -72,7 +72,6 @@ describe("config loading", () => {
       JSON.stringify({
         version: 1,
         mode: "simple",
-        plugins: ["npm"],
         "bootstrap-sha": "abc123",
         "bump-minor-pre-major": true,
         "include-commit-authors": true,
@@ -82,7 +81,6 @@ describe("config loading", () => {
     );
 
     const loaded = loadConfig(dir);
-    expect(loaded.config.plugins?.[0]?.name).toBe("npm");
     expect(loaded.config.history?.bootstrap?.sha).toBe("abc123");
     expect(loaded.config.defaults?.versioning?.bumpMinorPreMajor).toBe(true);
     expect(loaded.config.defaults?.changelog?.includeAuthors).toBe(true);
