@@ -48,6 +48,11 @@ const pluginConfigSchema = z.object({
 export const configSchema = z.object({
   version: z.literal(1),
   mode: z.enum(["simple", "standard"]).optional(),
+  releaseFlow: z
+    .object({
+      mode: z.enum(["direct", "review"]).default("direct"),
+    })
+    .optional(),
   history: z
     .object({
       bootstrap: z

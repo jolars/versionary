@@ -89,9 +89,14 @@ export interface VersionaryPluginConfig {
   plugins?: VersionaryPluginRef[];
 }
 
+export interface VersionaryReleaseFlow {
+  mode: "direct" | "review";
+}
+
 export interface VersionaryConfig {
   version: 1;
   mode?: "simple" | "standard";
+  releaseFlow?: VersionaryReleaseFlow;
   history?: VersionaryHistory;
   monorepo?: VersionaryMonorepo;
   defaults?: VersionaryDefaults;

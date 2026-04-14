@@ -2,6 +2,9 @@
   // Versionary config version
   "version": 1,
   "mode": "simple",
+  "releaseFlow": {
+    "mode": "review"
+  },
 
   "simple": {
     "versionFile": "version.txt",
