@@ -120,7 +120,7 @@ describe("simple monorepo planning", () => {
     expect(plan.packages?.every((pkg) => pkg.nextVersion === "2.1.0")).toBe(true);
   });
 
-  it("falls back safely when bootstrap-sha is stale", () => {
+  it("falls back to latest tag when bootstrap-sha is stale", () => {
     const cwd = makeTempDir();
     git(cwd, "init");
     git(cwd, "config", "user.name", "Test User");
@@ -140,10 +140,17 @@ describe("simple monorepo planning", () => {
     );
     write(cwd, "src/index.ts", "export const ok = true;\n");
     git(cwd, "add", ".");
-    git(cwd, "commit", "-m", "feat: initial");
+    git(cwd, "commit", "-m", "feat: first release commit");
+    git(cwd, "tag", "v1.1.0");
+
+    write(cwd, "src/index.ts", "export const ok = false;\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "fix: second release commit");
 
     const plan = createSimplePlan(cwd);
-    expect(plan.releaseType).toBe("minor");
-    expect(plan.nextVersion).toBe("1.1.0");
+    expect(plan.releaseType).toBe("patch");
+    expect(plan.nextVersion).toBe("1.0.1");
+    expect(plan.commits).toHaveLength(1);
+    expect(plan.commits[0]?.subject).toBe("fix: second release commit");
   });
 });

@@ -21,23 +21,18 @@ function getReleaseBranchExcludeArgs(cwd: string): string[] {
   return releaseBranches.flatMap((branch) => ["--exclude", branch]);
 }
 
-function resolveBaseRef(cwd: string, baselineSha?: string | null): string {
+function getLatestReleaseTag(cwd: string): string {
   const excludeArgs = getReleaseBranchExcludeArgs(cwd);
-  let baseRef = baselineSha ?? "";
-  if (!baseRef) {
-    try {
-      const cmd = ["describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", ...excludeArgs];
-      baseRef = execFileSync("git", cmd, {
-        cwd,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
-      }).trim();
-    } catch {
-      baseRef = "";
-    }
+  try {
+    const cmd = ["describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", ...excludeArgs];
+    return execFileSync("git", cmd, {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return "";
   }
-
-  return baseRef;
 }
 
 function isValidCommitish(cwd: string, ref: string): boolean {
@@ -53,15 +48,17 @@ function isValidCommitish(cwd: string, ref: string): boolean {
 }
 
 function resolveRange(cwd: string, baselineSha?: string | null): string {
-  const baseRef = resolveBaseRef(cwd, baselineSha);
+  const baseRef = baselineSha ?? "";
   if (!baseRef) {
-    return "HEAD";
+    const latestTag = getLatestReleaseTag(cwd);
+    return latestTag ? `${latestTag}..HEAD` : "HEAD";
   }
   if (isValidCommitish(cwd, baseRef)) {
     return `${baseRef}..HEAD`;
   }
 
-  return "HEAD";
+  const latestTag = getLatestReleaseTag(cwd);
+  return latestTag ? `${latestTag}..HEAD` : "HEAD";
 }
 
 function readGitLog(cwd: string, range: string, pathspecs: string[] = []): CommitInfo[] {
