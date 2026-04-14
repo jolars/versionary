@@ -69,7 +69,7 @@ export function inferReleaseTypeFromSubject(subject: string): ReleaseType {
     return "minor";
   }
 
-  if (/^(fix|perf|refactor)(\(.+\))?:\s/i.test(subject)) {
+  if (/^(fix|perf)(\(.+\))?:\s/i.test(subject)) {
     return "patch";
   }
 

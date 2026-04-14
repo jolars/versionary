@@ -40,9 +40,9 @@ CLI commands in this repo currently run from source through `tsx` scripts:
   - `simple.changelogFile = "CHANGELOG.md"`
 - Release commit analysis currently follows conventional-commit-style defaults:
   - `feat` => `minor`
-  - `fix|perf|refactor` => `patch`
+  - `fix|perf` => `patch`
   - `!:` / `BREAKING CHANGE` => `major`
-  - `revert:` and `chore:` commits are ignored for release triggering
+  - `revert:`, `chore:`, and `refactor:` commits are ignored for release triggering
 - `pr` command requires a clean git working tree and creates/reuses branch `versionary/release-v<nextVersion>`.
 - Packaging is CLI-first:
   - binary entrypoint: `dist/cli/index.js`

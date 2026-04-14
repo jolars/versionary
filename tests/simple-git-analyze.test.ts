@@ -34,6 +34,8 @@ describe("simple commit analysis", () => {
   it("marks releasable commit types for changelog filtering", () => {
     expect(isReleasableCommit("feat: add thing")).toBe(true);
     expect(isReleasableCommit("fix: patch bug")).toBe(true);
+    expect(isReleasableCommit("perf: speed things up")).toBe(true);
+    expect(isReleasableCommit("refactor: internal cleanup")).toBe(false);
     expect(isReleasableCommit("ci: update workflow")).toBe(false);
     expect(isReleasableCommit("chore: bump deps")).toBe(false);
     expect(isReleasableCommit("revert: feat: add thing")).toBe(false);
