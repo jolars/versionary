@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/jolars/versionary/main/schemas/versionary-schema.json",
+  "title": "Versionary configuration",
+  "type": "object",
+  "required": [
+    "version"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "simple",
+        "standard"
+      ]
+    },
+    "releaseFlow": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "direct",
+            "review"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "pluginConfig": {
+      "type": "object",
+      "properties": {
+        "plugins": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "options": {
+                "type": "object"
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "plugins": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "options": {
+                "type": "object"
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      }
+    },
+    "bootstrap-sha": {
+      "type": "string"
+    },
+    "simple": {
+      "type": "object",
+      "properties": {
+        "versionFile": {
+          "type": "string"
+        },
+        "changelogFile": {
+          "type": "string"
+        },
+        "releaseBranchPrefix": {
+          "type": "string"
+        },
+        "baselineShaFile": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true
+}

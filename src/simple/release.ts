@@ -83,5 +83,23 @@ export async function runSimpleRelease(cwd = process.cwd()): Promise<string> {
     { tag, version, notes },
     { cwd, logger: console },
   );
-  return `Published release ${tag}: ${result.url}`;
+
+  const publishPlugins = findPluginsByCapability(plugins, "publish.package");
+  const publishSummaries: string[] = [];
+  for (const publishPlugin of publishPlugins) {
+    if (!publishPlugin.publishPackage) {
+      continue;
+    }
+    const published = await publishPlugin.publishPackage(
+      { version, tag },
+      { cwd, logger: console },
+    );
+    publishSummaries.push(`${published.packageManager}:${published.packageName}@${published.version}`);
+  }
+
+  if (publishSummaries.length === 0) {
+    return `Published release ${tag}: ${result.url}`;
+  }
+
+  return `Published release ${tag}: ${result.url} (packages: ${publishSummaries.join(", ")})`;
 }

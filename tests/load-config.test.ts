@@ -64,4 +64,63 @@ describe("config loading", () => {
     const loaded = loadConfig(dir);
     expect(loaded.config.simple?.releaseBranchPrefix).toBe("release/please");
   });
+
+  it("normalizes release-please style plugin and bootstrap aliases", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.jsonc"),
+      JSON.stringify({
+        version: 1,
+        mode: "simple",
+        plugins: ["npm"],
+        "bootstrap-sha": "abc123",
+        "bump-minor-pre-major": true,
+        "include-commit-authors": true,
+        "release-type": "node",
+      }),
+      "utf8",
+    );
+
+    const loaded = loadConfig(dir);
+    expect(loaded.config.plugins?.[0]?.name).toBe("npm");
+    expect(loaded.config.history?.bootstrap?.sha).toBe("abc123");
+    expect(loaded.config.defaults?.versioning?.bumpMinorPreMajor).toBe(true);
+    expect(loaded.config.defaults?.changelog?.includeAuthors).toBe(true);
+    expect(loaded.config.defaults?.strategy).toBe("node");
+  });
+
+  it("normalizes manifest-style packages object", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        mode: "simple",
+        packages: {
+          ".": {
+            "exclude-paths": ["crates", "editors"],
+          },
+          "editors/zed": {
+            "release-type": "rust",
+            "package-name": "panache-zed",
+            "extra-files": [{ type: "toml", path: "extension.toml", jsonpath: "$.version" }],
+          },
+        },
+      }),
+      "utf8",
+    );
+
+    const loaded = loadConfig(dir);
+    expect(loaded.config.packages).toHaveLength(2);
+    expect(loaded.config.packages?.[0]).toEqual({
+      path: ".",
+      excludePaths: ["crates", "editors"],
+    });
+    expect(loaded.config.packages?.[1]).toEqual({
+      path: "editors/zed",
+      strategy: "rust",
+      packageName: "panache-zed",
+      artifacts: [{ file: "extension.toml", format: "toml", path: "$.version" }],
+    });
+  });
 });

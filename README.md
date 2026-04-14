@@ -4,6 +4,10 @@ Versionary is a software-agnostic automated release tool focused on SemVer, conv
 
 Configuration is loaded from `versionary.jsonc` by default.
 
+Schema URL for editor support:
+
+- `https://raw.githubusercontent.com/jolars/versionary/main/schemas/versionary.schema.json`
+
 ## Simple mode (MVP)
 
 For a quick trial, use:
@@ -28,6 +32,40 @@ Commands:
 `pnpm run` is the recommended CI entrypoint and auto-dispatches between PR/update and release publish.
 
 For first-run bootstrapping, you can optionally set `history.bootstrap.sha` in config (similar to release-please `bootstrap-sha` behavior). Subsequent runs use manifest state.
+
+Versionary also accepts release-please-style aliases and normalizes them:
+
+- `plugins: ["npm"]` (string array) -> internal plugin refs
+- `bootstrap-sha` -> `history.bootstrap.sha`
+- `bump-minor-pre-major` -> `defaults.versioning.bumpMinorPreMajor`
+- `include-commit-authors` -> `defaults.changelog.includeAuthors`
+- `release-type` -> `defaults.strategy`
+- `packages` object map (manifest style) -> internal package list
+
+## Built-in plugins
+
+Versionary ships with built-in SCM and publish plugins:
+
+- `github` (default): review request + release metadata
+- `npm` (opt-in): publishes package to npm during `release`
+
+Enable npm publish:
+
+```jsonc
+{
+  "version": 1,
+  "mode": "simple",
+  "pluginConfig": {
+    "plugins": [{ "name": "npm" }]
+  }
+}
+```
+
+Environment variables for npm plugin:
+
+- `NPM_TOKEN` (required unless skipping publish)
+- `VERSIONARY_NPM_ACCESS` (`public` default, `restricted` optional)
+- `VERSIONARY_SKIP_NPM_PUBLISH` (`true/1/yes` skips actual `npm publish`, useful for dry runs)
 
 ## Install from GitHub
 

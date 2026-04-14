@@ -1,10 +1,13 @@
 {
   // Versionary config version
+  "$schema": "https://raw.githubusercontent.com/jolars/versionary/main/schemas/versionary.schema.json",
   "version": 1,
   "mode": "simple",
+  "plugins": ["npm"],
   "releaseFlow": {
     "mode": "review"
   },
+  "bootstrap-sha": "f46f767",
 
   "simple": {
     "versionFile": "version.txt",
