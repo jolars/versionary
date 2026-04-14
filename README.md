@@ -17,11 +17,14 @@ For a quick trial, use:
 Commands:
 
 - `pnpm verify`
+- `pnpm run` (default orchestration: no-op, create/update release PR, or publish release based on context)
 - `pnpm plan`
 - `pnpm changelog -- --write`
 - `pnpm pr`
+- `pnpm release`
 
-`pnpm pr` now prepares the release commit, pushes the release branch, and (in `releaseFlow.mode: "review"`) opens/updates the review request through SCM plugin capability.
+`pnpm pr` prepares release commit + branch and opens/updates the review request via SCM plugin capability.
+`pnpm run` is the recommended CI entrypoint and auto-dispatches between PR/update and release publish.
 
 ## Install from GitHub
 

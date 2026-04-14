@@ -33,9 +33,11 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "verify": "tsx src/cli/index.ts verify",
+    "run": "tsx src/cli/index.ts run",
     "plan": "tsx src/cli/index.ts plan",
     "changelog": "tsx src/cli/index.ts changelog",
-    "pr": "tsx src/cli/index.ts pr"
+    "pr": "tsx src/cli/index.ts pr",
+    "release": "tsx src/cli/index.ts release"
   },
   "dependencies": {
     "@octokit/rest": "^22.0.0",

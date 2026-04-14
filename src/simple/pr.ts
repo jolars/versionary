@@ -99,3 +99,7 @@ export function pushReleaseBranch(cwd: string, branch: string): void {
     stdio: ["ignore", "pipe", "ignore"],
   });
 }
+
+export function isReleaseCommitMessage(subject: string): boolean {
+  return /^chore\(release\):\sv\d+\.\d+\.\d+/u.test(subject);
+}

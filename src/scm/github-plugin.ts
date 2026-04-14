@@ -119,6 +119,16 @@ export function createGitHubPlugin(): VersionaryPluginRuntime {
     ): Promise<VersionaryScmReleaseMetadataResult> {
       const repo = getRepoFromEnv();
       const octokit = new Octokit({ auth: getGitHubToken() });
+      try {
+        const existing = await octokit.repos.getReleaseByTag({
+          owner: repo.owner,
+          repo: repo.repo,
+          tag: input.tag,
+        });
+        return { url: existing.data.html_url };
+      } catch {
+        // Continue with create flow when release does not exist.
+      }
       const { data } = await octokit.repos.createRelease({
         owner: repo.owner,
         repo: repo.repo,

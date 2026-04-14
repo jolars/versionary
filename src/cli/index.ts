@@ -2,13 +2,17 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
+import { loadConfig } from "../config/load-config.js";
 import { createSimplePlan } from "../simple/plan.js";
 import { renderSimpleChangelog } from "../simple/changelog.js";
 import {
+  isReleaseCommitMessage,
   openOrUpdateSimpleReviewRequest,
   prepareSimpleReleasePr,
   pushReleaseBranch,
 } from "../simple/pr.js";
+import { runSimpleRelease } from "../simple/release.js";
 import { verifyProject } from "../verify/verify-project.js";
 
 function printVerifyResult(): number {
@@ -24,6 +28,44 @@ function printVerifyResult(): number {
 
 async function main(): Promise<number> {
   const [, , command, ...args] = process.argv;
+  if (!command || command === "run") {
+    const loaded = loadConfig();
+    const mode = loaded.config.mode ?? "simple";
+    if (mode !== "simple") {
+      throw new Error(`Unsupported mode "${mode}" for default run orchestration.`);
+    }
+
+    const subject = execFileSync("git", ["log", "-1", "--pretty=%s"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+
+    if (isReleaseCommitMessage(subject)) {
+      const message = await runSimpleRelease(process.cwd());
+      console.log(message);
+      return 0;
+    }
+
+    const plan = createSimplePlan();
+    if (!plan.nextVersion) {
+      console.log("No releasable commits found. Nothing to do.");
+      return 0;
+    }
+
+    const pr = prepareSimpleReleasePr();
+    pushReleaseBranch(process.cwd(), pr.branch);
+    const reviewResult = await openOrUpdateSimpleReviewRequest(
+      process.cwd(),
+      pr.branch,
+      pr.title,
+      pr.version,
+    );
+    console.log(`Prepared release PR branch ${pr.branch}`);
+    console.log(`Title: ${pr.title}`);
+    console.log(reviewResult);
+    return 0;
+  }
+
   if (command === "verify") {
     return printVerifyResult();
   }
@@ -72,12 +114,20 @@ async function main(): Promise<number> {
     return 0;
   }
 
+  if (command === "release") {
+    const message = await runSimpleRelease(process.cwd());
+    console.log(message);
+    return 0;
+  }
+
   console.log("Usage: versionary <command>");
   console.log("Commands:");
+  console.log("  run     Auto-dispatch release PR/update or release publish by context");
   console.log("  verify  Validate config and basic repository shape");
   console.log("  plan    Print release plan (simple mode)");
   console.log("  changelog [--write]  Print or write changelog section");
   console.log("  pr      Prepare release PR commit and branch");
+  console.log("  release Publish release metadata for release commit context");
   return 1;
 }
 

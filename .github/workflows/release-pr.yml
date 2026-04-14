@@ -2,9 +2,9 @@ name: release-pr
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: ["ci"]
+    types: [completed]
 
 permissions:
   contents: write
@@ -17,11 +17,12 @@ concurrency:
 jobs:
   release-pr:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
 
       - uses: pnpm/action-setup@v4
         with:
@@ -35,35 +36,11 @@ jobs:
       - name: Install deps
         run: pnpm install --frozen-lockfile
 
-      - name: Verify config
-        run: pnpm verify
-
-      - name: Generate plan JSON
-        id: plan
-        run: |
-          PLAN_JSON="$(pnpm -s plan)"
-          echo "$PLAN_JSON"
-          echo "json<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$PLAN_JSON" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-
-      - name: Skip when no release needed
-        id: gate
-        run: |
-          RELEASE_TYPE="$(echo '${{ steps.plan.outputs.json }}' | jq -r '.releaseType')"
-          if [ "$RELEASE_TYPE" = "null" ] || [ -z "$RELEASE_TYPE" ]; then
-            echo "No releasable commits. Exiting."
-            echo "should_release=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "should_release=true" >> "$GITHUB_OUTPUT"
-
-      - name: Prepare release PR branch
-        if: steps.gate.outputs.should_release == 'true'
+      - name: Run Versionary
         env:
           GITHUB_TOKEN: ${{ secrets.VERSIONARY_PR_TOKEN || github.token }}
           VERSIONARY_BASE_BRANCH: main
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          pnpm pr
+          pnpm run
