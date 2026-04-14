@@ -39,6 +39,10 @@ function inferReleaseTypeFromSubject(subject: string): ReleaseType {
     return null;
   }
 
+  if (/^chore(\(.+\))?:\s/i.test(subject)) {
+    return null;
+  }
+
   if (/!:/u.test(subject) || /BREAKING CHANGE/u.test(subject)) {
     return "major";
   }

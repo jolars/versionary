@@ -14,4 +14,12 @@ describe("simple commit analysis", () => {
     const release = analyzeCommits([{ hash: "a", subject: "revert: feat: add thing" }]);
     expect(release).toBeNull();
   });
+
+  it("ignores chore commits", () => {
+    const release = analyzeCommits([
+      { hash: "a", subject: "chore: update docs tooling" },
+      { hash: "b", subject: "chore(ci): adjust workflow" },
+    ]);
+    expect(release).toBeNull();
+  });
 });
