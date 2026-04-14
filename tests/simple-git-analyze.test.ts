@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeCommits } from "../src/simple/git.js";
+import { analyzeCommits, isReleasableCommit } from "../src/simple/git.js";
 
 describe("simple commit analysis", () => {
   it("returns highest bump type", () => {
@@ -29,5 +29,13 @@ describe("simple commit analysis", () => {
       { hash: "b", subject: "fix: handle edge case" },
     ]);
     expect(release).toBe("patch");
+  });
+
+  it("marks releasable commit types for changelog filtering", () => {
+    expect(isReleasableCommit("feat: add thing")).toBe(true);
+    expect(isReleasableCommit("fix: patch bug")).toBe(true);
+    expect(isReleasableCommit("ci: update workflow")).toBe(false);
+    expect(isReleasableCommit("chore: bump deps")).toBe(false);
+    expect(isReleasableCommit("revert: feat: add thing")).toBe(false);
   });
 });

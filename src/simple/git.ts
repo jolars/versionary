@@ -52,7 +52,7 @@ export function getCommitsSinceLastTag(cwd = process.cwd(), baselineSha?: string
     });
 }
 
-function inferReleaseTypeFromSubject(subject: string): ReleaseType {
+export function inferReleaseTypeFromSubject(subject: string): ReleaseType {
   if (/^revert:\s/i.test(subject)) {
     return null;
   }
@@ -74,6 +74,10 @@ function inferReleaseTypeFromSubject(subject: string): ReleaseType {
   }
 
   return null;
+}
+
+export function isReleasableCommit(subject: string): boolean {
+  return inferReleaseTypeFromSubject(subject) !== null;
 }
 
 export function analyzeCommits(commits: CommitInfo[]): ReleaseType {

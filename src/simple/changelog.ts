@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { SimplePlan } from "./plan.js";
+import { isReleasableCommit } from "./git.js";
 
 function formatDate(): string {
   return new Date().toISOString().slice(0, 10);
@@ -14,7 +15,9 @@ export function renderSimpleChangelog(plan: SimplePlan): string {
   const lines = [
     `## ${plan.nextVersion} - ${formatDate()}`,
     "",
-    ...plan.commits.map((commit) => `- ${commit.subject} (${commit.hash.slice(0, 7)})`),
+    ...plan.commits
+      .filter((commit) => isReleasableCommit(commit.subject))
+      .map((commit) => `- ${commit.subject} (${commit.hash.slice(0, 7)})`),
     "",
   ];
 
