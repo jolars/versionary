@@ -107,6 +107,7 @@ export interface VersionaryConfig {
     versionFile?: string;
     changelogFile?: string;
     releaseBranchPrefix?: string;
+    baselineShaFile?: string;
   };
 }
 

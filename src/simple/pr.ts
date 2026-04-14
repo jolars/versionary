@@ -6,6 +6,7 @@ import { findPluginsByCapability } from "../plugins/capabilities.js";
 import { loadRuntimePlugins } from "../plugins/runtime.js";
 import { createSimplePlan } from "./plan.js";
 import { prependChangelog, renderSimpleChangelog } from "./changelog.js";
+import { getBaselineStatePath, writeBaselineSha } from "./state.js";
 
 function ensureCleanWorktree(cwd: string): void {
   const status = execFileSync("git", ["status", "--porcelain"], {
@@ -45,6 +46,12 @@ export function prepareSimpleReleasePr(cwd = process.cwd()): {
     stdio: ["ignore", "pipe", "ignore"],
   });
   execFileSync("git", ["commit", "-m", title], { cwd, stdio: ["ignore", "pipe", "ignore"] });
+  writeBaselineSha(cwd);
+  execFileSync("git", ["add", getBaselineStatePath(cwd)], {
+    cwd,
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  execFileSync("git", ["commit", "--amend", "--no-edit"], { cwd, stdio: ["ignore", "pipe", "ignore"] });
 
   return {
     branch,

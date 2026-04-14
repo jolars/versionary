@@ -3,6 +3,7 @@ import path from "node:path";
 import { loadConfig } from "../config/load-config.js";
 import { analyzeCommits, getCommitsSinceLastTag, type CommitInfo } from "./git.js";
 import { bumpVersion, type ReleaseType } from "./semver.js";
+import { readBaselineSha } from "./state.js";
 
 export interface SimplePlan {
   mode: "simple";
@@ -12,6 +13,7 @@ export interface SimplePlan {
   versionFile: string;
   changelogFile: string;
   releaseBranchPrefix: string;
+  baselineSha: string | null;
   commits: CommitInfo[];
 }
 
@@ -25,13 +27,14 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
   const versionFile = loaded.config.simple?.versionFile ?? "version.txt";
   const changelogFile = loaded.config.simple?.changelogFile ?? "CHANGELOG.md";
   const releaseBranchPrefix = loaded.config.simple?.releaseBranchPrefix ?? "versionary/release";
+  const baselineSha = readBaselineSha(cwd) ?? loaded.config.history?.bootstrap?.sha ?? null;
   const versionPath = path.join(cwd, versionFile);
   if (!fs.existsSync(versionPath)) {
     throw new Error(`Simple mode requires ${versionFile} to exist.`);
   }
 
   const currentVersion = fs.readFileSync(versionPath, "utf8").trim();
-  const commits = getCommitsSinceLastTag(cwd);
+  const commits = getCommitsSinceLastTag(cwd, baselineSha);
   const releaseType = analyzeCommits(commits);
   const nextVersion = releaseType ? bumpVersion(currentVersion, releaseType) : null;
 
@@ -43,6 +46,7 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
     versionFile,
     changelogFile,
     releaseBranchPrefix,
+    baselineSha,
     commits,
   };
 }

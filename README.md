@@ -12,6 +12,7 @@ For a quick trial, use:
 - `version.txt` as the version source
 - `CHANGELOG.md` as release notes output
 - stable release branch (`simple.releaseBranchPrefix`, default: `versionary/release`) so release PRs are updated in-place
+- `versionary.versions.json` tracks baseline SHA for deterministic commit ranges independent of tags
 - release flow mode (`releaseFlow.mode`): `review` (PR/MR style) or `direct` (no review request)
 
 Commands:

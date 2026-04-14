@@ -6,7 +6,7 @@ export interface CommitInfo {
   subject: string;
 }
 
-export function getCommitsSinceLastTag(cwd = process.cwd()): CommitInfo[] {
+export function getCommitsSinceLastTag(cwd = process.cwd(), baselineSha?: string | null): CommitInfo[] {
   const releaseBranchesRaw = execFileSync("git", ["branch", "--list", "--format", "%(refname:short)"], {
     cwd,
     encoding: "utf8",
@@ -18,16 +18,18 @@ export function getCommitsSinceLastTag(cwd = process.cwd()): CommitInfo[] {
     .filter((line) => line.startsWith("versionary/release"));
 
   const excludeArgs = releaseBranches.flatMap((branch) => ["--exclude", branch]);
-  let baseRef = "";
-  try {
-    const cmd = ["describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", ...excludeArgs];
-    baseRef = execFileSync("git", cmd, {
-      cwd,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-  } catch {
-    baseRef = "";
+  let baseRef = baselineSha ?? "";
+  if (!baseRef) {
+    try {
+      const cmd = ["describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", ...excludeArgs];
+      baseRef = execFileSync("git", cmd, {
+        cwd,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim();
+    } catch {
+      baseRef = "";
+    }
   }
 
   const range = baseRef ? `${baseRef}..HEAD` : "HEAD";

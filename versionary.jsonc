@@ -9,6 +9,7 @@
   "simple": {
     "versionFile": "version.txt",
     "changelogFile": "CHANGELOG.md",
-    "releaseBranchPrefix": "versionary/release"
+    "releaseBranchPrefix": "versionary/release",
+    "baselineShaFile": "versionary.versions.json"
   }
 }

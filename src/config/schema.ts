@@ -96,6 +96,7 @@ export const configSchema = z.object({
       versionFile: z.string().optional(),
       changelogFile: z.string().optional(),
       releaseBranchPrefix: z.string().optional(),
+      baselineShaFile: z.string().optional(),
     })
     .optional(),
 });
