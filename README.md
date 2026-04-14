@@ -11,6 +11,7 @@ For a quick trial, use:
 - `versionary.jsonc` with `"mode": "simple"`
 - `version.txt` as the version source
 - `CHANGELOG.md` as release notes output
+- stable release branch (`simple.releaseBranchPrefix`, default: `versionary/release`) so release PRs are updated in-place
 
 Commands:
 

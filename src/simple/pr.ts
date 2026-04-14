@@ -33,7 +33,7 @@ export function prepareSimpleReleasePr(cwd = process.cwd()): {
   const section = renderSimpleChangelog(plan);
   prependChangelog(cwd, plan.changelogFile, section);
 
-  const branch = `versionary/release-v${plan.nextVersion}`;
+  const branch = plan.releaseBranchPrefix;
   const title = `chore(release): v${plan.nextVersion}`;
 
   execFileSync("git", ["checkout", "-B", branch], { cwd, stdio: ["ignore", "pipe", "ignore"] });

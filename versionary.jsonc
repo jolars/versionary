@@ -5,6 +5,7 @@
 
   "simple": {
     "versionFile": "version.txt",
-    "changelogFile": "CHANGELOG.md"
+    "changelogFile": "CHANGELOG.md",
+    "releaseBranchPrefix": "versionary/release"
   }
 }

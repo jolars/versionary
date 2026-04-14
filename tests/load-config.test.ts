@@ -46,4 +46,22 @@ describe("config loading", () => {
     expect(loaded.format).toBe("toml");
     expect(loaded.config.version).toBe(1);
   });
+
+  it("loads simple.releaseBranchPrefix", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        mode: "simple",
+        simple: {
+          releaseBranchPrefix: "release/please",
+        },
+      }),
+      "utf8",
+    );
+
+    const loaded = loadConfig(dir);
+    expect(loaded.config.simple?.releaseBranchPrefix).toBe("release/please");
+  });
 });

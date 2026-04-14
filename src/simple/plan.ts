@@ -11,6 +11,7 @@ export interface SimplePlan {
   nextVersion: string | null;
   versionFile: string;
   changelogFile: string;
+  releaseBranchPrefix: string;
   commits: CommitInfo[];
 }
 
@@ -23,6 +24,7 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
 
   const versionFile = loaded.config.simple?.versionFile ?? "version.txt";
   const changelogFile = loaded.config.simple?.changelogFile ?? "CHANGELOG.md";
+  const releaseBranchPrefix = loaded.config.simple?.releaseBranchPrefix ?? "versionary/release";
   const versionPath = path.join(cwd, versionFile);
   if (!fs.existsSync(versionPath)) {
     throw new Error(`Simple mode requires ${versionFile} to exist.`);
@@ -40,6 +42,7 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
     nextVersion,
     versionFile,
     changelogFile,
+    releaseBranchPrefix,
     commits,
   };
 }
