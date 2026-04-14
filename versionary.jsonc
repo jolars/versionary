@@ -1,0 +1,8 @@
+{
+  // Versionary config version
+  "version": 1,
+
+  "monorepo": {
+    "mode": "independent"
+  }
+}
