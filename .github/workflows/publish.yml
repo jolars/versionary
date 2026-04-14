@@ -13,8 +13,6 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    env:
-      PNPM_CONFIG_MANAGE_PACKAGE_MANAGER_VERSIONS: "false"
     steps:
       - uses: actions/checkout@v6
 
