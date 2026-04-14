@@ -28,21 +28,31 @@ describe("safe dirty file splitting", () => {
 
 describe("review request body rendering", () => {
   it("groups releasable commits and omits ci/chore", () => {
-    const body = renderSimpleReviewRequestBody("1.2.3", [
-      { hash: "aaaaaaa", subject: "ci: tweak workflow" },
-      { hash: "bbbbbbb", subject: "chore: bump deps" },
-      { hash: "ccccccc", subject: "feat: add awesome feature" },
-      { hash: "ddddddd", subject: "fix: patch bug" },
-      { hash: "eeeeeee", subject: "feat!: breaking API change" },
-    ]);
+    const prevServer = process.env.GITHUB_SERVER_URL;
+    const prevRepo = process.env.GITHUB_REPOSITORY;
+    let body = "";
+    try {
+      process.env.GITHUB_SERVER_URL = "https://github.com";
+      process.env.GITHUB_REPOSITORY = "jolars/versionary";
+      body = renderSimpleReviewRequestBody("1.2.3", [
+        { hash: "aaaaaaa", subject: "ci: tweak workflow" },
+        { hash: "bbbbbbb", subject: "chore: bump deps" },
+        { hash: "ccccccc1", subject: "feat(editors): add awesome feature" },
+        { hash: "ddddddd2", subject: "fix(lsp): patch bug" },
+        { hash: "eeeeeee3", subject: "feat!: breaking API change" },
+      ]);
+    } finally {
+      process.env.GITHUB_SERVER_URL = prevServer;
+      process.env.GITHUB_REPOSITORY = prevRepo;
+    }
 
     expect(body).toContain("This PR prepares **v1.2.3**.");
     expect(body).toContain("### Breaking changes");
     expect(body).toContain("### Features");
     expect(body).toContain("### Fixes");
-    expect(body).toContain("- feat!: breaking API change (eeeeeee)");
-    expect(body).toContain("- feat: add awesome feature (ccccccc)");
-    expect(body).toContain("- fix: patch bug (ddddddd)");
+    expect(body).toContain("- breaking API change ([`eeeeeee`](https://github.com/jolars/versionary/commit/eeeeeee3))");
+    expect(body).toContain("- **editors:** add awesome feature ([`ccccccc`](https://github.com/jolars/versionary/commit/ccccccc1))");
+    expect(body).toContain("- **lsp:** patch bug ([`ddddddd`](https://github.com/jolars/versionary/commit/ddddddd2))");
     expect(body).not.toContain("ci: tweak workflow");
     expect(body).not.toContain("chore: bump deps");
   });

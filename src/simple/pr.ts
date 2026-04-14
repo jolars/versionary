@@ -108,20 +108,59 @@ export function prepareSimpleReleasePr(cwd = process.cwd()): {
   };
 }
 
-export function renderSimpleReviewRequestBody(version: string, commits: CommitInfo[]): string {
+function resolveCommitWebBaseUrl(cwd: string): string | null {
+  const server = process.env.GITHUB_SERVER_URL;
+  const slug = process.env.GITHUB_REPOSITORY;
+  if (server && slug) {
+    return `${server.replace(/\/+$/u, "")}/${slug}`;
+  }
+
+  try {
+    const remote = execFileSync("git", ["remote", "get-url", "origin"], {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    const httpsMatch = remote.match(/^(?:https?:\/\/|git@)([^:/]+)[:/]([^/]+\/[^/]+?)(?:\.git)?$/u);
+    if (!httpsMatch) {
+      return null;
+    }
+    const [, host, repoPath] = httpsMatch;
+    return `https://${host}/${repoPath}`;
+  } catch {
+    return null;
+  }
+}
+
+function formatCommitMessage(subject: string): { label: string; message: string } {
+  const conventional = subject.match(/^[a-z]+(?:\(([^)]+)\))?!?:\s+(.+)$/iu);
+  if (!conventional) {
+    return { label: "", message: subject };
+  }
+
+  const scope = conventional[1]?.trim();
+  const message = conventional[2]?.trim() ?? subject;
+  const label = scope ? `**${scope}:** ` : "";
+  return { label, message };
+}
+
+export function renderSimpleReviewRequestBody(version: string, commits: CommitInfo[], cwd = process.cwd()): string {
   const breaking: string[] = [];
   const features: string[] = [];
   const fixes: string[] = [];
+  const commitBaseUrl = resolveCommitWebBaseUrl(cwd);
 
   for (const commit of commits) {
     const subject = commit.subject;
+    const { label, message } = formatCommitMessage(subject);
     const hash = commit.hash.slice(0, 7);
+    const hashLabel = commitBaseUrl ? `[\`${hash}\`](${commitBaseUrl}/commit/${commit.hash})` : `\`${hash}\``;
     const type = inferReleaseTypeFromSubject(subject);
     if (!type) {
       continue;
     }
 
-    const item = `- ${subject} (${hash})`;
+    const item = `- ${label}${message} (${hashLabel})`;
     if (type === "major") {
       breaking.push(item);
       continue;
@@ -189,7 +228,7 @@ export async function openOrUpdateSimpleReviewRequest(
       baseBranch: process.env.VERSIONARY_BASE_BRANCH ?? "main",
       headBranch: branch,
       title,
-      body: renderSimpleReviewRequestBody(version, commits),
+      body: renderSimpleReviewRequestBody(version, commits, cwd),
       labels: ["release"],
     },
     {
