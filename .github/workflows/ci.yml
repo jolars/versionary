@@ -50,9 +50,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    concurrency:
-      group: versionary-${{ github.ref }}
-      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
         with:
