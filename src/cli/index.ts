@@ -4,7 +4,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { createSimplePlan } from "../simple/plan.js";
 import { renderSimpleChangelog } from "../simple/changelog.js";
-import { prepareSimpleReleasePr } from "../simple/pr.js";
+import {
+  openOrUpdateSimpleReviewRequest,
+  prepareSimpleReleasePr,
+  pushReleaseBranch,
+} from "../simple/pr.js";
 import { verifyProject } from "../verify/verify-project.js";
 
 function printVerifyResult(): number {
@@ -18,7 +22,7 @@ function printVerifyResult(): number {
   return result.ok ? 0 : 1;
 }
 
-function main(): number {
+async function main(): Promise<number> {
   const [, , command, ...args] = process.argv;
   if (command === "verify") {
     return printVerifyResult();
@@ -55,8 +59,16 @@ function main(): number {
 
   if (command === "pr") {
     const pr = prepareSimpleReleasePr();
+    pushReleaseBranch(process.cwd(), pr.branch);
+    const reviewResult = await openOrUpdateSimpleReviewRequest(
+      process.cwd(),
+      pr.branch,
+      pr.title,
+      pr.version,
+    );
     console.log(`Prepared release PR branch ${pr.branch}`);
     console.log(`Title: ${pr.title}`);
+    console.log(reviewResult);
     return 0;
   }
 
@@ -69,4 +81,10 @@ function main(): number {
   return 1;
 }
 
-process.exit(main());
+main()
+  .then((code) => process.exit(code))
+  .catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(message);
+    process.exit(1);
+  });

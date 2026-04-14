@@ -21,6 +21,8 @@ Commands:
 - `pnpm changelog -- --write`
 - `pnpm pr`
 
+`pnpm pr` now prepares the release commit, pushes the release branch, and (in `releaseFlow.mode: "review"`) opens/updates the review request through SCM plugin capability.
+
 ## Install from GitHub
 
 You can install directly from a git ref:

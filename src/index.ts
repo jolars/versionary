@@ -17,4 +17,5 @@ export type {
 
 export { loadConfig } from "./config/load-config.js";
 export { findPluginsByCapability, pluginHasCapability } from "./plugins/capabilities.js";
+export { loadRuntimePlugins } from "./plugins/runtime.js";
 export { verifyProject } from "./verify/verify-project.js";
