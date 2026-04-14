@@ -22,6 +22,8 @@ jobs:
       - uses: actions/checkout@v6
 
       - uses: pnpm/action-setup@v6
+        with:
+          version: 10.33.0
 
       - uses: actions/setup-node@v6
         with:
@@ -69,8 +71,11 @@ jobs:
           node-version: 20
           cache: pnpm
 
+      - name: Prefetch deps
+        run: pnpm fetch
+
       - name: Install deps
-        run: pnpm install --frozen-lockfile --ignore-scripts
+        run: pnpm install --frozen-lockfile --offline --ignore-scripts
 
       - name: Diagnose lockfile drift
         run: |
