@@ -1,0 +1,28 @@
+{
+  "name": "versionary",
+  "version": "0.1.0",
+  "description": "Automatic release framework based on conventional commits and semantic versioning",
+  "keywords": [
+    "releasing",
+    "semantic",
+    "versioning",
+    "conventional",
+    "commits"
+  ],
+  "homepage": "https://github.com/jolars/versionary#readme",
+  "bugs": {
+    "url": "https://github.com/jolars/versionary/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jolars/versionary.git"
+  },
+  "license": "MIT",
+  "author": "Johan Larsson",
+  "type": "commonjs",
+  "packageManager": "pnpm@10.33.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
