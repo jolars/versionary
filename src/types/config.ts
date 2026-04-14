@@ -52,13 +52,57 @@ export interface VersionaryPluginRef {
   options?: Record<string, unknown>;
 }
 
+export type VersionaryLifecycle =
+  | "plan"
+  | "pr"
+  | "release";
+
+export type VersionaryPluginStep =
+  | "verifyConditions"
+  | "analyzeCommits"
+  | "resolveReverts"
+  | "verifyRelease"
+  | "generateNotes"
+  | "updateArtifacts"
+  | "preparePr"
+  | "publish"
+  | "postRelease"
+  | "success"
+  | "fail";
+
+export type VersionaryPluginMergeStrategy = "highest" | "concat" | "override" | "reduce";
+
+export interface VersionaryPluginExecution {
+  step: VersionaryPluginStep;
+  lifecycle?: VersionaryLifecycle[];
+  merge?: VersionaryPluginMergeStrategy;
+}
+
+export interface VersionaryPluginPresetRef {
+  name: string;
+}
+
+export interface VersionaryPluginConfig {
+  extends?: VersionaryPluginPresetRef[];
+  globalOptions?: Record<string, unknown>;
+  execution?: VersionaryPluginExecution[];
+  plugins?: VersionaryPluginRef[];
+}
+
 export interface VersionaryConfig {
   version: 1;
+  mode?: "simple" | "standard";
   history?: VersionaryHistory;
   monorepo?: VersionaryMonorepo;
   defaults?: VersionaryDefaults;
   packages?: VersionaryPackage[];
-  plugins?: VersionaryPluginRef[];
+  pluginConfig?: VersionaryPluginConfig;
+  plugins?: VersionaryPluginRef[]; // compatibility alias; normalized into pluginConfig.plugins
+  simple?: {
+    versionFile?: string;
+    changelogFile?: string;
+    releaseBranchPrefix?: string;
+  };
 }
 
 export interface LoadedConfig {

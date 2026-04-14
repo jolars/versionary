@@ -17,6 +17,16 @@ export function verifyProject(cwd = process.cwd()): VerifyResult {
     details: `Loaded ${path.basename(config.path)} (${config.format})`,
   });
 
+  if ((config.config.mode ?? "simple") === "simple") {
+    const versionFile = config.config.simple?.versionFile ?? "version.txt";
+    const exists = fs.existsSync(path.join(cwd, versionFile));
+    checks.push({
+      name: `simple-version-file:${versionFile}`,
+      ok: exists,
+      details: exists ? "Version file exists" : `Missing ${versionFile} for simple mode`,
+    });
+  }
+
   if (config.config.packages) {
     for (const pkg of config.config.packages) {
       const pkgPath = path.join(cwd, pkg.path);

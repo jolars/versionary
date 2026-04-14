@@ -20,8 +20,34 @@ const pluginSchema = z.object({
   options: z.record(z.string(), z.unknown()).optional(),
 });
 
+const pluginExecutionSchema = z.object({
+  step: z.enum([
+    "verifyConditions",
+    "analyzeCommits",
+    "resolveReverts",
+    "verifyRelease",
+    "generateNotes",
+    "updateArtifacts",
+    "preparePr",
+    "publish",
+    "postRelease",
+    "success",
+    "fail",
+  ]),
+  lifecycle: z.array(z.enum(["plan", "pr", "release"])).optional(),
+  merge: z.enum(["highest", "concat", "override", "reduce"]).optional(),
+});
+
+const pluginConfigSchema = z.object({
+  extends: z.array(z.object({ name: z.string().min(1) })).optional(),
+  globalOptions: z.record(z.string(), z.unknown()).optional(),
+  execution: z.array(pluginExecutionSchema).optional(),
+  plugins: z.array(pluginSchema).optional(),
+});
+
 export const configSchema = z.object({
   version: z.literal(1),
+  mode: z.enum(["simple", "standard"]).optional(),
   history: z
     .object({
       bootstrap: z
@@ -58,7 +84,15 @@ export const configSchema = z.object({
     })
     .optional(),
   packages: z.array(packageSchema).optional(),
+  pluginConfig: pluginConfigSchema.optional(),
   plugins: z.array(pluginSchema).optional(),
+  simple: z
+    .object({
+      versionFile: z.string().optional(),
+      changelogFile: z.string().optional(),
+      releaseBranchPrefix: z.string().optional(),
+    })
+    .optional(),
 });
 
 export type ConfigSchema = z.infer<typeof configSchema>;

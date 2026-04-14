@@ -25,7 +25,10 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "verify": "tsx src/cli/index.ts verify"
+    "verify": "tsx src/cli/index.ts verify",
+    "plan": "tsx src/cli/index.ts plan",
+    "changelog": "tsx src/cli/index.ts changelog",
+    "pr": "tsx src/cli/index.ts pr"
   },
   "dependencies": {
     "@iarna/toml": "^2.2.5",

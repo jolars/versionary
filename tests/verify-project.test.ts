@@ -24,11 +24,13 @@ afterEach(() => {
 describe("verifyProject", () => {
   it("passes when package paths exist", () => {
     const dir = makeTempDir();
+    fs.writeFileSync(path.join(dir, "version.txt"), "0.1.0\n", "utf8");
     fs.mkdirSync(path.join(dir, "crates"), { recursive: true });
     fs.writeFileSync(
       path.join(dir, "versionary.json"),
       JSON.stringify({
         version: 1,
+        mode: "standard",
         packages: [{ path: "crates" }],
       }),
       "utf8",
@@ -40,10 +42,12 @@ describe("verifyProject", () => {
 
   it("fails when package path is missing", () => {
     const dir = makeTempDir();
+    fs.writeFileSync(path.join(dir, "version.txt"), "0.1.0\n", "utf8");
     fs.writeFileSync(
       path.join(dir, "versionary.json"),
       JSON.stringify({
         version: 1,
+        mode: "standard",
         packages: [{ path: "does-not-exist" }],
       }),
       "utf8",
@@ -52,5 +56,21 @@ describe("verifyProject", () => {
     const result = verifyProject(dir);
     expect(result.ok).toBe(false);
     expect(result.checks.some((c) => c.name.includes("does-not-exist") && !c.ok)).toBe(true);
+  });
+
+  it("fails in simple mode when version file is missing", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        mode: "simple",
+      }),
+      "utf8",
+    );
+
+    const result = verifyProject(dir);
+    expect(result.ok).toBe(false);
+    expect(result.checks.some((c) => c.name.includes("simple-version-file") && !c.ok)).toBe(true);
   });
 });

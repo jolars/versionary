@@ -1,8 +1,10 @@
 {
   // Versionary config version
   "version": 1,
+  "mode": "simple",
 
-  "monorepo": {
-    "mode": "independent"
+  "simple": {
+    "versionFile": "version.txt",
+    "changelogFile": "CHANGELOG.md"
   }
 }
