@@ -59,6 +59,7 @@ async function main(): Promise<number> {
       pr.branch,
       pr.title,
       pr.version,
+      pr.commits,
     );
     console.log(`Prepared release PR branch ${pr.branch}`);
     console.log(`Title: ${pr.title}`);
@@ -107,6 +108,7 @@ async function main(): Promise<number> {
       pr.branch,
       pr.title,
       pr.version,
+      pr.commits,
     );
     console.log(`Prepared release PR branch ${pr.branch}`);
     console.log(`Title: ${pr.title}`);

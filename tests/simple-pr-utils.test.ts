@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isReleaseCommitMessage, splitSafeDirtyFiles } from "../src/simple/pr.js";
+import { isReleaseCommitMessage, renderSimpleReviewRequestBody, splitSafeDirtyFiles } from "../src/simple/pr.js";
 
 describe("release commit detection", () => {
   it("matches release commit pattern", () => {
@@ -24,5 +24,26 @@ describe("safe dirty file splitting", () => {
     expect(result.ignored).toEqual([]);
     expect(result.blocking).toEqual(["README.md", ".github/workflows/ci.yml"]);
   });
+});
 
+describe("review request body rendering", () => {
+  it("groups releasable commits and omits ci/chore", () => {
+    const body = renderSimpleReviewRequestBody("1.2.3", [
+      { hash: "aaaaaaa", subject: "ci: tweak workflow" },
+      { hash: "bbbbbbb", subject: "chore: bump deps" },
+      { hash: "ccccccc", subject: "feat: add awesome feature" },
+      { hash: "ddddddd", subject: "fix: patch bug" },
+      { hash: "eeeeeee", subject: "feat!: breaking API change" },
+    ]);
+
+    expect(body).toContain("This PR prepares **v1.2.3**.");
+    expect(body).toContain("### Breaking changes");
+    expect(body).toContain("### Features");
+    expect(body).toContain("### Fixes");
+    expect(body).toContain("- feat!: breaking API change (eeeeeee)");
+    expect(body).toContain("- feat: add awesome feature (ccccccc)");
+    expect(body).toContain("- fix: patch bug (ddddddd)");
+    expect(body).not.toContain("ci: tweak workflow");
+    expect(body).not.toContain("chore: bump deps");
+  });
 });
