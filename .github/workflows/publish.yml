@@ -13,7 +13,6 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    environment: release
     env:
       PNPM_CONFIG_MANAGE_PACKAGE_MANAGER_VERSIONS: "false"
     steps:
