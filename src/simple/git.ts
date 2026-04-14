@@ -1,3 +1,4 @@
+import path from "node:path";
 import { execFileSync } from "node:child_process";
 import type { ReleaseType } from "./semver.js";
 
@@ -6,7 +7,7 @@ export interface CommitInfo {
   subject: string;
 }
 
-export function getCommitsSinceLastTag(cwd = process.cwd(), baselineSha?: string | null): CommitInfo[] {
+function getReleaseBranchExcludeArgs(cwd: string): string[] {
   const releaseBranchesRaw = execFileSync("git", ["branch", "--list", "--format", "%(refname:short)"], {
     cwd,
     encoding: "utf8",
@@ -17,7 +18,11 @@ export function getCommitsSinceLastTag(cwd = process.cwd(), baselineSha?: string
     .map((line) => line.trim())
     .filter((line) => line.startsWith("versionary/release"));
 
-  const excludeArgs = releaseBranches.flatMap((branch) => ["--exclude", branch]);
+  return releaseBranches.flatMap((branch) => ["--exclude", branch]);
+}
+
+function resolveBaseRef(cwd: string, baselineSha?: string | null): string {
+  const excludeArgs = getReleaseBranchExcludeArgs(cwd);
   let baseRef = baselineSha ?? "";
   if (!baseRef) {
     try {
@@ -32,8 +37,11 @@ export function getCommitsSinceLastTag(cwd = process.cwd(), baselineSha?: string
     }
   }
 
-  const range = baseRef ? `${baseRef}..HEAD` : "HEAD";
-  const output = execFileSync("git", ["log", range, "--pretty=format:%H%x09%s"], {
+  return baseRef;
+}
+
+function readGitLog(cwd: string, range: string, pathspecs: string[] = []): CommitInfo[] {
+  const output = execFileSync("git", ["log", range, "--pretty=format:%H%x09%s", "--", ...pathspecs], {
     cwd,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "ignore"],
@@ -50,6 +58,33 @@ export function getCommitsSinceLastTag(cwd = process.cwd(), baselineSha?: string
       const [hash, subject] = line.split("\t");
       return { hash, subject };
     });
+}
+
+export function getCommitsSinceLastTag(cwd = process.cwd(), baselineSha?: string | null): CommitInfo[] {
+  const baseRef = resolveBaseRef(cwd, baselineSha);
+  const range = baseRef ? `${baseRef}..HEAD` : "HEAD";
+  return readGitLog(cwd, range);
+}
+
+export function getCommitsForPath(
+  cwd = process.cwd(),
+  baselineSha?: string | null,
+  packagePath = ".",
+  excludePaths: string[] = [],
+): CommitInfo[] {
+  const baseRef = resolveBaseRef(cwd, baselineSha);
+  const range = baseRef ? `${baseRef}..HEAD` : "HEAD";
+  const normalizedPackagePath = packagePath === "." ? "." : packagePath;
+
+  const excludes = excludePaths.map((excludePath) => {
+    const combined =
+      normalizedPackagePath === "."
+        ? excludePath
+        : path.posix.join(normalizedPackagePath, excludePath);
+    return `:(exclude)${combined}`;
+  });
+
+  return readGitLog(cwd, range, [normalizedPackagePath, ...excludes]);
 }
 
 export function inferReleaseTypeFromSubject(subject: string): ReleaseType {

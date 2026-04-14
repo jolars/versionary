@@ -22,6 +22,9 @@ For a quick trial, use:
   ranges independent of tags
 - release flow mode (`releaseFlow.mode`): `review` (PR/MR style) or `direct` (no
   review request)
+- optional monorepo planning with `monorepo.mode` and `packages`:
+  - `independent` computes package bumps per path
+  - `fixed` computes one shared bump across configured package paths
 
 Commands:
 

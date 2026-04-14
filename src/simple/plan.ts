@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { loadConfig } from "../config/load-config.js";
-import { analyzeCommits, getCommitsSinceLastTag, type CommitInfo } from "./git.js";
+import { analyzeCommits, getCommitsForPath, getCommitsSinceLastTag, type CommitInfo } from "./git.js";
 import { bumpVersion, type ReleaseType } from "./semver.js";
 import { readBaselineSha } from "./state.js";
 
@@ -15,6 +15,16 @@ export interface SimplePlan {
   releaseBranchPrefix: string;
   baselineSha: string | null;
   commits: CommitInfo[];
+  packages?: Array<{
+    path: string;
+    releaseType: ReleaseType;
+    nextVersion: string | null;
+    commits: CommitInfo[];
+  }>;
+}
+
+function getMode(configMode?: "independent" | "fixed"): "independent" | "fixed" {
+  return configMode ?? "independent";
 }
 
 export function createSimplePlan(cwd = process.cwd()): SimplePlan {
@@ -34,19 +44,77 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
   }
 
   const currentVersion = fs.readFileSync(versionPath, "utf8").trim();
-  const commits = getCommitsSinceLastTag(cwd, baselineSha);
-  const releaseType = analyzeCommits(commits);
-  const nextVersion = releaseType ? bumpVersion(currentVersion, releaseType) : null;
+  const configuredPackages = loaded.config.packages ?? [];
+  const monorepoMode = getMode(loaded.config.monorepo?.mode);
+  const hasPackages = configuredPackages.length > 0;
+
+  if (!hasPackages) {
+    const commits = getCommitsSinceLastTag(cwd, baselineSha);
+    const releaseType = analyzeCommits(commits);
+    const nextVersion = releaseType ? bumpVersion(currentVersion, releaseType) : null;
+
+    return {
+      mode: "simple",
+      releaseType,
+      currentVersion,
+      nextVersion,
+      versionFile,
+      changelogFile,
+      releaseBranchPrefix,
+      baselineSha,
+      commits,
+    };
+  }
+
+  const packagePlans = configuredPackages
+    .map((pkg) => {
+      const commits = getCommitsForPath(cwd, baselineSha, pkg.path, pkg.excludePaths ?? []);
+      const releaseType = analyzeCommits(commits);
+      const nextVersion = releaseType ? bumpVersion(currentVersion, releaseType) : null;
+      return {
+        path: pkg.path,
+        releaseType,
+        nextVersion,
+        commits,
+      };
+    })
+    .sort((a, b) => a.path.localeCompare(b.path));
+
+  if (monorepoMode === "fixed") {
+    const fixedType = analyzeCommits(packagePlans.flatMap((pkgPlan) => pkgPlan.commits));
+    const fixedNextVersion = fixedType ? bumpVersion(currentVersion, fixedType) : null;
+    const adjusted = packagePlans.map((pkgPlan) => ({
+      ...pkgPlan,
+      releaseType: fixedType,
+      nextVersion: fixedNextVersion,
+    }));
+    return {
+      mode: "simple",
+      releaseType: fixedType,
+      currentVersion,
+      nextVersion: fixedNextVersion,
+      versionFile,
+      changelogFile,
+      releaseBranchPrefix,
+      baselineSha,
+      commits: adjusted.flatMap((pkgPlan) => pkgPlan.commits),
+      packages: adjusted,
+    };
+  }
+
+  const overallType = analyzeCommits(packagePlans.flatMap((pkgPlan) => pkgPlan.commits));
+  const overallNextVersion = overallType ? bumpVersion(currentVersion, overallType) : null;
 
   return {
     mode: "simple",
-    releaseType,
+    releaseType: overallType,
     currentVersion,
-    nextVersion,
+    nextVersion: overallNextVersion,
     versionFile,
     changelogFile,
     releaseBranchPrefix,
     baselineSha,
-    commits,
+    commits: packagePlans.flatMap((pkgPlan) => pkgPlan.commits),
+    packages: packagePlans,
   };
 }
