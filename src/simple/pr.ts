@@ -9,14 +9,16 @@ import { prependChangelog, renderSimpleChangelog } from "./changelog.js";
 import { getBaselineStatePath, writeBaselineSha } from "./state.js";
 
 function ensureCleanWorktree(cwd: string): void {
-  const status = execFileSync("git", ["status", "--porcelain"], {
+  const status = execFileSync("git", ["status", "--porcelain", "--untracked-files=no"], {
     cwd,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "ignore"],
   }).trim();
 
   if (status.length > 0) {
-    throw new Error("Working tree is not clean. Commit or stash changes before `versionary pr`.");
+    throw new Error(
+      `Working tree has tracked modifications before versionary pr:\n${status}\nCommit/stash tracked changes first.`,
+    );
   }
 }
 
