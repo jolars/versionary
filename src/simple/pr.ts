@@ -25,9 +25,14 @@ function listTrackedDirtyFiles(cwd: string): string[] {
 
   return status
     .split("\n")
-    .map((line) => line.trim())
     .filter((line) => line.length > 0)
-    .map((line) => line.slice(3));
+    .map((line) => line.slice(3))
+    .map((pathPart) => {
+      const renameParts = pathPart.split(" -> ");
+      return renameParts.at(-1) ?? pathPart;
+    })
+    .map((filePath) => filePath.trim())
+    .filter((filePath) => filePath.length > 0);
 }
 
 export function splitSafeDirtyFiles(files: string[]): { ignored: string[]; blocking: string[] } {

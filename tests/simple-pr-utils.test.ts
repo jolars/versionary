@@ -24,4 +24,5 @@ describe("safe dirty file splitting", () => {
     expect(result.ignored).toEqual([]);
     expect(result.blocking).toEqual(["README.md", ".github/workflows/ci.yml"]);
   });
+
 });
