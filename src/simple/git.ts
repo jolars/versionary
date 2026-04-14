@@ -7,9 +7,21 @@ export interface CommitInfo {
 }
 
 export function getCommitsSinceLastTag(cwd = process.cwd()): CommitInfo[] {
+  const releaseBranchesRaw = execFileSync("git", ["branch", "--list", "--format", "%(refname:short)"], {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  const releaseBranches = releaseBranchesRaw
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("versionary/release"));
+
+  const excludeArgs = releaseBranches.flatMap((branch) => ["--exclude", branch]);
   let baseRef = "";
   try {
-    baseRef = execFileSync("git", ["describe", "--tags", "--abbrev=0", "--match", "v[0-9]*"], {
+    const cmd = ["describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", ...excludeArgs];
+    baseRef = execFileSync("git", cmd, {
       cwd,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
