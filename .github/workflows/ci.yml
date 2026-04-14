@@ -30,14 +30,8 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
 
-      - name: Prefetch deps
-        run: pnpm fetch
-
       - name: Install deps
-        run: pnpm install --frozen-lockfile --offline --ignore-scripts
-
-      - name: Reset lockfile drift
-        run: git checkout -- pnpm-lock.yaml
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Typecheck
         run: pnpm typecheck
