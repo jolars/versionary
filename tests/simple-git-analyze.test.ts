@@ -22,4 +22,12 @@ describe("simple commit analysis", () => {
     ]);
     expect(release).toBeNull();
   });
+
+  it("still bumps on fix/feat while ignoring chore", () => {
+    const release = analyzeCommits([
+      { hash: "a", subject: "chore: update docs tooling" },
+      { hash: "b", subject: "fix: handle edge case" },
+    ]);
+    expect(release).toBe("patch");
+  });
 });

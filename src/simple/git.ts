@@ -7,12 +7,16 @@ export interface CommitInfo {
 }
 
 export function getCommitsSinceLastTag(cwd = process.cwd()): CommitInfo[] {
-  const tagsOutput = execFileSync("git", ["tag", "--sort=-v:refname"], {
-    cwd,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "ignore"],
-  });
-  const baseRef = tagsOutput.trim().split("\n")[0] ?? "";
+  let baseRef = "";
+  try {
+    baseRef = execFileSync("git", ["describe", "--tags", "--abbrev=0", "--match", "v[0-9]*"], {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    baseRef = "";
+  }
 
   const range = baseRef ? `${baseRef}..HEAD` : "HEAD";
   const output = execFileSync("git", ["log", range, "--pretty=format:%H%x09%s"], {
