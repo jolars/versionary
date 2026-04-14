@@ -33,5 +33,7 @@ describe("simple baseline state", () => {
     fs.writeFileSync(path.join(dir, "versionary.json"), JSON.stringify({ version: 1 }), "utf8");
     writeBaselineSha(dir, "abc123");
     expect(readBaselineSha(dir)).toBe("abc123");
+    const manifestPath = path.join(dir, ".versionary-manifest.json");
+    expect(fs.existsSync(manifestPath)).toBe(true);
   });
 });

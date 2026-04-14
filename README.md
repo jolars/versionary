@@ -12,7 +12,7 @@ For a quick trial, use:
 - `version.txt` as the version source
 - `CHANGELOG.md` as release notes output
 - stable release branch (`simple.releaseBranchPrefix`, default: `versionary/release`) so release PRs are updated in-place
-- `versionary.versions.json` tracks baseline SHA for deterministic commit ranges independent of tags
+- `.versionary-manifest.json` tracks baseline SHA for deterministic commit ranges independent of tags
 - release flow mode (`releaseFlow.mode`): `review` (PR/MR style) or `direct` (no review request)
 
 Commands:
@@ -26,6 +26,8 @@ Commands:
 
 `pnpm pr` prepares release commit + branch and opens/updates the review request via SCM plugin capability.
 `pnpm run` is the recommended CI entrypoint and auto-dispatches between PR/update and release publish.
+
+For first-run bootstrapping, you can optionally set `history.bootstrap.sha` in config (similar to release-please `bootstrap-sha` behavior). Subsequent runs use manifest state.
 
 ## Install from GitHub
 

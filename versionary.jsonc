@@ -10,6 +10,6 @@
     "versionFile": "version.txt",
     "changelogFile": "CHANGELOG.md",
     "releaseBranchPrefix": "versionary/release",
-    "baselineShaFile": "versionary.versions.json"
+    "baselineShaFile": ".versionary-manifest.json"
   }
 }
