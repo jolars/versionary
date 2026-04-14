@@ -65,22 +65,8 @@ jobs:
           node-version: 20
           cache: pnpm
 
-      - name: Prefetch deps
-        run: pnpm fetch
-
       - name: Install deps
-        run: pnpm install --frozen-lockfile --offline --ignore-scripts
-
-      - name: Diagnose lockfile drift
-        run: |
-          echo "node: $(node --version)"
-          echo "pnpm: $(pnpm --version)"
-          if git diff --quiet -- pnpm-lock.yaml; then
-            echo "pnpm-lock.yaml unchanged after install."
-          else
-            echo "pnpm-lock.yaml changed after install:"
-            git --no-pager diff -- pnpm-lock.yaml | sed -n '1,200p'
-          fi
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Run Versionary
         env:
