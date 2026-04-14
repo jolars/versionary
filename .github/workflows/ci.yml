@@ -74,8 +74,7 @@ jobs:
 
       - name: Run Versionary
         env:
-          GITHUB_TOKEN: ${{ secrets.VERSIONARY_PR_TOKEN || github.token }}
-          VERSIONARY_BASE_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
