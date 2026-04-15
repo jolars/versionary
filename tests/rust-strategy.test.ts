@@ -3,6 +3,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   applyRustWorkspaceDependencyUpdates,
+  detectRustDependencyImpact,
   rustVersionStrategy,
 } from "../src/domain/strategy/rust.js";
 
@@ -357,5 +358,19 @@ describe("rustVersionStrategy", () => {
       'core-lib = { version = "0.3.0", features = ["std"] }',
     );
     expect(utilManifest).toContain('core-lib = "0.3.0"');
+  });
+
+  it("detects dependency impact for candidate manifests", () => {
+    const cwd = useFixture("workspace-panache-like");
+
+    const impacted = detectRustDependencyImpact(
+      cwd,
+      {
+        "crates/core/Cargo.toml": "0.3.0",
+      },
+      ["crates/core/Cargo.toml", "crates/util/Cargo.toml"],
+    );
+
+    expect(impacted).toEqual(["crates/util/Cargo.toml"]);
   });
 });

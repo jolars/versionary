@@ -241,4 +241,81 @@ describe("simple monorepo planning", () => {
       "fix: package source update",
     ]);
   });
+
+  it("marks dependent rust packages for patch bumps on dependency propagation", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "CHANGELOG.md", "# Changelog\n\n");
+    write(
+      cwd,
+      "Cargo.toml",
+      [
+        "[package]",
+        'name = "workspace-root"',
+        'version = "0.1.0"',
+        "",
+        "[workspace]",
+        'members = ["crates/*"]',
+        "",
+      ].join("\n"),
+    );
+    write(
+      cwd,
+      "crates/a/Cargo.toml",
+      ["[package]", 'name = "crate-a"', 'version = "0.1.0"', ""].join("\n"),
+    );
+    write(
+      cwd,
+      "crates/b/Cargo.toml",
+      [
+        "[package]",
+        'name = "crate-b"',
+        'version = "0.5.0"',
+        "",
+        "[dependencies]",
+        'crate-a = { path = "../a", version = "0.1.0" }',
+        "",
+      ].join("\n"),
+    );
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "release-type": "rust",
+        "review-mode": "direct",
+        "changelog-file": "CHANGELOG.md",
+        "monorepo-mode": "independent",
+        packages: {
+          "crates/a": {
+            "release-type": "rust",
+          },
+          "crates/b": {
+            "release-type": "rust",
+          },
+        },
+      }),
+    );
+    write(cwd, "crates/a/src/lib.rs", "pub fn a() {}\n");
+    write(cwd, "crates/b/src/lib.rs", "pub fn b() {}\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v0.1.0");
+
+    write(cwd, "crates/a/src/lib.rs", "pub fn a2() {}\n");
+    git(cwd, "add", "crates/a/src/lib.rs");
+    git(cwd, "commit", "-m", "feat: update crate a");
+
+    const plan = createSimplePlan(cwd);
+    const a = plan.packages?.find((pkg) => pkg.path === "crates/a");
+    const b = plan.packages?.find((pkg) => pkg.path === "crates/b");
+
+    expect(a?.releaseType).toBe("minor");
+    expect(a?.nextVersion).toBe("0.2.0");
+    expect(b?.releaseType).toBe("patch");
+    expect(b?.nextVersion).toBe("0.5.1");
+  });
 });

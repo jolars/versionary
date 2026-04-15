@@ -11,6 +11,11 @@ import {
 } from "../../infra/git/commits.js";
 import { resolvePackageStrategyContext } from "../strategy/package-context.js";
 import { resolveVersionStrategy } from "../strategy/resolve.js";
+import {
+  detectRustDependencyImpact,
+  rustVersionStrategy,
+  toCargoManifestPath,
+} from "../strategy/rust.js";
 import { bumpVersion, type ReleaseType } from "./semver.js";
 
 export interface SimplePlan {
@@ -47,12 +52,6 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
     loaded.config["release-branch"] ?? "versionary/release";
   const baselineSha =
     readBaselineSha(cwd) ?? loaded.config["bootstrap-sha"] ?? null;
-  const versionPath = path.join(cwd, versionFile);
-  if (!fs.existsSync(versionPath)) {
-    throw new Error(`Versionary requires ${versionFile} to exist.`);
-  }
-
-  const currentVersion = strategy.readVersion(cwd, loaded.config);
   const allowStableMajor = loaded.config["allow-stable-major"] ?? false;
   const configuredPackages = Object.entries(loaded.config.packages ?? {}).map(
     ([pkgPath, cfg]) => ({
@@ -64,6 +63,11 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
   const hasPackages = configuredPackages.length > 0;
 
   if (!hasPackages) {
+    const versionPath = path.join(cwd, versionFile);
+    if (!fs.existsSync(versionPath)) {
+      throw new Error(`Versionary requires ${versionFile} to exist.`);
+    }
+    const currentVersion = strategy.readVersion(cwd, loaded.config);
     const parsedCommits = getParsedCommitsSinceLastTag(cwd, baselineSha);
     const effectiveCommits = applyRevertSuppression(parsedCommits);
     const commits = effectiveCommits;
@@ -119,14 +123,66 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
     })
     .sort((a, b) => a.path.localeCompare(b.path));
 
+  const rustManifestVersionTargets: Record<string, string> = {};
+  const rustPackageManifestByPath: Record<string, string> = {};
+  const packageCurrentVersionByPath: Record<string, string> = {};
+  for (const packagePlan of packagePlans) {
+    const packageConfig = loaded.config.packages?.[packagePlan.path] ?? {};
+    const packageContext = resolvePackageStrategyContext(
+      loaded.config,
+      packagePlan.path,
+      packageConfig,
+    );
+    if (packageContext.strategy.name === rustVersionStrategy.name) {
+      rustPackageManifestByPath[packagePlan.path] = toCargoManifestPath(
+        packagePlan.path,
+      );
+    }
+    packageCurrentVersionByPath[packagePlan.path] = packagePlan.currentVersion;
+    if (packageContext.strategy.name === rustVersionStrategy.name) {
+      const next = packagePlan.nextVersion;
+      if (next) {
+        rustManifestVersionTargets[packageContext.versionFile] = next;
+      }
+    }
+  }
+  const impactedRustManifests = detectRustDependencyImpact(
+    cwd,
+    rustManifestVersionTargets,
+    Object.values(rustPackageManifestByPath),
+  );
+  const impactedPaths = new Set<string>();
+  for (const [pkgPath, manifest] of Object.entries(rustPackageManifestByPath)) {
+    if (impactedRustManifests.includes(manifest)) {
+      impactedPaths.add(pkgPath);
+    }
+  }
+  const adjustedPackages = packagePlans.map((pkgPlan) => {
+    if (pkgPlan.nextVersion || !impactedPaths.has(pkgPlan.path)) {
+      return pkgPlan;
+    }
+    const current =
+      packageCurrentVersionByPath[pkgPlan.path] ?? pkgPlan.currentVersion;
+    return {
+      ...pkgPlan,
+      releaseType: "patch" as ReleaseType,
+      nextVersion: bumpVersion(current, "patch", { allowStableMajor }),
+    };
+  });
+
   if (monorepoMode === "fixed") {
     const fixedType = analyzeParsedCommits(
-      packagePlans.flatMap((pkgPlan) => pkgPlan.parsedCommits),
+      adjustedPackages.flatMap((pkgPlan) => pkgPlan.parsedCommits),
     );
+    const fixedBaseVersion =
+      adjustedPackages.find((pkgPlan) => pkgPlan.path === ".")
+        ?.currentVersion ??
+      adjustedPackages[0]?.currentVersion ??
+      "0.0.0";
     const fixedNextVersion = fixedType
-      ? bumpVersion(currentVersion, fixedType, { allowStableMajor })
+      ? bumpVersion(fixedBaseVersion, fixedType, { allowStableMajor })
       : null;
-    const adjusted = packagePlans.map((pkgPlan) => ({
+    const adjusted = adjustedPackages.map((pkgPlan) => ({
       ...pkgPlan,
       releaseType: fixedType,
       nextVersion: fixedNextVersion,
@@ -134,7 +190,7 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
     return {
       mode: "simple",
       releaseType: fixedType,
-      currentVersion,
+      currentVersion: fixedBaseVersion,
       nextVersion: fixedNextVersion,
       versionFile,
       changelogFile,
@@ -146,22 +202,26 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
   }
 
   const overallType = analyzeParsedCommits(
-    packagePlans.flatMap((pkgPlan) => pkgPlan.parsedCommits),
+    adjustedPackages.flatMap((pkgPlan) => pkgPlan.parsedCommits),
   );
+  const overallBaseVersion =
+    adjustedPackages.find((pkgPlan) => pkgPlan.path === ".")?.currentVersion ??
+    adjustedPackages[0]?.currentVersion ??
+    "0.0.0";
   const overallNextVersion = overallType
-    ? bumpVersion(currentVersion, overallType, { allowStableMajor })
+    ? bumpVersion(overallBaseVersion, overallType, { allowStableMajor })
     : null;
 
   return {
     mode: "simple",
     releaseType: overallType,
-    currentVersion,
+    currentVersion: overallBaseVersion,
     nextVersion: overallNextVersion,
     versionFile,
     changelogFile,
     releaseBranchPrefix,
     baselineSha,
-    commits: packagePlans.flatMap((pkgPlan) => pkgPlan.commits),
-    packages: packagePlans,
+    commits: adjustedPackages.flatMap((pkgPlan) => pkgPlan.commits),
+    packages: adjustedPackages,
   };
 }

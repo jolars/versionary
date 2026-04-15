@@ -87,6 +87,27 @@ function findCargoManifestDirectories(rootDir: string): string[] {
   return [...results].sort((a, b) => a.localeCompare(b));
 }
 
+function collectAllCrateManifests(cwd: string): string[] {
+  const manifests: string[] = [];
+  const cargoDirs = findCargoManifestDirectories(cwd);
+  for (const dir of cargoDirs) {
+    const manifest =
+      dir === "."
+        ? "Cargo.toml"
+        : normalizeSlashPath(path.posix.join(dir, "Cargo.toml"));
+    const manifestPath = path.join(cwd, manifest);
+    if (!fs.existsSync(manifestPath)) {
+      continue;
+    }
+    const cargoTomlRaw = fs.readFileSync(manifestPath, "utf8");
+    if (!isCrateManifest(manifest, cargoTomlRaw)) {
+      continue;
+    }
+    manifests.push(manifest);
+  }
+  return manifests.sort((a, b) => a.localeCompare(b));
+}
+
 function parseCargoManifest(
   versionFile: string,
   cargoTomlRaw: string,
@@ -499,9 +520,7 @@ export function applyRustWorkspaceDependencyUpdates(
   }
 
   const updatedFiles: string[] = [];
-  const manifests = Object.keys(manifestToVersion).sort((a, b) =>
-    a.localeCompare(b),
-  );
+  const manifests = collectAllCrateManifests(cwd);
   for (const manifest of manifests) {
     const manifestPath = path.join(cwd, manifest);
     if (!fs.existsSync(manifestPath)) {
@@ -522,6 +541,53 @@ export function applyRustWorkspaceDependencyUpdates(
   }
 
   return updatedFiles;
+}
+
+export function detectRustDependencyImpact(
+  cwd: string,
+  manifestToVersion: Record<string, string>,
+  candidateManifests: string[],
+): string[] {
+  const versionByDependency = new Map<string, string>();
+  for (const [manifest, version] of Object.entries(manifestToVersion)) {
+    if (!version) {
+      continue;
+    }
+    const crateName = readPackageNameForManifest(cwd, manifest);
+    versionByDependency.set(crateName, version);
+  }
+  if (versionByDependency.size === 0) {
+    return [];
+  }
+
+  const impacted: string[] = [];
+  for (const manifest of [...new Set(candidateManifests)].sort((a, b) =>
+    a.localeCompare(b),
+  )) {
+    const manifestPath = path.join(cwd, manifest);
+    if (!fs.existsSync(manifestPath)) {
+      continue;
+    }
+    const cargoTomlRaw = fs.readFileSync(manifestPath, "utf8");
+    if (!isCrateManifest(manifest, cargoTomlRaw)) {
+      continue;
+    }
+    const next = writeMappedDependencyVersions(
+      cargoTomlRaw,
+      versionByDependency,
+    );
+    if (next !== cargoTomlRaw) {
+      impacted.push(manifest);
+    }
+  }
+
+  return impacted;
+}
+
+export function toCargoManifestPath(packagePath: string): string {
+  return packagePath === "."
+    ? "Cargo.toml"
+    : normalizeSlashPath(path.posix.join(packagePath, "Cargo.toml"));
 }
 
 export const rustVersionStrategy: VersionStrategy = {

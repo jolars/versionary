@@ -361,4 +361,111 @@ describe("release PR package version update", () => {
     expect(zedCargo).toContain('version = "2.33.0"');
     expect(zedExtension).toContain('version = "2.33.0"');
   });
+
+  it("propagates rust dependency updates into non-target workspace crates", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "CHANGELOG.md", "# Changelog\n\n");
+    write(
+      cwd,
+      "Cargo.toml",
+      [
+        "[package]",
+        'name = "workspace-root"',
+        'version = "0.1.0"',
+        "",
+        "[workspace]",
+        'members = ["crates/*"]',
+        "",
+      ].join("\n"),
+    );
+    write(
+      cwd,
+      "crates/a/Cargo.toml",
+      ["[package]", 'name = "crate-a"', 'version = "0.1.0"', ""].join("\n"),
+    );
+    write(
+      cwd,
+      "crates/b/Cargo.toml",
+      [
+        "[package]",
+        'name = "crate-b"',
+        'version = "0.5.0"',
+        "",
+        "[dependencies]",
+        'crate-a = { path = "../a", version = "0.1.0" }',
+        "",
+      ].join("\n"),
+    );
+    write(
+      cwd,
+      "crates/internal/Cargo.toml",
+      [
+        "[package]",
+        'name = "internal-only"',
+        'version = "0.0.1"',
+        "",
+        "[dependencies]",
+        'crate-a = { path = "../a", version = "0.1.0" }',
+        "",
+      ].join("\n"),
+    );
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "release-type": "rust",
+        "review-mode": "direct",
+        "changelog-file": "CHANGELOG.md",
+        packages: {
+          "crates/a": {
+            "release-type": "rust",
+          },
+          "crates/b": {
+            "release-type": "rust",
+          },
+        },
+      }),
+    );
+    write(cwd, "crates/a/src/lib.rs", "pub fn a() {}\n");
+    write(cwd, "crates/b/src/lib.rs", "pub fn b() {}\n");
+    write(cwd, "crates/internal/src/lib.rs", "pub fn internal() {}\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v0.1.0");
+
+    write(cwd, "crates/a/src/lib.rs", "pub fn a2() {}\n");
+    git(cwd, "add", "crates/a/src/lib.rs");
+    git(cwd, "commit", "-m", "feat: update crate a");
+
+    const result = prepareSimpleReleasePr(cwd);
+    expect(result.plan.packages).toHaveLength(2);
+
+    const aManifest = fs.readFileSync(
+      path.join(cwd, "crates/a/Cargo.toml"),
+      "utf8",
+    );
+    const bManifest = fs.readFileSync(
+      path.join(cwd, "crates/b/Cargo.toml"),
+      "utf8",
+    );
+    const internalManifest = fs.readFileSync(
+      path.join(cwd, "crates/internal/Cargo.toml"),
+      "utf8",
+    );
+
+    expect(aManifest).toContain('version = "0.2.0"');
+    expect(bManifest).toContain('version = "0.5.1"');
+    expect(bManifest).toContain(
+      'crate-a = { path = "../a", version = "0.2.0" }',
+    );
+    expect(internalManifest).toContain(
+      'crate-a = { path = "../a", version = "0.2.0" }',
+    );
+    expect(internalManifest).toContain('version = "0.0.1"');
+  });
 });
