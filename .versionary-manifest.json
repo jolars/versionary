@@ -1,3 +1,11 @@
 {
-  "baselineSha": "79b0e4e41dd92ba2d5ae0a39a641ca9de911f15f"
+  "baselineSha": "005283efc97035fc917499a95f879fac4e0bdfd6",
+  "releaseTargets": [
+    {
+      "path": ".",
+      "version": "0.3.0",
+      "tag": "v0.3.0",
+      "notes": "## [0.3.0](https://github.com/jolars/versionary/compare/v0.2.0...v0.3.0) (2026-04-15)\n\n### Breaking changes\n- default to non-major updates for pre-1.0.0 ([`5939fcc`](https://github.com/jolars/versionary/commit/5939fcc2dc99bf922a330ae3caf9b1f2f178d894))\n- reorganize package ([`0a10419`](https://github.com/jolars/versionary/commit/0a1041921dbbddd7df314527af16c9dbe279e5e3))\n\n### Features\n- add rety and recovery behavior ([`7502011`](https://github.com/jolars/versionary/commit/750201112df9db8434d319fa39e21133c27faa29))\n- implement per-package monorepo mode ([`ba41031`](https://github.com/jolars/versionary/commit/ba41031c6a81b471690f65e6ca5969fa76fcab67))\n- improve PR body ([`d542e27`](https://github.com/jolars/versionary/commit/d542e27d64692cddf8bde1ff5971143ab314b502))\n- improve the layout of the release PR ([`e62ae2f`](https://github.com/jolars/versionary/commit/e62ae2f60f2ff6e21c2b88cc358bb9a2e1b020a4)), closes [#9](https://github.com/jolars/versionary/issues/9)\n- default to non-major updates for pre-1.0.0 ([`5939fcc`](https://github.com/jolars/versionary/commit/5939fcc2dc99bf922a330ae3caf9b1f2f178d894))\n- add dedicated conventional commits parser ([`6e94963`](https://github.com/jolars/versionary/commit/6e949636151760404b63ff92e19828d5fa6a2e9a))\n- add a node release strategy ([`ecbb7ef`](https://github.com/jolars/versionary/commit/ecbb7efff9e476c5f0e165ec9a0ebbf0cfbaa40e))\n- add monorepo mode ([`088429e`](https://github.com/jolars/versionary/commit/088429e8d40213c93e1b062b4aad7f31cfcfdf9c))\n\n### Bug Fixes\n- harden github plugin ([`9f73132`](https://github.com/jolars/versionary/commit/9f73132211cb54f929f0763265bbc901a1177194))\n- fixes #1 ([`4afa832`](https://github.com/jolars/versionary/commit/4afa832b4cfa38edafc46173b1d756ea401a5b9d))\n- harden conventional commits parser ([`bb807da`](https://github.com/jolars/versionary/commit/bb807da2af92487eccb20ae0796f30d75a9260fa))\n- use correct git sha filtering ([`3df77e4`](https://github.com/jolars/versionary/commit/3df77e4010b37d7a127d1887c27c5150ec73c237))\n- fix git filter command ([`2c77a0e`](https://github.com/jolars/versionary/commit/2c77a0e17d3625c617cb900ca2a91a7b74f650e1))\n"
+    }
+  ]
 }
