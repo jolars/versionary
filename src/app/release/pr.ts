@@ -162,6 +162,7 @@ export function renderSimpleReviewRequestBody(
   const features: string[] = [];
   const fixes: string[] = [];
   const commitBaseUrl = resolveRepositoryWebBaseUrl(cwd);
+  let releasableCount = 0;
 
   for (const commit of commits) {
     const subject = commit.subject;
@@ -174,19 +175,25 @@ export function renderSimpleReviewRequestBody(
     if (!type) {
       continue;
     }
+    releasableCount += 1;
 
     const item = `- ${label}${message} (${hashLabel})`;
-    if (type === "major") {
+    const commitType = (commit.type ?? "").toLowerCase();
+    const isBreaking = type === "major";
+    if (isBreaking) {
       breaking.push(item);
-      continue;
     }
-
-    if (type === "minor") {
+    if (commitType === "feat" || (!isBreaking && type === "minor")) {
       features.push(item);
       continue;
     }
-
-    fixes.push(item);
+    if (
+      commitType === "fix" ||
+      commitType === "perf" ||
+      (!isBreaking && type === "patch")
+    ) {
+      fixes.push(item);
+    }
   }
 
   const sections: string[] = [];
@@ -201,11 +208,14 @@ export function renderSimpleReviewRequestBody(
   }
 
   return [
-    ":robot: I have created a release PR for this repository.",
+    "## Release overview",
     "",
-    `## Version`,
+    `This PR updates release artifacts for **v${version}**.`,
     "",
-    `This PR prepares **v${version}**.`,
+    `- Releasable commits: ${releasableCount}`,
+    `- Breaking changes: ${breaking.length}`,
+    `- Features: ${features.length}`,
+    `- Fixes: ${fixes.length}`,
     "",
     "## Release notes preview",
     "",

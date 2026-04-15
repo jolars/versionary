@@ -75,7 +75,12 @@ describe("review request body rendering", () => {
       process.env.GITHUB_REPOSITORY = prevRepo;
     }
 
-    expect(body).toContain("This PR prepares **v1.2.3**.");
+    expect(body).toContain("## Release overview");
+    expect(body).toContain("This PR updates release artifacts for **v1.2.3**.");
+    expect(body).toContain("- Releasable commits: 3");
+    expect(body).toContain("- Breaking changes: 1");
+    expect(body).toContain("- Features: 2");
+    expect(body).toContain("- Fixes: 1");
     expect(body).toContain("### Breaking changes");
     expect(body).toContain("### Features");
     expect(body).toContain("### Fixes");
@@ -86,9 +91,13 @@ describe("review request body rendering", () => {
       "- **editors:** add awesome feature ([`ccccccc`](https://github.com/jolars/versionary/commit/ccccccc1))",
     );
     expect(body).toContain(
+      "- breaking API change ([`eeeeeee`](https://github.com/jolars/versionary/commit/eeeeeee3))",
+    );
+    expect(body).toContain(
       "- **lsp:** patch bug ([`ddddddd`](https://github.com/jolars/versionary/commit/ddddddd2))",
     );
     expect(body).not.toContain("ci: tweak workflow");
     expect(body).not.toContain("chore: bump deps");
+    expect(body).not.toContain("I have created a release PR");
   });
 });
