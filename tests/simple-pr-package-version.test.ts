@@ -46,7 +46,6 @@ describe("release PR package version update", () => {
     git(cwd, "config", "user.name", "Test User");
     git(cwd, "config", "user.email", "test@example.com");
 
-    write(cwd, "version.txt", "1.0.0\n");
     write(cwd, "CHANGELOG.md", "# Changelog\n\n");
     write(
       cwd,
@@ -59,12 +58,28 @@ describe("release PR package version update", () => {
     );
     write(
       cwd,
+      "package-lock.json",
+      JSON.stringify(
+        {
+          name: "demo",
+          version: "1.0.0",
+          lockfileVersion: 3,
+          requires: true,
+          packages: {
+            "": { name: "demo", version: "1.0.0" },
+          },
+        },
+        null,
+        2,
+      ) + "\n",
+    );
+    write(
+      cwd,
       "versionary.jsonc",
       JSON.stringify({
         version: 1,
         "release-type": "node",
         "review-mode": "direct",
-        "version-file": "version.txt",
         "changelog-file": "CHANGELOG.md",
       }),
     );
@@ -84,6 +99,15 @@ describe("release PR package version update", () => {
       fs.readFileSync(path.join(cwd, "package.json"), "utf8"),
     ) as { version: string };
     expect(pkg.version).toBe("1.1.0");
+
+    const lock = JSON.parse(
+      fs.readFileSync(path.join(cwd, "package-lock.json"), "utf8"),
+    ) as {
+      version: string;
+      packages?: Record<string, { version?: string }>;
+    };
+    expect(lock.version).toBe("1.1.0");
+    expect(lock.packages?.[""]?.version).toBe("1.1.0");
   });
 
   it("does not update package.json for simple strategy by default", () => {

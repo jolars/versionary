@@ -6,9 +6,9 @@ workflows.
 
 ## Core reliability
 
-- [ ] Make release steps transactional/idempotent where possible (safe retry
+- [x] Make release steps transactional/idempotent where possible (safe retry
       after partial failure).
-- [ ] Add explicit recovery flow for "tag exists, release metadata missing" and
+- [x] Add explicit recovery flow for "tag exists, release metadata missing" and
       similar drift states.
 - [ ] Improve error surfaces with actionable remediation messages per failed
       step.
@@ -82,5 +82,5 @@ workflows.
 
 1. [x] SCM failure recovery and idempotency.
 2. [x] GitHub integration hardening and docs/examples.
-3. [ ] Monorepo cargo-workspace and mixed-language fixtures.
+3. [x] Monorepo cargo-workspace and mixed-language fixtures.
 4. [ ] CLI machine-readable output + dry-run guarantees.

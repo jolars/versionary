@@ -74,4 +74,23 @@ describe("verifyProject", () => {
       result.checks.some((c) => c.name.includes("version-file") && !c.ok),
     ).toBe(true);
   });
+
+  it("expects package.json for release-type node", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(path.join(dir, "version.txt"), "0.1.0\n", "utf8");
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        "release-type": "node",
+      }),
+      "utf8",
+    );
+
+    const result = verifyProject(dir);
+    expect(result.ok).toBe(false);
+    expect(
+      result.checks.some((c) => c.name === "version-file:package.json"),
+    ).toBe(true);
+  });
 });
