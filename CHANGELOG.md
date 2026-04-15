@@ -1,4 +1,10 @@
-# Changelog
+## [0.5.0](https://github.com/jolars/versionary/compare/v0.4.0...v0.5.0) (2026-04-15)
+
+### Features
+- add depdency graph handling ([`174be1a`](https://github.com/jolars/versionary/commit/174be1aea9bbf07516fa9abd8e679e71ed272691))
+- add proper path scoping for workspaces ([`91ca8da`](https://github.com/jolars/versionary/commit/91ca8da5dc3ed43760249650c0194d278029e54e))
+- support paths correctly ([`9a6147e`](https://github.com/jolars/versionary/commit/9a6147efd049b377e5247eb7f6d6765ddf5611f6))
+- **action:** change name to versionary action ([`cb757ac`](https://github.com/jolars/versionary/commit/cb757acafa0577badf870bf1758980b44152f6b8))
 
 ## [0.4.0](https://github.com/jolars/versionary/compare/v0.3.0...v0.4.0) (2026-04-15)
 
