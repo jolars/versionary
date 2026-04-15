@@ -150,30 +150,12 @@ export function prepareSimpleReleasePr(cwd = process.cwd()): {
             pkg.path === "."
               ? `v${pkg.nextVersion ?? ""}`
               : `${pkg.path.replaceAll("/", "-")}-v${pkg.nextVersion ?? ""}`,
-          notes: renderSimpleReleaseNotes(
-            {
-              currentVersion: pkg.currentVersion,
-              nextVersion: pkg.nextVersion ?? "",
-              commits: pkg.commits,
-              cwd,
-            },
-            { includeFooter: false },
-          ),
         }))
     : [
         {
           path: ".",
           version: plan.nextVersion,
           tag: `v${plan.nextVersion}`,
-          notes: renderSimpleReleaseNotes(
-            {
-              currentVersion: plan.currentVersion,
-              nextVersion: plan.nextVersion,
-              commits: plan.commits,
-              cwd,
-            },
-            { includeFooter: false },
-          ),
         },
       ];
   writeBaselineSha(cwd, undefined, releaseTargets);

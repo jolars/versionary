@@ -12,7 +12,6 @@ export interface ReleaseTargetState {
   path: string;
   version: string;
   tag: string;
-  notes?: string;
 }
 
 export function getBaselineStatePath(cwd: string): string {

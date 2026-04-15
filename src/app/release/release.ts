@@ -86,7 +86,6 @@ export async function runSimpleRelease(cwd = process.cwd()): Promise<string> {
             path: ".",
             version,
             tag: defaultTag,
-            notes: readReleaseNotes(cwd, version, changelogFile),
           },
         ];
 
@@ -97,8 +96,7 @@ export async function runSimpleRelease(cwd = process.cwd()): Promise<string> {
       {
         tag: target.tag,
         version: target.version,
-        notes:
-          target.notes ?? readReleaseNotes(cwd, target.version, changelogFile),
+        notes: readReleaseNotes(cwd, target.version, changelogFile),
       },
       {
         createReleaseMetadata: (input) =>

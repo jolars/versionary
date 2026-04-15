@@ -57,13 +57,11 @@ describe("release state targets", () => {
         path: "packages/a",
         version: "1.2.0",
         tag: "packages-a-v1.2.0",
-        notes: "notes a",
       },
       {
         path: "packages/b",
         version: "0.3.1",
         tag: "packages-b-v0.3.1",
-        notes: "notes b",
       },
     ]);
 
