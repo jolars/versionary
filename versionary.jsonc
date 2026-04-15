@@ -7,6 +7,14 @@
   "bootstrap-sha": "f46f767",
   "monorepo-mode": "independent",
   "packages": {
-    ".": {}
+    ".": {
+      "extra-files": [
+        {
+          "type": "yaml",
+          "path": "action.yml",
+          "jsonpath": "$.inputs.versionary-version.default"
+        }
+      ]
+    }
   }
 }

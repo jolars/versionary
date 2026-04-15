@@ -158,6 +158,7 @@ Commands:
 - `pnpm verify`
 - `pnpm run` (default orchestration: no-op, create/update release PR, or publish
   release based on context)
+- `pnpm run -- --json` (machine-readable orchestration result)
 - `pnpm plan`
 - `pnpm changelog -- --write`
 - `pnpm pr`
@@ -227,18 +228,10 @@ steps:
     with:
       fetch-depth: 0
       fetch-tags: true
-  - uses: pnpm/action-setup@v6
-  - uses: actions/setup-node@v6
+  - id: versionary
+    uses: jolars/versionary@v1
     with:
-      node-version-file: .nvmrc
-      cache: pnpm
-  - run: pnpm install --frozen-lockfile --ignore-scripts
-  - run: |
-      git config user.name "github-actions[bot]"
-      git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      pnpm run run
-    env:
-      GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+      github-token: ${{ secrets.RELEASE_TOKEN }}
 ```
 
 ```yaml
@@ -251,16 +244,22 @@ steps:
     with:
       fetch-depth: 0
       fetch-tags: true
-  - uses: pnpm/action-setup@v6
-  - uses: actions/setup-node@v6
+  - id: versionary
+    uses: jolars/versionary@v1
     with:
-      node-version-file: .nvmrc
-      cache: pnpm
-  - run: pnpm install --frozen-lockfile --ignore-scripts
-  - run: pnpm run run
-    env:
-      GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+      github-token: ${{ secrets.RELEASE_TOKEN }}
+  - if: ${{ steps.versionary.outputs.release_created == 'true' }}
+    run: echo "Released ${{ steps.versionary.outputs.tag_name }}"
 ```
+
+Action outputs:
+
+- `action`: `noop`, `pr-prepared`, `release-published`, `release-skipped`
+- `message`: human-readable summary
+- `release_created`: `"true"` when at least one release was published
+- `tag_name`: first published tag (for single-target flows)
+- `tag_names`: JSON array of published tags
+- `review_url`: review request URL when PR flow runs
 
 Package publication is intentionally out of scope in the current release flow.
 Use separate CI workflows for publishing after Versionary has prepared/tagged

@@ -9,7 +9,10 @@ import {
   prepareSimpleReleasePr,
   pushReleaseBranch,
 } from "../app/release/pr.js";
-import { runSimpleRelease } from "../app/release/release.js";
+import {
+  runSimpleRelease,
+  runSimpleReleaseDetailed,
+} from "../app/release/release.js";
 import { verifyProject } from "../app/release/verify.js";
 import { renderSimpleChangelog } from "../domain/release/changelog.js";
 import { createSimplePlan } from "../domain/release/plan.js";
@@ -25,8 +28,34 @@ function printVerifyResult(): number {
   return result.ok ? 0 : 1;
 }
 
+interface CliFlags {
+  json: boolean;
+}
+
+interface RunJsonResult {
+  action: "noop" | "pr-prepared" | "release-skipped" | "release-published";
+  message: string;
+  releaseCreated: boolean;
+  tagNames: string[];
+  reviewUrl?: string;
+  branch?: string;
+  title?: string;
+}
+
+function parseFlags(args: string[]): CliFlags {
+  return {
+    json: args.includes("--json"),
+  };
+}
+
+function emitJson(payload: RunJsonResult): void {
+  process.stdout.write(`${JSON.stringify(payload)}\n`);
+}
+
 async function main(): Promise<number> {
   const [, , command, ...args] = process.argv;
+  const flags = parseFlags(args);
+  const logger = flags.json ? undefined : console;
   if (!command || command === "run") {
     const subject = execFileSync("git", ["log", "-1", "--pretty=%s"], {
       encoding: "utf8",
@@ -34,6 +63,27 @@ async function main(): Promise<number> {
     }).trim();
 
     if (isReleaseCommitMessage(subject)) {
+      if (flags.json) {
+        const release = await runSimpleReleaseDetailed(process.cwd(), {
+          logger,
+        });
+        if (release.action === "release-skipped") {
+          emitJson({
+            action: "release-skipped",
+            message: release.reason,
+            releaseCreated: false,
+            tagNames: [],
+          });
+          return 0;
+        }
+        emitJson({
+          action: "release-published",
+          message: release.message,
+          releaseCreated: release.releases.length > 0,
+          tagNames: release.releases.map((target) => target.tag),
+        });
+        return 0;
+      }
       const message = await runSimpleRelease(process.cwd());
       console.log(message);
       return 0;
@@ -41,11 +91,21 @@ async function main(): Promise<number> {
 
     const plan = createSimplePlan();
     if (!plan.nextVersion) {
-      console.log("No releasable commits found. Nothing to do.");
+      const message = "No releasable commits found. Nothing to do.";
+      if (flags.json) {
+        emitJson({
+          action: "noop",
+          message,
+          releaseCreated: false,
+          tagNames: [],
+        });
+        return 0;
+      }
+      console.log(message);
       return 0;
     }
 
-    const pr = prepareSimpleReleasePr();
+    const pr = prepareSimpleReleasePr(process.cwd(), { logger });
     pushReleaseBranch(process.cwd(), pr.branch);
     const reviewResult = await openOrUpdateSimpleReviewRequest(
       process.cwd(),
@@ -55,8 +115,22 @@ async function main(): Promise<number> {
       pr.previousVersion,
       pr.commits,
       pr.plan,
+      { logger },
     );
-    console.log(`Prepared release PR branch ${pr.branch}`);
+    const message = `Prepared release PR branch ${pr.branch}`;
+    if (flags.json) {
+      emitJson({
+        action: "pr-prepared",
+        message,
+        releaseCreated: false,
+        tagNames: [],
+        reviewUrl: reviewResult,
+        branch: pr.branch,
+        title: pr.title,
+      });
+      return 0;
+    }
+    console.log(message);
     console.log(`Title: ${pr.title}`);
     console.log(reviewResult);
     return 0;
@@ -102,7 +176,7 @@ async function main(): Promise<number> {
   }
 
   if (command === "pr") {
-    const pr = prepareSimpleReleasePr();
+    const pr = prepareSimpleReleasePr(process.cwd(), { logger: console });
     pushReleaseBranch(process.cwd(), pr.branch);
     const reviewResult = await openOrUpdateSimpleReviewRequest(
       process.cwd(),
@@ -128,7 +202,7 @@ async function main(): Promise<number> {
   console.log("Usage: versionary <command>");
   console.log("Commands:");
   console.log(
-    "  run     Auto-dispatch release PR/update or release publish by context",
+    "  run [--json]  Auto-dispatch release PR/update or release publish by context",
   );
   console.log("  verify  Validate config and basic repository shape");
   console.log("  plan    Print release plan (simple mode)");

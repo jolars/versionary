@@ -13,6 +13,9 @@ export interface ReleaseExecutionContext {
   createReleaseMetadata: (
     input: ReleaseTargetInput,
   ) => Promise<VersionaryScmReleaseMetadataResult>;
+  logger?: {
+    info: (message: string) => void;
+  };
 }
 
 export interface ReleaseTargetOutcome {
@@ -131,7 +134,7 @@ export async function executeIdempotentReleaseTarget(
   const metadataStatus = metadata.status ?? "created";
 
   if (tagStatus === "exists" && metadataStatus === "created") {
-    console.info(
+    context.logger?.info(
       `Recovered drift for ${target.tag}: tag already existed and release metadata has now been created.`,
     );
   }

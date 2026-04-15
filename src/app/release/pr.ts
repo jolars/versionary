@@ -14,6 +14,7 @@ import { resolveVersionStrategy } from "../../domain/strategy/resolve.js";
 import type { ParsedCommit } from "../../infra/git/commits.js";
 import { findPluginsByCapability } from "../../plugins/capabilities.js";
 import { loadRuntimePlugins } from "../../plugins/runtime.js";
+import type { VersionaryPluginContext } from "../../types/plugins.js";
 import { applyConfiguredArtifactRules } from "./artifact-rules.js";
 import {
   getBaselineStatePath,
@@ -69,7 +70,10 @@ export function splitSafeDirtyFiles(files: string[]): {
   return { ignored, blocking };
 }
 
-function ensureCleanWorktree(cwd: string): void {
+function ensureCleanWorktree(
+  cwd: string,
+  logger?: VersionaryPluginContext["logger"],
+): void {
   const dirtyFiles = listTrackedDirtyFiles(cwd);
   const { ignored, blocking } = splitSafeDirtyFiles(dirtyFiles);
 
@@ -80,13 +84,16 @@ function ensureCleanWorktree(cwd: string): void {
   }
 
   if (ignored.length > 0) {
-    console.warn(
+    logger?.warn(
       `Ignoring safe tracked changes before versionary pr:\n${ignored.join("\n")}`,
     );
   }
 }
 
-export function prepareSimpleReleasePr(cwd = process.cwd()): {
+export function prepareSimpleReleasePr(
+  cwd = process.cwd(),
+  options: { logger?: VersionaryPluginContext["logger"] } = {},
+): {
   branch: string;
   title: string;
   version: string;
@@ -103,7 +110,7 @@ export function prepareSimpleReleasePr(cwd = process.cwd()): {
     );
   }
 
-  ensureCleanWorktree(cwd);
+  ensureCleanWorktree(cwd, options.logger);
 
   const updatedVersionFiles = strategy.writeVersion(
     cwd,
@@ -242,6 +249,7 @@ export async function openOrUpdateSimpleReviewRequest(
   previousVersion: string,
   commits: ParsedCommit[],
   plan: SimplePlan | null = null,
+  options: { logger?: VersionaryPluginContext["logger"] } = {},
 ): Promise<string> {
   const loaded = loadConfig(cwd);
   const releaseFlow = loaded.config["review-mode"] ?? "direct";
@@ -280,7 +288,7 @@ export async function openOrUpdateSimpleReviewRequest(
     },
     {
       cwd,
-      logger: console,
+      logger: options.logger,
     },
   );
 

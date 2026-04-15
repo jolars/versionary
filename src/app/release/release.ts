@@ -5,6 +5,7 @@ import { loadConfig } from "../../config/load-config.js";
 import { resolveVersionStrategy } from "../../domain/strategy/resolve.js";
 import { findPluginsByCapability } from "../../plugins/capabilities.js";
 import { loadRuntimePlugins } from "../../plugins/runtime.js";
+import type { VersionaryPluginContext } from "../../types/plugins.js";
 import { isReleaseCommitMessage } from "./pr.js";
 import { executeIdempotentReleaseTarget } from "./recovery.js";
 import { readReleaseTargets } from "./state.js";
@@ -53,9 +54,43 @@ function readReleaseNotes(
 }
 
 export async function runSimpleRelease(cwd = process.cwd()): Promise<string> {
+  const result = await runSimpleReleaseDetailed(cwd, { logger: console });
+  if (result.action === "release-skipped") {
+    return result.reason;
+  }
+  return result.message;
+}
+
+export type SimpleRunReleaseResult =
+  | {
+      action: "release-skipped";
+      reason: string;
+    }
+  | {
+      action: "release-published";
+      message: string;
+      releases: {
+        tag: string;
+        url: string;
+        tagStatus: "created" | "exists";
+        metadataStatus: "created" | "exists";
+      }[];
+    };
+
+export interface RunSimpleReleaseOptions {
+  logger?: VersionaryPluginContext["logger"];
+}
+
+export async function runSimpleReleaseDetailed(
+  cwd = process.cwd(),
+  options: RunSimpleReleaseOptions = {},
+): Promise<SimpleRunReleaseResult> {
   const subject = getHeadCommitSubject(cwd);
   if (!isReleaseCommitMessage(subject)) {
-    return "No release commit context detected; skipping release stage.";
+    return {
+      action: "release-skipped",
+      reason: "No release commit context detected; skipping release stage.",
+    };
   }
 
   const loaded = loadConfig(cwd);
@@ -89,7 +124,12 @@ export async function runSimpleRelease(cwd = process.cwd()): Promise<string> {
           },
         ];
 
-  const published: string[] = [];
+  const releases: {
+    tag: string;
+    url: string;
+    tagStatus: "created" | "exists";
+    metadataStatus: "created" | "exists";
+  }[] = [];
   for (const target of targets) {
     const outcome = await executeIdempotentReleaseTarget(
       cwd,
@@ -100,12 +140,25 @@ export async function runSimpleRelease(cwd = process.cwd()): Promise<string> {
       },
       {
         createReleaseMetadata: (input) =>
-          plugin.createReleaseMetadata!(input, { cwd, logger: console }),
+          plugin.createReleaseMetadata!(input, { cwd, logger: options.logger }),
+        logger: options.logger,
       },
     );
-    published.push(
-      `${outcome.tag}: ${outcome.url} (tag=${outcome.tagStatus}, metadata=${outcome.metadataStatus})`,
-    );
+    releases.push({
+      tag: outcome.tag,
+      url: outcome.url,
+      tagStatus: outcome.tagStatus,
+      metadataStatus: outcome.metadataStatus,
+    });
   }
-  return `Published releases ${published.join(", ")}`;
+
+  const published = releases.map(
+    (outcome) =>
+      `${outcome.tag}: ${outcome.url} (tag=${outcome.tagStatus}, metadata=${outcome.metadataStatus})`,
+  );
+  return {
+    action: "release-published",
+    releases,
+    message: `Published releases ${published.join(", ")}`,
+  };
 }
