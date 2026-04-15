@@ -66,8 +66,7 @@ a strategy model:
 - `src/infra/git/`: git commit/range analysis and repository URL resolution
 - `src/infra/scm/`: SCM integration boundary (`github` plugin + runtime loader)
 - `src/config/`: config discovery/parsing/validation
-  - `load-config.ts` loads `versionary.jsonc` (preferred) plus
-    `versionary.{json,toml}` and compatibility `versionary.config.*` fallbacks
+  - `load-config.ts` loads `versionary.jsonc` (preferred) or `versionary.json`
   - `schema.ts` validates config via `zod`
 - `src/strategies/` and `src/scm/`: compatibility-layer exports during migration
   to the app/domain/infra layout (`src/simple/` has been removed)
@@ -77,8 +76,8 @@ a strategy model:
 
 ## Key conventions in this repository
 
-- Canonical config filename is `versionary.jsonc`; `versionary.config.*` files
-  are supported as compatibility fallbacks.
+- Supported config filenames are `versionary.jsonc` (preferred) and
+  `versionary.json` only.
 - Config schema is release-focused (manifest style) with keys such as
   `version-file`, `changelog-file`, `release-branch`, `baseline-file`,
   `review-mode`, `release-type`, and optional `packages`.

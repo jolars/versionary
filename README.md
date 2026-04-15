@@ -67,7 +67,8 @@ The repository is moving to explicit layered modules:
 Legacy `src/simple/` has been removed. Remaining compatibility paths are
 `src/strategies` and `src/scm` while migration is finalized.
 
-Configuration is loaded from `versionary.jsonc` by default.
+Configuration is loaded from `versionary.jsonc` by default (or
+`versionary.json`).
 
 Schema URL for editor support:
 

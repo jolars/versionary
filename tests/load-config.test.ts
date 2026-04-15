@@ -30,8 +30,8 @@ describe("config loading", () => {
       "utf8",
     );
     fs.writeFileSync(
-      path.join(dir, "versionary.config.toml"),
-      "version = 1\n",
+      path.join(dir, "versionary.json"),
+      '{ "version": 1 }\n',
       "utf8",
     );
 
@@ -39,19 +39,6 @@ describe("config loading", () => {
     expect(found?.format).toBe("jsonc");
 
     const loaded = loadConfig(dir);
-    expect(loaded.config.version).toBe(1);
-  });
-
-  it("loads TOML config", () => {
-    const dir = makeTempDir();
-    fs.writeFileSync(
-      path.join(dir, "versionary.toml"),
-      "version = 1\n",
-      "utf8",
-    );
-
-    const loaded = loadConfig(dir);
-    expect(loaded.format).toBe("toml");
     expect(loaded.config.version).toBe(1);
   });
 
