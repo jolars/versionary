@@ -43,5 +43,24 @@ describe("simple baseline state", () => {
     expect(readBaselineSha(dir)).toBe("abc123");
     const manifestPath = path.join(dir, ".versionary-manifest.json");
     expect(fs.existsSync(manifestPath)).toBe(true);
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as {
+      manifestVersion?: number;
+    };
+    expect(manifest.manifestVersion).toBe(1);
+  });
+
+  it("throws on unsupported manifestVersion", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({ version: 1 }),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(dir, ".versionary-manifest.json"),
+      JSON.stringify({ manifestVersion: 2, baselineSha: "abc123" }),
+      "utf8",
+    );
+    expect(() => readBaselineSha(dir)).toThrow(/Unsupported manifestVersion/i);
   });
 });
