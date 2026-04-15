@@ -12,38 +12,44 @@
 CLI commands in this repo currently run from source through `tsx` scripts:
 
 - `pnpm verify`
+- `pnpm run` (default orchestration command)
 - `pnpm plan`
 - `pnpm changelog` (append `-- --write` to update `CHANGELOG.md`)
 - `pnpm pr`
+- `pnpm release`
 
 ## High-level architecture
 
-`versionary` is currently MVP-focused around a **simple release mode** that updates `version.txt` and `CHANGELOG.md` using conventional-commit-style commit analysis.
+`versionary` currently supports release planning and PR/release automation with a strategy model:
 
-- `src/cli/index.ts`: command router for `verify`, `plan`, `changelog`, `pr`
+- `src/cli/index.ts`: command router for `run`, `verify`, `plan`, `changelog`, `pr`, `release`
 - `src/config/`: config discovery/parsing/validation
-  - `load-config.ts` loads `versionary.jsonc` (preferred) with compatibility fallbacks
+  - `load-config.ts` loads `versionary.jsonc` (preferred) plus `versionary.{json,toml}` and compatibility `versionary.config.*` fallbacks
   - `schema.ts` validates config via `zod`
-- `src/simple/`: simple-mode release engine
-  - `git.ts`: gets commits since the latest reachable `v*` tag and maps commit types to bump levels
-  - `semver.ts`: parses and bumps `x.y.z`
-  - `plan.ts`: produces deterministic plan object used by CLI
-  - `changelog.ts`: renders and prepends release notes sections
-  - `pr.ts`: updates files, creates `versionary/release-v*` branch, and commits `chore(release): v*`
-- `src/verify/verify-project.ts`: validates config loading and simple-mode prerequisites (e.g. `version.txt`)
+- `src/strategies/`: version update strategies
+  - `simple.ts`: updates `version-file` only
+  - `node.ts`: updates `version-file` and `package.json` version
+- `src/simple/`: release engine for commit analysis, plan/changelog generation, PR prep, baseline state, and release metadata publishing
+- `src/plugins/` and `src/scm/`: runtime plugin loading and built-in GitHub plugin capabilities
+- `src/verify/verify-project.ts`: validates config loading, version file presence, and configured package paths
 
 ## Key conventions in this repository
 
 - Canonical config filename is `versionary.jsonc`; `versionary.config.*` files are supported as compatibility fallbacks.
-- Simple mode is the current default (`mode: "simple"`), with defaults:
-  - `simple.versionFile = "version.txt"`
-  - `simple.changelogFile = "CHANGELOG.md"`
+- Config schema is release-focused (manifest style) with keys such as `version-file`, `changelog-file`, `release-branch`, `baseline-file`, `review-mode`, `release-type`, and optional `packages`.
+- Default behavior uses:
+  - `version-file = "version.txt"`
+  - `changelog-file = "CHANGELOG.md"`
+  - `release-branch = "versionary/release"`
+  - `baseline-file = ".versionary-manifest.json"`
 - Release commit analysis currently follows conventional-commit-style defaults:
   - `feat` => `minor`
   - `fix|perf` => `patch`
   - `!:` / `BREAKING CHANGE` => `major`
   - `revert:`, `chore:`, and `refactor:` commits are ignored for release triggering
-- `pr` command requires a clean git working tree and creates/reuses branch `versionary/release-v<nextVersion>`.
+- `pr` command requires a clean tracked working tree (except lockfiles), creates/resets release branch, commits `chore(release): v*`, and writes baseline state.
+- `run` is the primary CI entrypoint: it auto-dispatches to PR/update flow or release publish flow based on commit context.
+- `review-mode` controls review-request behavior (`direct` skips PR creation, `review` uses SCM plugin).
 - Packaging is CLI-first:
   - binary entrypoint: `dist/cli/index.js`
   - published files are limited to `dist/` via `package.json` `files`.
