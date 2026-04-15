@@ -1,4 +1,4 @@
-name: Versionary
+name: Versionary Action
 description: Run Versionary release orchestration with machine-readable outputs
 author: Johan Larsson
 inputs:
