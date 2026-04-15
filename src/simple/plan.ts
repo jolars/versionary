@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { loadConfig } from "../config/load-config.js";
+import { resolveVersionStrategy } from "../strategies/resolve.js";
 import { analyzeCommits, getCommitsForPath, getCommitsSinceLastTag, type CommitInfo } from "./git.js";
 import { bumpVersion, type ReleaseType } from "./semver.js";
 import { readBaselineSha } from "./state.js";
@@ -29,7 +30,8 @@ function getMode(configMode?: "independent" | "fixed"): "independent" | "fixed" 
 
 export function createSimplePlan(cwd = process.cwd()): SimplePlan {
   const loaded = loadConfig(cwd);
-  const versionFile = loaded.config["version-file"] ?? "version.txt";
+  const strategy = resolveVersionStrategy(loaded.config);
+  const versionFile = strategy.getVersionFile(loaded.config);
   const changelogFile = loaded.config["changelog-file"] ?? "CHANGELOG.md";
   const releaseBranchPrefix = loaded.config["release-branch"] ?? "versionary/release";
   const baselineSha = readBaselineSha(cwd) ?? loaded.config["bootstrap-sha"] ?? null;
@@ -38,7 +40,7 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
     throw new Error(`Versionary requires ${versionFile} to exist.`);
   }
 
-  const currentVersion = fs.readFileSync(versionPath, "utf8").trim();
+  const currentVersion = strategy.readVersion(cwd, loaded.config);
   const configuredPackages = Object.entries(loaded.config.packages ?? {}).map(([pkgPath, cfg]) => ({
     path: pkgPath,
     ...cfg,

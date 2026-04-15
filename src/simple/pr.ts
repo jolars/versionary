@@ -4,6 +4,7 @@ import { execFileSync } from "node:child_process";
 import { loadConfig } from "../config/load-config.js";
 import { findPluginsByCapability } from "../plugins/capabilities.js";
 import { loadRuntimePlugins } from "../plugins/runtime.js";
+import { resolveVersionStrategy } from "../strategies/resolve.js";
 import { createSimplePlan } from "./plan.js";
 import type { CommitInfo } from "./git.js";
 import { inferReleaseTypeFromSubject } from "./git.js";
@@ -74,14 +75,15 @@ export function prepareSimpleReleasePr(cwd = process.cwd()): {
   commits: CommitInfo[];
 } {
   const plan = createSimplePlan(cwd);
+  const loaded = loadConfig(cwd);
+  const strategy = resolveVersionStrategy(loaded.config);
   if (!plan.nextVersion) {
     throw new Error("No releasable commits found. Nothing to open a release PR for.");
   }
 
   ensureCleanWorktree(cwd);
 
-  const versionPath = path.join(cwd, plan.versionFile);
-  fs.writeFileSync(versionPath, `${plan.nextVersion}\n`, "utf8");
+  const updatedVersionFiles = strategy.writeVersion(cwd, loaded.config, plan.nextVersion);
   const section = renderSimpleChangelog(plan);
   prependChangelog(cwd, plan.changelogFile, section);
 
@@ -89,7 +91,8 @@ export function prepareSimpleReleasePr(cwd = process.cwd()): {
   const title = `chore(release): v${plan.nextVersion}`;
 
   execFileSync("git", ["checkout", "-B", branch], { cwd, stdio: ["ignore", "pipe", "ignore"] });
-  execFileSync("git", ["add", plan.versionFile, plan.changelogFile], {
+  const filesToAdd = [...new Set([...updatedVersionFiles, plan.changelogFile])];
+  execFileSync("git", ["add", ...filesToAdd], {
     cwd,
     stdio: ["ignore", "pipe", "ignore"],
   });

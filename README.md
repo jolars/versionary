@@ -15,6 +15,8 @@ For a quick trial, use:
 
 - `version-file` (default `version.txt`) as version source
 - `changelog-file` (default `CHANGELOG.md`) as release notes output
+- `release-type: "node"` uses `package.json` as version source and updates it during release PR prep
+- simple/default strategy keeps `version.txt` as source of truth and does not update `package.json`
 - stable release branch (`release-branch`, default:
   `versionary/release`) so release PRs are updated in-place
 - `baseline-file` (default `.versionary-manifest.json`) tracks baseline SHA for deterministic commit

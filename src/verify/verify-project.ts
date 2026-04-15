@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { loadConfig } from "../config/load-config.js";
+import { resolveVersionStrategy } from "../strategies/resolve.js";
 
 export interface VerifyResult {
   ok: boolean;
@@ -17,7 +18,8 @@ export function verifyProject(cwd = process.cwd()): VerifyResult {
     details: `Loaded ${path.basename(config.path)} (${config.format})`,
   });
 
-  const versionFile = config.config["version-file"] ?? "version.txt";
+  const strategy = resolveVersionStrategy(config.config);
+  const versionFile = strategy.getVersionFile(config.config);
   const exists = fs.existsSync(path.join(cwd, versionFile));
   checks.push({
     name: `version-file:${versionFile}`,

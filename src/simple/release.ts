@@ -4,6 +4,7 @@ import { execFileSync } from "node:child_process";
 import { loadConfig } from "../config/load-config.js";
 import { findPluginsByCapability } from "../plugins/capabilities.js";
 import { loadRuntimePlugins } from "../plugins/runtime.js";
+import { resolveVersionStrategy } from "../strategies/resolve.js";
 import { isReleaseCommitMessage } from "./pr.js";
 
 function getHeadCommitSubject(cwd: string): string {
@@ -60,9 +61,10 @@ export async function runSimpleRelease(cwd = process.cwd()): Promise<string> {
   }
 
   const loaded = loadConfig(cwd);
-  const versionFile = loaded.config["version-file"] ?? "version.txt";
+  const strategy = resolveVersionStrategy(loaded.config);
+  const versionFile = strategy.getVersionFile(loaded.config);
   const changelogFile = loaded.config["changelog-file"] ?? "CHANGELOG.md";
-  const version = fs.readFileSync(path.join(cwd, versionFile), "utf8").trim();
+  const version = strategy.readVersion(cwd, loaded.config);
   const tag = `v${version}`;
   createTagIfMissing(cwd, tag);
 
