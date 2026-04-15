@@ -59,8 +59,19 @@ async function ensureLabels(
       issue_number: pullNumber,
       labels,
     });
-  } catch {
-    // Best effort: label may not exist or permissions may be restricted.
+  } catch (error: unknown) {
+    const status =
+      typeof error === "object" && error !== null && "status" in error
+        ? Number((error as { status?: unknown }).status)
+        : undefined;
+    if (status === 404 || status === 422) {
+      return;
+    }
+    const message =
+      error instanceof Error ? error.message : "Unknown GitHub API error";
+    throw new Error(
+      `Failed applying labels to pull request #${pullNumber}: ${message}`,
+    );
   }
 }
 
@@ -130,9 +141,19 @@ export function createGitHubPlugin(): VersionaryPluginRuntime {
           repo: repo.repo,
           tag: input.tag,
         });
-        return { url: existing.data.html_url };
-      } catch {
-        // Continue with create flow when release does not exist.
+        return { url: existing.data.html_url, status: "exists" };
+      } catch (error: unknown) {
+        const status =
+          typeof error === "object" && error !== null && "status" in error
+            ? Number((error as { status?: unknown }).status)
+            : undefined;
+        if (status !== 404) {
+          const message =
+            error instanceof Error ? error.message : "Unknown GitHub API error";
+          throw new Error(
+            `Failed checking existing GitHub release for tag "${input.tag}": ${message}`,
+          );
+        }
       }
       const { data } = await octokit.repos.createRelease({
         owner: repo.owner,
@@ -141,7 +162,7 @@ export function createGitHubPlugin(): VersionaryPluginRuntime {
         name: input.tag,
         body: input.notes,
       });
-      return { url: data.html_url };
+      return { url: data.html_url, status: "created" };
     },
   };
 }

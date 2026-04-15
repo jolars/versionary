@@ -131,6 +131,21 @@ auto-dispatches between PR/update and release publish.
 For first-run bootstrapping, set `bootstrap-sha` (similar to release-please).
 Subsequent runs use the baseline state file.
 
+## Release retry and recovery behavior
+
+Release publish (`pnpm release` or the publish path in `pnpm run`) is
+idempotent by target tag:
+
+- if a tag already exists, Versionary reuses it rather than recreating it
+- if release metadata already exists for the tag (e.g., GitHub Release), it is
+  reused
+- if a prior run created/pushed the tag but failed before metadata creation, a
+  rerun creates the missing metadata and proceeds
+
+Versionary fails fast when recovery is unsafe (for example, local and remote
+tags with the same name point to different SHAs). In these cases, the error
+message includes remediation guidance so CI logs are actionable.
+
 ## Built-in plugins
 
 Versionary ships with built-in SCM plugin support:

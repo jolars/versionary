@@ -25,6 +25,7 @@ export interface VersionaryScmReleaseMetadataInput {
 
 export interface VersionaryScmReleaseMetadataResult {
   url: string;
+  status?: "created" | "exists";
 }
 
 export interface VersionaryPluginContext {

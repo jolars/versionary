@@ -6,6 +6,7 @@ import { resolveVersionStrategy } from "../../domain/strategy/resolve.js";
 import { findPluginsByCapability } from "../../plugins/capabilities.js";
 import { loadRuntimePlugins } from "../../plugins/runtime.js";
 import { isReleaseCommitMessage } from "./pr.js";
+import { executeIdempotentReleaseTarget } from "./recovery.js";
 import { readReleaseTargets } from "./state.js";
 
 function getHeadCommitSubject(cwd: string): string {
@@ -14,26 +15,6 @@ function getHeadCommitSubject(cwd: string): string {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "ignore"],
   }).trim();
-}
-
-function createTagIfMissing(cwd: string, tag: string): void {
-  const tagExists = execFileSync("git", ["tag", "--list", tag], {
-    cwd,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "ignore"],
-  }).trim();
-  if (tagExists.length > 0) {
-    return;
-  }
-
-  execFileSync("git", ["tag", tag], {
-    cwd,
-    stdio: ["ignore", "pipe", "ignore"],
-  });
-  execFileSync("git", ["push", "origin", tag], {
-    cwd,
-    stdio: ["ignore", "pipe", "ignore"],
-  });
 }
 
 function readReleaseNotes(
@@ -111,17 +92,22 @@ export async function runSimpleRelease(cwd = process.cwd()): Promise<string> {
 
   const published: string[] = [];
   for (const target of targets) {
-    createTagIfMissing(cwd, target.tag);
-    const result = await plugin.createReleaseMetadata(
+    const outcome = await executeIdempotentReleaseTarget(
+      cwd,
       {
         tag: target.tag,
         version: target.version,
         notes:
           target.notes ?? readReleaseNotes(cwd, target.version, changelogFile),
       },
-      { cwd, logger: console },
+      {
+        createReleaseMetadata: (input) =>
+          plugin.createReleaseMetadata!(input, { cwd, logger: console }),
+      },
     );
-    published.push(`${target.tag}: ${result.url}`);
+    published.push(
+      `${outcome.tag}: ${outcome.url} (tag=${outcome.tagStatus}, metadata=${outcome.metadataStatus})`,
+    );
   }
   return `Published releases ${published.join(", ")}`;
 }
