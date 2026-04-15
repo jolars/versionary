@@ -1,5 +1,20 @@
 # Copilot Instructions for `versionary`
 
+## Product intent (important context)
+
+Versionary is intended to combine strengths from `semantic-release` and
+`release-please`, while avoiding common pain points:
+
+- keep both direct release execution and release-PR-gated workflows
+- stay software/ecosystem agnostic (Node, Rust, docs, etc.)
+- keep SCM integration pluggable/capability-based (GitHub first, others later)
+- focus on versioning/changelog/tagging/release metadata, not package registry publishing
+- preserve a small, stable core with clear extension points
+
+When making design decisions, prioritize trunk-based-development compatibility,
+monorepo ergonomics, and explicit failure handling over adding broad dependency
+surface area.
+
 ## Build, test, and run commands
 
 - Install dependencies: `pnpm install`
@@ -50,6 +65,7 @@ CLI commands in this repo currently run from source through `tsx` scripts:
 - `pr` command requires a clean tracked working tree (except lockfiles), creates/resets release branch, commits `chore(release): v*`, and writes baseline state.
 - `run` is the primary CI entrypoint: it auto-dispatches to PR/update flow or release publish flow based on commit context.
 - `review-mode` controls review-request behavior (`direct` skips PR creation, `review` uses SCM plugin).
+- Treat package publishing as out of scope for Versionary itself; external CI workflows should publish artifacts based on release/tag events.
 - Packaging is CLI-first:
   - binary entrypoint: `dist/cli/index.js`
   - published files are limited to `dist/` via `package.json` `files`.

@@ -3,6 +3,60 @@
 Versionary is a software-agnostic automated release tool focused on SemVer,
 conventional commits, release PR workflows, and extensibility.
 
+## Why this exists
+
+Versionary is designed as a practical middle ground between
+`semantic-release` and `release-please`.
+
+- Like `semantic-release`, it supports direct release execution and focuses on
+  conventional-commit-driven automation.
+- Like `release-please`, it supports a release PR workflow so maintainers can
+  preview and review changes before publication.
+
+The core idea is to keep versioning, changelog generation, tagging, and SCM
+release metadata in one tool, while leaving package publication (npm, crates.io,
+etc.) to dedicated CI workflows triggered by releases.
+
+## Product direction
+
+Versionary is being built to:
+
+- support both direct releases and release-PR-gated releases
+- work across repository types (Node, Rust, docs/LaTeX, etc.)
+- stay SCM-agnostic at the core, with integrations via plugin capabilities
+  (GitHub first; GitLab/Codeberg later)
+- keep a small, stable core with explicit extension points
+- handle trunk-based development and monorepo workflows cleanly
+
+## Scope and non-goals
+
+In scope:
+
+- semantic version planning from commits
+- changelog generation
+- release PR automation
+- tags + SCM release metadata (e.g. GitHub Releases)
+
+Out of scope (intentional):
+
+- publishing artifacts to language registries
+- replacing package-specific publish tooling
+
+Use your CI/CD platform for registry publishing, triggered from a created
+release/tag.
+
+## Current status vs roadmap
+
+Current implementation focuses on:
+
+- strategy-based version updates (`simple`, `node`)
+- release planning and changelog generation
+- review-mode vs direct-mode release flow
+- built-in GitHub SCM plugin capabilities
+
+Planned/harder areas include deeper monorepo ergonomics, broader SCM coverage,
+and stronger failure recovery around release steps.
+
 Configuration is loaded from `versionary.jsonc` by default.
 
 Schema URL for editor support:
