@@ -1,6 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
-import { isReleasableCommit } from "../../infra/git/commits.js";
+import {
+  inferReleaseTypeFromParsedCommit,
+  type ParsedCommit,
+} from "../../infra/git/commits.js";
 import { resolveRepositoryWebBaseUrl } from "../../infra/git/repo-url.js";
 import type { SimplePlan } from "./plan.js";
 
@@ -22,7 +25,10 @@ export function renderSimpleChangelog(plan: SimplePlan): string {
     versionHeading,
     "",
     ...plan.commits
-      .filter((commit) => isReleasableCommit(commit.subject))
+      .filter(
+        (commit: ParsedCommit) =>
+          inferReleaseTypeFromParsedCommit(commit) !== null,
+      )
       .map((commit) => {
         const short = commit.hash.slice(0, 7);
         if (!repoUrl) {

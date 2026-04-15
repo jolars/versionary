@@ -7,8 +7,8 @@ import {
 } from "../../domain/release/changelog.js";
 import { createSimplePlan } from "../../domain/release/plan.js";
 import { resolveVersionStrategy } from "../../domain/strategy/resolve.js";
-import type { CommitInfo } from "../../infra/git/commits.js";
-import { inferReleaseTypeFromSubject } from "../../infra/git/commits.js";
+import type { ParsedCommit } from "../../infra/git/commits.js";
+import { inferReleaseTypeFromParsedCommit } from "../../infra/git/commits.js";
 import { resolveRepositoryWebBaseUrl } from "../../infra/git/repo-url.js";
 import { findPluginsByCapability } from "../../plugins/capabilities.js";
 import { loadRuntimePlugins } from "../../plugins/runtime.js";
@@ -83,7 +83,7 @@ export function prepareSimpleReleasePr(cwd = process.cwd()): {
   branch: string;
   title: string;
   version: string;
-  commits: CommitInfo[];
+  commits: ParsedCommit[];
 } {
   const plan = createSimplePlan(cwd);
   const loaded = loadConfig(cwd);
@@ -155,7 +155,7 @@ function formatCommitMessage(subject: string): {
 
 export function renderSimpleReviewRequestBody(
   version: string,
-  commits: CommitInfo[],
+  commits: ParsedCommit[],
   cwd = process.cwd(),
 ): string {
   const breaking: string[] = [];
@@ -170,7 +170,7 @@ export function renderSimpleReviewRequestBody(
     const hashLabel = commitBaseUrl
       ? `[\`${hash}\`](${commitBaseUrl}/commit/${commit.hash})`
       : `\`${hash}\``;
-    const type = inferReleaseTypeFromSubject(subject);
+    const type = inferReleaseTypeFromParsedCommit(commit);
     if (!type) {
       continue;
     }
@@ -219,7 +219,7 @@ export async function openOrUpdateSimpleReviewRequest(
   branch: string,
   title: string,
   version: string,
-  commits: CommitInfo[],
+  commits: ParsedCommit[],
 ): Promise<string> {
   const loaded = loadConfig(cwd);
   const releaseFlow = loaded.config["review-mode"] ?? "direct";

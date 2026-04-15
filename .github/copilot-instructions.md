@@ -87,6 +87,9 @@ a strategy model:
   - `release-branch = "versionary/release"`
   - `baseline-file = ".versionary-manifest.json"`
 - Release commit analysis currently follows conventional-commit-style defaults:
+  - parser emits structured AST fields (`header/body/footer`, `notes`,
+    `references`, `mentions`, `revert`) and diagnostics independently from
+    release-policy mapping
   - `feat` => `minor`
   - `fix|perf` => `patch`
   - `!` / `BREAKING CHANGE` footer => `major` (any type)

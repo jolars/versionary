@@ -3,8 +3,10 @@ import {
   analyzeCommits,
   analyzeParsedCommits,
   applyRevertSuppression,
+  getCommitParseDiagnostics,
   isReleasableCommit,
   isReleasableParsedCommit,
+  parseConventionalCommitMessage,
 } from "../src/infra/git/commits.js";
 
 describe("simple commit analysis", () => {
@@ -168,5 +170,76 @@ describe("simple commit analysis", () => {
         revertedShas: [],
       }),
     ).toBe(true);
+  });
+
+  it("parses structured ast fields for a valid conventional commit", () => {
+    const parsed = parseConventionalCommitMessage(
+      "feat(ng-list): Allow custom separator",
+      "bla bla bla\n\nBREAKING CHANGE: some breaking change.\nThanks @stevemao\nCloses #1",
+    );
+
+    expect(parsed.type).toBe("feat");
+    expect(parsed.scope).toBe("ng-list");
+    expect(parsed.description).toBe("Allow custom separator");
+    expect(parsed.body).toBe("bla bla bla");
+    expect(parsed.footer).toContain("BREAKING CHANGE: some breaking change.");
+    expect(parsed.notes).toEqual([
+      {
+        title: "BREAKING CHANGE",
+        text: "some breaking change.\nThanks @stevemao",
+      },
+    ]);
+    expect(parsed.references).toEqual([
+      {
+        action: "Closes",
+        owner: null,
+        repository: null,
+        issue: "1",
+        raw: "#1",
+        prefix: "#",
+      },
+    ]);
+    expect(parsed.mentions).toContain("stevemao");
+  });
+
+  it("captures malformed header diagnostics", () => {
+    const parsed = parseConventionalCommitMessage("invalid header");
+    const diagnostics = getCommitParseDiagnostics(parsed);
+    expect(diagnostics.some((d) => d.code === "invalid-header")).toBe(true);
+  });
+
+  it("captures malformed breaking footer diagnostics", () => {
+    const parsed = parseConventionalCommitMessage(
+      "feat: add parser support",
+      "BREAKING CHANGE this misses colon",
+    );
+    const diagnostics = getCommitParseDiagnostics(parsed);
+    expect(
+      diagnostics.some((d) => d.code === "malformed-breaking-footer"),
+    ).toBe(true);
+  });
+
+  it("captures malformed reference diagnostics", () => {
+    const parsed = parseConventionalCommitMessage(
+      "fix: patch bug",
+      "Refs: GH-abc",
+    );
+    const diagnostics = getCommitParseDiagnostics(parsed);
+    expect(diagnostics.some((d) => d.code === "malformed-reference")).toBe(
+      true,
+    );
+  });
+
+  it("captures ambiguous revert diagnostics when no sha exists", () => {
+    const parsed = parseConventionalCommitMessage(
+      "revert: feat: add thing",
+      "This reverts prior changes without a hash reference.",
+    );
+    const diagnostics = getCommitParseDiagnostics(parsed);
+    expect(diagnostics.some((d) => d.code === "ambiguous-revert")).toBe(true);
+    expect(parsed.revert).toEqual({
+      header: "revert: feat: add thing",
+      hashes: [],
+    });
   });
 });

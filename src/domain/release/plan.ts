@@ -5,9 +5,9 @@ import { loadConfig } from "../../config/load-config.js";
 import {
   analyzeParsedCommits,
   applyRevertSuppression,
-  type CommitInfo,
   getParsedCommitsForPath,
   getParsedCommitsSinceLastTag,
+  type ParsedCommit,
 } from "../../infra/git/commits.js";
 import { resolveVersionStrategy } from "../strategy/resolve.js";
 import { bumpVersion, type ReleaseType } from "./semver.js";
@@ -21,12 +21,12 @@ export interface SimplePlan {
   changelogFile: string;
   releaseBranchPrefix: string;
   baselineSha: string | null;
-  commits: CommitInfo[];
+  commits: ParsedCommit[];
   packages?: Array<{
     path: string;
     releaseType: ReleaseType;
     nextVersion: string | null;
-    commits: CommitInfo[];
+    commits: ParsedCommit[];
   }>;
 }
 
@@ -63,10 +63,7 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
   if (!hasPackages) {
     const parsedCommits = getParsedCommitsSinceLastTag(cwd, baselineSha);
     const effectiveCommits = applyRevertSuppression(parsedCommits);
-    const commits: CommitInfo[] = effectiveCommits.map((commit) => ({
-      hash: commit.hash,
-      subject: commit.subject,
-    }));
+    const commits = effectiveCommits;
     const releaseType = analyzeParsedCommits(parsedCommits);
     const nextVersion = releaseType
       ? bumpVersion(currentVersion, releaseType)
@@ -94,10 +91,7 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
         pkg["exclude-paths"] ?? [],
       );
       const effectiveCommits = applyRevertSuppression(parsedCommits);
-      const commits: CommitInfo[] = effectiveCommits.map((commit) => ({
-        hash: commit.hash,
-        subject: commit.subject,
-      }));
+      const commits = effectiveCommits;
       const releaseType = analyzeParsedCommits(parsedCommits);
       const nextVersion = releaseType
         ? bumpVersion(currentVersion, releaseType)

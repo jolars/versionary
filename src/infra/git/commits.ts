@@ -19,6 +19,45 @@ export interface ParsedCommit {
   isRevert: boolean;
   footers: Array<{ token: string; value: string }>;
   revertedShas: string[];
+  header?: string;
+  merge?: string | null;
+  footer?: string | null;
+  notes?: CommitNote[];
+  references?: CommitReference[];
+  mentions?: string[];
+  revert?: RevertInfo | null;
+  isConventional?: boolean;
+  diagnostics?: ParseDiagnostic[];
+}
+
+export type CommitParseDiagnosticCode =
+  | "invalid-header"
+  | "malformed-breaking-footer"
+  | "malformed-reference"
+  | "ambiguous-revert";
+
+export interface ParseDiagnostic {
+  code: CommitParseDiagnosticCode;
+  message: string;
+}
+
+export interface CommitNote {
+  title: string;
+  text: string;
+}
+
+export interface CommitReference {
+  action: string | null;
+  owner: string | null;
+  repository: string | null;
+  issue: string | null;
+  raw: string;
+  prefix: "#" | "GH-";
+}
+
+export interface RevertInfo {
+  header: string;
+  hashes: string[];
 }
 
 function getReleaseBranchExcludeArgs(cwd: string): string[] {
@@ -156,6 +195,8 @@ function parseHeader(subject: string): {
   scope: string | null;
   description: string;
   isBreakingHeader: boolean;
+  isConventional: boolean;
+  diagnostics: ParseDiagnostic[];
 } {
   const conventionalMatch = subject.match(
     /^([a-z][a-z0-9-]*)(?:\(([^)]+)\))?(!)?:\s+(.+)$/iu,
@@ -166,6 +207,14 @@ function parseHeader(subject: string): {
       scope: null,
       description: subject,
       isBreakingHeader: false,
+      isConventional: false,
+      diagnostics: [
+        {
+          code: "invalid-header",
+          message:
+            "Header does not match Conventional Commits format: <type>(<scope>)?: <description>.",
+        },
+      ],
     };
   }
 
@@ -174,16 +223,75 @@ function parseHeader(subject: string): {
     scope: conventionalMatch[2]?.trim() ?? null,
     isBreakingHeader: conventionalMatch[3] === "!",
     description: conventionalMatch[4]?.trim() ?? subject,
+    isConventional: true,
+    diagnostics: [],
   };
 }
 
-function parseFooters(body: string): Array<{ token: string; value: string }> {
+function parseFooters(body: string): {
+  bodyText: string;
+  footerText: string | null;
+  footers: Array<{ token: string; value: string }>;
+  diagnostics: ParseDiagnostic[];
+  references: CommitReference[];
+  notes: CommitNote[];
+} {
   if (!body) {
-    return [];
+    return {
+      bodyText: "",
+      footerText: null,
+      footers: [],
+      diagnostics: [],
+      references: [],
+      notes: [],
+    };
   }
 
+  const parseFooterLine = (
+    line: string,
+  ): { token: string; value: string } | null => {
+    const colonMatch = line.match(
+      /^(BREAKING CHANGE|BREAKING-CHANGE|[A-Za-z][A-Za-z0-9-]*):\s+(.+)$/u,
+    );
+    if (colonMatch) {
+      return {
+        token: colonMatch[1] ?? "",
+        value: colonMatch[2] ?? "",
+      };
+    }
+    const issueRefMatch = line.match(
+      /^([A-Za-z][A-Za-z0-9-]*)\s+((?:GH-|#).+)$/u,
+    );
+    if (issueRefMatch) {
+      return {
+        token: issueRefMatch[1] ?? "",
+        value: issueRefMatch[2] ?? "",
+      };
+    }
+    return null;
+  };
+
+  const diagnostics: ParseDiagnostic[] = [];
   const lines = body.split("\n");
+  for (const line of lines) {
+    if (
+      /^\s*BREAKING(?:\s|-)?CHANGE\b/iu.test(line) &&
+      !/^\s*(BREAKING CHANGE|BREAKING-CHANGE):\s+/iu.test(line)
+    ) {
+      diagnostics.push({
+        code: "malformed-breaking-footer",
+        message:
+          "Found BREAKING CHANGE-like footer without required ': ' separator.",
+      });
+    }
+  }
+  const footerStart = lines.findIndex((line) => parseFooterLine(line) !== null);
+  const bodyLines = footerStart < 0 ? lines : lines.slice(0, footerStart);
+  const footerLines = footerStart < 0 ? [] : lines.slice(footerStart);
+
   const footers: Array<{ token: string; value: string }> = [];
+  const references: CommitReference[] = [];
+  const notes: CommitNote[] = [];
   let current: { token: string; value: string } | null = null;
 
   const pushCurrent = (): void => {
@@ -197,16 +305,35 @@ function parseFooters(body: string): Array<{ token: string; value: string }> {
     current = null;
   };
 
-  for (const line of lines) {
-    const footerMatch = line.match(
-      /^(BREAKING CHANGE|BREAKING-CHANGE|[A-Za-z][A-Za-z0-9-]*)(?::\s+|\s+#)(.*)$/u,
-    );
+  const extractReferences = (text: string, action: string | null): void => {
+    const refs = text.match(/(?:GH-|#)[^\s,;:()]+/gu) ?? [];
+    for (const raw of refs) {
+      const issue = raw.replace(/^(GH-|#)/u, "");
+      if (!/^\d+$/u.test(issue)) {
+        diagnostics.push({
+          code: "malformed-reference",
+          message: `Malformed issue reference "${raw}" in footer.`,
+        });
+        continue;
+      }
+      references.push({
+        action,
+        owner: null,
+        repository: null,
+        issue,
+        raw,
+        prefix: raw.startsWith("GH-") ? "GH-" : "#",
+      });
+    }
+  };
 
+  for (const line of footerLines) {
+    const footerMatch = parseFooterLine(line);
     if (footerMatch) {
       pushCurrent();
       current = {
-        token: footerMatch[1] ?? "",
-        value: footerMatch[2] ?? "",
+        token: footerMatch.token,
+        value: footerMatch.value,
       };
       continue;
     }
@@ -220,7 +347,24 @@ function parseFooters(body: string): Array<{ token: string; value: string }> {
   }
 
   pushCurrent();
-  return footers;
+  for (const footer of footers) {
+    if (/^(BREAKING CHANGE|BREAKING-CHANGE)$/iu.test(footer.token)) {
+      notes.push({
+        title: "BREAKING CHANGE",
+        text: footer.value,
+      });
+    }
+    extractReferences(`${footer.token}: ${footer.value}`, footer.token);
+  }
+
+  return {
+    bodyText: bodyLines.join("\n").trim() || "",
+    footerText: footerLines.length > 0 ? footerLines.join("\n").trim() : null,
+    footers,
+    diagnostics,
+    references,
+    notes,
+  };
 }
 
 function extractRevertedShas(subject: string, body: string): string[] {
@@ -229,24 +373,52 @@ function extractRevertedShas(subject: string, body: string): string[] {
   return [...new Set(matches.map((sha) => sha.toLowerCase()))];
 }
 
+function extractMentions(text: string): string[] {
+  const mentions =
+    text.match(/(?:^|[^A-Za-z0-9_])@([A-Za-z0-9][A-Za-z0-9-]{0,38})/gu) ?? [];
+  return [
+    ...new Set(
+      mentions
+        .map((mention) => mention.replace(/^.*@/u, ""))
+        .filter((mention) => mention.length > 0),
+    ),
+  ];
+}
+
 function parseCommitMessage(
   hash: string,
   subject: string,
   body: string,
 ): ParsedCommit {
   const header = parseHeader(subject);
-  const footers = parseFooters(body);
+  const footerResult = parseFooters(body);
+  const bodyText = footerResult.bodyText;
+  const footers = footerResult.footers;
   const hasBreakingFooter = footers.some((footer) =>
     /^(BREAKING CHANGE|BREAKING-CHANGE)$/iu.test(footer.token),
   );
   const isRevert =
     (header.type?.toLowerCase() ?? "") === "revert" ||
     /^revert:\s/i.test(subject);
+  const revertInfo: RevertInfo | null = isRevert
+    ? {
+        header: subject,
+        hashes: extractRevertedShas(subject, body),
+      }
+    : null;
+  const diagnostics = [...header.diagnostics, ...footerResult.diagnostics];
+  if (isRevert && revertInfo && revertInfo.hashes.length === 0) {
+    diagnostics.push({
+      code: "ambiguous-revert",
+      message:
+        "Revert commit detected but no reverted commit SHA reference was parsed.",
+    });
+  }
 
   return {
     hash,
     subject,
-    body,
+    body: bodyText,
     fullMessage: body ? `${subject}\n\n${body}` : subject,
     type: header.type,
     scope: header.scope,
@@ -255,7 +427,30 @@ function parseCommitMessage(
     isRevert,
     footers,
     revertedShas: isRevert ? extractRevertedShas(subject, body) : [],
+    header: subject,
+    merge: null,
+    footer: footerResult.footerText,
+    notes: footerResult.notes,
+    references: footerResult.references,
+    mentions: extractMentions(`${subject}\n${body}`),
+    revert: revertInfo,
+    isConventional: header.isConventional,
+    diagnostics,
   };
+}
+
+export function parseConventionalCommitMessage(
+  subject: string,
+  body = "",
+): ParsedCommit {
+  return parseCommitMessage("", subject.trim(), body.trim());
+}
+
+export function parseConventionalCommitMessageDetailed(
+  header: string,
+  body = "",
+): ParsedCommit {
+  return parseCommitMessage("", header.trim(), body.trim());
 }
 
 export function getCommitsSinceLastTag(
@@ -312,7 +507,9 @@ export function getParsedCommitsForPath(
   return readGitLogFull(cwd, range, [normalizedPackagePath, ...excludes]);
 }
 
-function inferReleaseTypeFromParsedCommit(commit: ParsedCommit): ReleaseType {
+export function inferReleaseTypeFromParsedCommit(
+  commit: ParsedCommit,
+): ReleaseType {
   if (commit.isRevert) {
     return null;
   }
@@ -345,6 +542,12 @@ export function inferReleaseTypeFromSubject(subject: string): ReleaseType {
 
 export function isReleasableCommit(subject: string): boolean {
   return inferReleaseTypeFromSubject(subject) !== null;
+}
+
+export function getCommitParseDiagnostics(
+  commit: ParsedCommit,
+): ParseDiagnostic[] {
+  return commit.diagnostics ?? [];
 }
 
 export function analyzeCommits(commits: CommitInfo[]): ReleaseType {

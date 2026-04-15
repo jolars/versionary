@@ -4,6 +4,7 @@ import {
   renderSimpleReviewRequestBody,
   splitSafeDirtyFiles,
 } from "../src/app/release/pr.js";
+import { parseConventionalCommitMessage } from "../src/infra/git/commits.js";
 
 describe("release commit detection", () => {
   it("matches release commit pattern", () => {
@@ -46,11 +47,28 @@ describe("review request body rendering", () => {
       process.env.GITHUB_SERVER_URL = "https://github.com";
       process.env.GITHUB_REPOSITORY = "jolars/versionary";
       body = renderSimpleReviewRequestBody("1.2.3", [
-        { hash: "aaaaaaa", subject: "ci: tweak workflow" },
-        { hash: "bbbbbbb", subject: "chore: bump deps" },
-        { hash: "ccccccc1", subject: "feat(editors): add awesome feature" },
-        { hash: "ddddddd2", subject: "fix(lsp): patch bug" },
-        { hash: "eeeeeee3", subject: "feat!: breaking API change" },
+        {
+          ...parseConventionalCommitMessage("ci: tweak workflow"),
+          hash: "aaaaaaa",
+        },
+        {
+          ...parseConventionalCommitMessage("chore: bump deps"),
+          hash: "bbbbbbb",
+        },
+        {
+          ...parseConventionalCommitMessage(
+            "feat(editors): add awesome feature",
+          ),
+          hash: "ccccccc1",
+        },
+        {
+          ...parseConventionalCommitMessage("fix(lsp): patch bug"),
+          hash: "ddddddd2",
+        },
+        {
+          ...parseConventionalCommitMessage("feat!: breaking API change"),
+          hash: "eeeeeee3",
+        },
       ]);
     } finally {
       process.env.GITHUB_SERVER_URL = prevServer;

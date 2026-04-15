@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderSimpleChangelog } from "../src/domain/release/changelog.js";
 import type { SimplePlan } from "../src/domain/release/plan.js";
+import { parseConventionalCommitMessage } from "../src/infra/git/commits.js";
 
 function makePlan(): SimplePlan {
   return {
@@ -13,10 +14,19 @@ function makePlan(): SimplePlan {
     releaseBranchPrefix: "versionary/release",
     baselineSha: null,
     commits: [
-      { hash: "1111111", subject: "ci: update workflow" },
-      { hash: "2222222", subject: "chore: bump deps" },
-      { hash: "3333333", subject: "feat: add feature" },
-      { hash: "4444444", subject: "fix: patch bug" },
+      {
+        ...parseConventionalCommitMessage("ci: update workflow"),
+        hash: "1111111",
+      },
+      {
+        ...parseConventionalCommitMessage("chore: bump deps"),
+        hash: "2222222",
+      },
+      {
+        ...parseConventionalCommitMessage("feat: add feature"),
+        hash: "3333333",
+      },
+      { ...parseConventionalCommitMessage("fix: patch bug"), hash: "4444444" },
     ],
   };
 }

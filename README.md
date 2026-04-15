@@ -99,12 +99,17 @@ For a quick trial, use:
 Release planning is based on Conventional Commit parsing semantics:
 
 - parses type/scope/description from commit headers
+- exposes structured parsed fields (`header`, `body`, `footer`, `type`, `scope`,
+  `description`, `notes`, `references`, `mentions`, `revert`)
+- separates parser output from release policy mapping (`inferReleaseType*`)
 - recognizes breaking changes from `!` and `BREAKING CHANGE` /
   `BREAKING-CHANGE` footers
 - maps release impact as `feat => minor`, `fix|perf => patch`, breaking => major
 - treats `revert:` as non-releasable commits
 - suppresses commits that are reverted within the analyzed release window so they
   do not affect bump/changelog output
+- emits parser diagnostics for malformed headers/footers/references and ambiguous
+  revert messages
 
 Commands:
 
