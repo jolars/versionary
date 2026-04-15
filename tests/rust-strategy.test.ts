@@ -1,7 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { rustVersionStrategy } from "../src/domain/strategy/rust.js";
+import {
+  applyRustWorkspaceDependencyUpdates,
+  rustVersionStrategy,
+} from "../src/domain/strategy/rust.js";
 
 const tempDirs: string[] = [];
 let sandboxCounter = 0;
@@ -333,5 +336,26 @@ describe("rustVersionStrategy", () => {
         "release-type": "rust",
       }),
     ).toThrow(/is not a Rust crate manifest/i);
+  });
+
+  it("updates internal dependency versions for targeted package releases", () => {
+    const cwd = useFixture("workspace-panache-like");
+
+    const updatedFiles = applyRustWorkspaceDependencyUpdates(cwd, {
+      "crates/core/Cargo.toml": "0.3.0",
+      "crates/util/Cargo.toml": "0.2.0",
+    });
+
+    expect(updatedFiles).toEqual([
+      "crates/core/Cargo.toml",
+      "crates/util/Cargo.toml",
+    ]);
+    const coreManifest = read(cwd, "crates/core/Cargo.toml");
+    const utilManifest = read(cwd, "crates/util/Cargo.toml");
+    expect(coreManifest).toContain('util-lib = "0.2.0"');
+    expect(utilManifest).toContain(
+      'core-lib = { version = "0.3.0", features = ["std"] }',
+    );
+    expect(utilManifest).toContain('core-lib = "0.3.0"');
   });
 });

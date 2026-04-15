@@ -259,7 +259,15 @@ describe("release PR package version update", () => {
     write(
       cwd,
       "Cargo.toml",
-      ["[package]", 'name = "root-rust"', 'version = "2.34.0"', ""].join("\n"),
+      [
+        "[package]",
+        'name = "root-rust"',
+        'version = "2.34.0"',
+        "",
+        "[dependencies]",
+        'panache-parser = { path = "crates/panache-parser", version = "0.3.0" }',
+        "",
+      ].join("\n"),
     );
     write(
       cwd,
@@ -345,6 +353,9 @@ describe("release PR package version update", () => {
     );
 
     expect(rootCargo).toContain('version = "2.35.0"');
+    expect(rootCargo).toContain(
+      'panache-parser = { path = "crates/panache-parser", version = "0.4.0" }',
+    );
     expect(parserCargo).toContain('version = "0.4.0"');
     expect(codePackage.version).toBe("2.35.0");
     expect(zedCargo).toContain('version = "2.33.0"');

@@ -372,10 +372,10 @@ function parseDependencyName(line: string): string | null {
 function writeInternalDependencyVersionInLine(
   line: string,
   dependencyName: string,
-  internalCrates: Set<string>,
-  version: string,
+  versionByDependency: Map<string, string>,
 ): string {
-  if (!internalCrates.has(dependencyName)) {
+  const nextVersion = versionByDependency.get(dependencyName);
+  if (!nextVersion) {
     return line;
   }
 
@@ -384,7 +384,7 @@ function writeInternalDependencyVersionInLine(
   );
   if (stringVersionMatch) {
     const [, prefix = "", quote = '"', , , suffix = ""] = stringVersionMatch;
-    return `${prefix}${quote}${version}${quote}${suffix}`;
+    return `${prefix}${quote}${nextVersion}${quote}${suffix}`;
   }
 
   const inlineTableMatch = line.match(
@@ -397,7 +397,7 @@ function writeInternalDependencyVersionInLine(
   const [, prefix = "", tableBody = "", suffix = ""] = inlineTableMatch;
   const updatedTableBody = tableBody.replace(
     /(\bversion\s*=\s*)(["'])([^"']*)(\2)/u,
-    `$1$2${version}$4`,
+    `$1$2${nextVersion}$4`,
   );
 
   if (updatedTableBody === tableBody) {
@@ -413,6 +413,20 @@ function writeInternalDependencyVersions(
   version: string,
 ): string {
   if (internalCrates.size === 0) {
+    return cargoTomlRaw;
+  }
+  const versionByDependency = new Map<string, string>();
+  for (const crateName of internalCrates) {
+    versionByDependency.set(crateName, version);
+  }
+  return writeMappedDependencyVersions(cargoTomlRaw, versionByDependency);
+}
+
+function writeMappedDependencyVersions(
+  cargoTomlRaw: string,
+  versionByDependency: Map<string, string>,
+): string {
+  if (versionByDependency.size === 0) {
     return cargoTomlRaw;
   }
 
@@ -442,8 +456,7 @@ function writeInternalDependencyVersions(
     lines[index] = writeInternalDependencyVersionInLine(
       line,
       dependencyName,
-      internalCrates,
-      version,
+      versionByDependency,
     );
   }
 
@@ -456,6 +469,59 @@ function writeInternalDependencyVersions(
   }
 
   return updated;
+}
+
+function readPackageNameForManifest(cwd: string, manifest: string): string {
+  const manifestPath = path.join(cwd, manifest);
+  const cargoTomlRaw = fs.readFileSync(manifestPath, "utf8");
+  if (!isCrateManifest(manifest, cargoTomlRaw)) {
+    throw new Error(
+      `Configured rust target "${manifest}" is not a Rust crate manifest to update.`,
+    );
+  }
+  return readCargoPackageName(cargoTomlRaw, manifest);
+}
+
+export function applyRustWorkspaceDependencyUpdates(
+  cwd: string,
+  manifestToVersion: Record<string, string>,
+): string[] {
+  const versionByDependency = new Map<string, string>();
+  for (const [manifest, version] of Object.entries(manifestToVersion)) {
+    if (!version) {
+      continue;
+    }
+    const crateName = readPackageNameForManifest(cwd, manifest);
+    versionByDependency.set(crateName, version);
+  }
+  if (versionByDependency.size === 0) {
+    return [];
+  }
+
+  const updatedFiles: string[] = [];
+  const manifests = Object.keys(manifestToVersion).sort((a, b) =>
+    a.localeCompare(b),
+  );
+  for (const manifest of manifests) {
+    const manifestPath = path.join(cwd, manifest);
+    if (!fs.existsSync(manifestPath)) {
+      continue;
+    }
+    const cargoTomlRaw = fs.readFileSync(manifestPath, "utf8");
+    if (!isCrateManifest(manifest, cargoTomlRaw)) {
+      continue;
+    }
+    const next = writeMappedDependencyVersions(
+      cargoTomlRaw,
+      versionByDependency,
+    );
+    if (next !== cargoTomlRaw) {
+      fs.writeFileSync(manifestPath, next, "utf8");
+      updatedFiles.push(manifest);
+    }
+  }
+
+  return updatedFiles;
 }
 
 export const rustVersionStrategy: VersionStrategy = {

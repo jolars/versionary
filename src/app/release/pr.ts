@@ -12,6 +12,10 @@ import {
 } from "../../domain/release/plan.js";
 import { resolvePackageStrategyContext } from "../../domain/strategy/package-context.js";
 import { resolveVersionStrategy } from "../../domain/strategy/resolve.js";
+import {
+  applyRustWorkspaceDependencyUpdates,
+  rustVersionStrategy,
+} from "../../domain/strategy/rust.js";
 import type { ParsedCommit } from "../../infra/git/commits.js";
 import { findPluginsByCapability } from "../../plugins/capabilities.js";
 import { loadRuntimePlugins } from "../../plugins/runtime.js";
@@ -114,6 +118,7 @@ export function prepareSimpleReleasePr(
   ensureCleanWorktree(cwd, options.logger);
 
   const updatedVersionFiles: string[] = [];
+  const rustManifestVersionTargets: Record<string, string> = {};
   if (plan.packages && plan.packages.length > 0) {
     for (const packagePlan of plan.packages) {
       if (!packagePlan.nextVersion) {
@@ -131,7 +136,14 @@ export function prepareSimpleReleasePr(
         packagePlan.nextVersion,
       );
       updatedVersionFiles.push(...packageUpdated);
+      if (packageContext.strategy.name === rustVersionStrategy.name) {
+        rustManifestVersionTargets[packageContext.versionFile] =
+          packagePlan.nextVersion;
+      }
     }
+    updatedVersionFiles.push(
+      ...applyRustWorkspaceDependencyUpdates(cwd, rustManifestVersionTargets),
+    );
   } else {
     updatedVersionFiles.push(
       ...strategy.writeVersion(cwd, loaded.config, plan.nextVersion),

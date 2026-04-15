@@ -56,7 +56,13 @@ export function resolvePackageStrategyContext(
           }),
         );
 
-  const config = withVersionFile(baseConfig, packageVersionFile);
+  const config = withVersionFile(
+    {
+      ...baseConfig,
+      packages: undefined,
+    },
+    packageVersionFile,
+  );
   const strategy = resolveVersionStrategy(config);
   return {
     strategy,
