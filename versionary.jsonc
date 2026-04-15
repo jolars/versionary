@@ -1,6 +1,6 @@
 {
   // Versionary config version
-  "$schema": "https://raw.githubusercontent.com/jolars/versionary/main/schemas/versionary-schema.json",
+  "$schema": "https://raw.githubusercontent.com/jolars/versionary/main/schemas/config.json",
   "version": 1,
   "review-mode": "review",
   "release-type": "node",

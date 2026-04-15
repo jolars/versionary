@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/jolars/versionary/main/schemas/versionary-schema.json",
+  "$id": "https://raw.githubusercontent.com/jolars/versionary/main/schemas/config.json",
   "title": "Versionary configuration",
   "type": "object",
   "required": ["version"],

@@ -72,7 +72,7 @@ Configuration is loaded from `versionary.jsonc` by default (or
 
 Schema URL for editor support:
 
-- `https://raw.githubusercontent.com/jolars/versionary/main/schemas/versionary-schema.json`
+- `https://raw.githubusercontent.com/jolars/versionary/main/schemas/config.json`
 
 ## Config (manifest style)
 
@@ -144,14 +144,14 @@ Release planning is based on Conventional Commit parsing semantics:
 - exposes structured parsed fields (`header`, `body`, `footer`, `type`, `scope`,
   `description`, `notes`, `references`, `mentions`, `revert`)
 - separates parser output from release policy mapping (`inferReleaseType*`)
-- recognizes breaking changes from `!` and `BREAKING CHANGE` /
-  `BREAKING-CHANGE` footers
+- recognizes breaking changes from `!` and `BREAKING CHANGE` / `BREAKING-CHANGE`
+  footers
 - maps release impact as `feat => minor`, `fix|perf => patch`, breaking => major
 - treats `revert:` as non-releasable commits
-- suppresses commits that are reverted within the analyzed release window so they
-  do not affect bump/changelog output
-- emits parser diagnostics for malformed headers/footers/references and ambiguous
-  revert messages
+- suppresses commits that are reverted within the analyzed release window so
+  they do not affect bump/changelog output
+- emits parser diagnostics for malformed headers/footers/references and
+  ambiguous revert messages
 
 Commands:
 
@@ -172,8 +172,8 @@ Subsequent runs use the baseline state file.
 
 ## Release retry and recovery behavior
 
-Release publish (`pnpm release` or the publish path in `pnpm run`) is
-idempotent by target tag:
+Release publish (`pnpm release` or the publish path in `pnpm run`) is idempotent
+by target tag:
 
 - if a tag already exists, Versionary reuses it rather than recreating it
 - if release metadata already exists for the tag (e.g., GitHub Release), it is
