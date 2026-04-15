@@ -8,12 +8,30 @@ Versionary is intended to combine strengths from `semantic-release` and
 - keep both direct release execution and release-PR-gated workflows
 - stay software/ecosystem agnostic (Node, Rust, docs, etc.)
 - keep SCM integration pluggable/capability-based (GitHub first, others later)
-- focus on versioning/changelog/tagging/release metadata, not package registry publishing
+- focus on versioning/changelog/tagging/release metadata, not package registry
+  publishing
 - preserve a small, stable core with clear extension points
 
 When making design decisions, prioritize trunk-based-development compatibility,
 monorepo ergonomics, and explicit failure handling over adding broad dependency
 surface area.
+
+## Conventional Commits and Semantic Versioning
+
+versionary is heavily built around
+
+- [conventional
+  commits](https://raw.githubusercontent.com/conventional-commits/conventionalcommits.org/refs/heads/master/content/v1.0.0/index.md)
+- [semantic
+  versioning](https://raw.githubusercontent.com/semver/semver/refs/heads/master/semver.md)
+
+To make reference easier, the specs are available at
+
+`assets/conventional-commits-spec.md` and `assets/semver-spec.md` in this
+repository.
+
+Conventional commits drive semantic version updates, changelog generation, and
+release metadata management.
 
 ## Build, test, and run commands
 
@@ -35,23 +53,32 @@ CLI commands in this repo currently run from source through `tsx` scripts:
 
 ## High-level architecture
 
-`versionary` currently supports release planning and PR/release automation with a strategy model:
+`versionary` currently supports release planning and PR/release automation with
+a strategy model:
 
-- `src/cli/index.ts`: command router for `run`, `verify`, `plan`, `changelog`, `pr`, `release`
+- `src/cli/index.ts`: command router for `run`, `verify`, `plan`, `changelog`,
+  `pr`, `release`
 - `src/config/`: config discovery/parsing/validation
-  - `load-config.ts` loads `versionary.jsonc` (preferred) plus `versionary.{json,toml}` and compatibility `versionary.config.*` fallbacks
+  - `load-config.ts` loads `versionary.jsonc` (preferred) plus
+    `versionary.{json,toml}` and compatibility `versionary.config.*` fallbacks
   - `schema.ts` validates config via `zod`
 - `src/strategies/`: version update strategies
   - `simple.ts`: updates `version-file` only
   - `node.ts`: updates `version-file` and `package.json` version
-- `src/simple/`: release engine for commit analysis, plan/changelog generation, PR prep, baseline state, and release metadata publishing
-- `src/plugins/` and `src/scm/`: runtime plugin loading and built-in GitHub plugin capabilities
-- `src/verify/verify-project.ts`: validates config loading, version file presence, and configured package paths
+- `src/simple/`: release engine for commit analysis, plan/changelog generation,
+  PR prep, baseline state, and release metadata publishing
+- `src/plugins/` and `src/scm/`: runtime plugin loading and built-in GitHub
+  plugin capabilities
+- `src/verify/verify-project.ts`: validates config loading, version file
+  presence, and configured package paths
 
 ## Key conventions in this repository
 
-- Canonical config filename is `versionary.jsonc`; `versionary.config.*` files are supported as compatibility fallbacks.
-- Config schema is release-focused (manifest style) with keys such as `version-file`, `changelog-file`, `release-branch`, `baseline-file`, `review-mode`, `release-type`, and optional `packages`.
+- Canonical config filename is `versionary.jsonc`; `versionary.config.*` files
+  are supported as compatibility fallbacks.
+- Config schema is release-focused (manifest style) with keys such as
+  `version-file`, `changelog-file`, `release-branch`, `baseline-file`,
+  `review-mode`, `release-type`, and optional `packages`.
 - Default behavior uses:
   - `version-file = "version.txt"`
   - `changelog-file = "CHANGELOG.md"`
@@ -61,11 +88,17 @@ CLI commands in this repo currently run from source through `tsx` scripts:
   - `feat` => `minor`
   - `fix|perf` => `patch`
   - `!:` / `BREAKING CHANGE` => `major`
-  - `revert:`, `chore:`, and `refactor:` commits are ignored for release triggering
-- `pr` command requires a clean tracked working tree (except lockfiles), creates/resets release branch, commits `chore(release): v*`, and writes baseline state.
-- `run` is the primary CI entrypoint: it auto-dispatches to PR/update flow or release publish flow based on commit context.
-- `review-mode` controls review-request behavior (`direct` skips PR creation, `review` uses SCM plugin).
-- Treat package publishing as out of scope for Versionary itself; external CI workflows should publish artifacts based on release/tag events.
+  - `revert:`, `chore:`, and `refactor:` commits are ignored for release
+    triggering
+- `pr` command requires a clean tracked working tree (except lockfiles),
+  creates/resets release branch, commits `chore(release): v*`, and writes
+  baseline state.
+- `run` is the primary CI entrypoint: it auto-dispatches to PR/update flow or
+  release publish flow based on commit context.
+- `review-mode` controls review-request behavior (`direct` skips PR creation,
+  `review` uses SCM plugin).
+- Treat package publishing as out of scope for Versionary itself; external CI
+  workflows should publish artifacts based on release/tag events.
 - Packaging is CLI-first:
   - binary entrypoint: `dist/cli/index.js`
   - published files are limited to `dist/` via `package.json` `files`.

@@ -10,8 +10,6 @@ by describing the features, fixes, and breaking changes made in commit messages.
 
 The commit message should be structured as follows:
 
----
-
 ```
 <type>[optional scope]: <description>
 
@@ -19,9 +17,7 @@ The commit message should be structured as follows:
 
 [optional footer(s)]
 ```
----
 
-<br />
 The commit contains the following structural elements, to communicate intent to the
 consumers of your library:
 
