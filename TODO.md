@@ -40,6 +40,8 @@ workflows.
 - [x] Improve fixed vs independent mode UX and diagnostics.
 - [ ] Add fixtures for Rust cargo workspaces and mixed-language repos.
 - [x] Support clearer per-package release previews in `plan` output.
+- [ ] Handle complex inter-package dependency scenarios (e.g. A depends on B,
+      both updated in same release). Like Cargo workspaces.
 
 ## Plugin and extension model
 
@@ -58,6 +60,8 @@ workflows.
 - [ ] Add abstraction tests so SCM behavior is platform-neutral at the core.
 - [ ] Prototype GitLab SCM plugin capability parity.
 - [ ] Prototype Codeberg/Gitea-compatible SCM plugin capability parity.
+- [ ] Add issue-commenting capability for issues related to releases (e.g.
+      "Issue solved in [v2.1.2](link)").
 
 ## CLI and UX
 
@@ -76,7 +80,7 @@ workflows.
 
 ## Short-term priority (suggested)
 
-1. SCM failure recovery and idempotency.
-2. GitHub integration hardening and docs/examples.
-3. Monorepo cargo-workspace and mixed-language fixtures.
-4. CLI machine-readable output + dry-run guarantees.
+1. [ ] SCM failure recovery and idempotency.
+2. [ ] GitHub integration hardening and docs/examples.
+3. [ ] Monorepo cargo-workspace and mixed-language fixtures.
+4. [ ] CLI machine-readable output + dry-run guarantees.

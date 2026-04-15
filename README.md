@@ -152,6 +152,77 @@ Versionary ships with built-in SCM plugin support:
 
 - `github` (default): review request + release metadata
 
+### GitHub integration: env, permissions, and flow
+
+Required environment for the built-in GitHub plugin:
+
+- `GITHUB_REPOSITORY` (format: `owner/repo`)
+- one token env var: `VERSIONARY_PR_TOKEN` or `GH_TOKEN` or `GITHUB_TOKEN`
+
+Token precedence is:
+
+- `VERSIONARY_PR_TOKEN` > `GH_TOKEN` > `GITHUB_TOKEN`
+
+Minimum GitHub token/repo permissions for Versionary-managed metadata:
+
+- release PR create/update flow: `contents: write`, `pull-requests: write`
+- release metadata flow (GitHub Release create/read): `contents: write`
+
+`review-mode` behavior:
+
+- `review`: `pnpm run run` prepares/updates the release branch and creates or
+  updates a release PR
+- `direct`: `pnpm run run` prepares/updates the release branch and skips review
+  request creation
+
+Concise GitHub Actions examples:
+
+```yaml
+# 1) Release PR / update flow (run on push to default branch)
+permissions:
+  contents: write
+  pull-requests: write
+
+steps:
+  - uses: actions/checkout@v6
+    with:
+      fetch-depth: 0
+      fetch-tags: true
+  - uses: pnpm/action-setup@v6
+  - uses: actions/setup-node@v6
+    with:
+      node-version-file: .nvmrc
+      cache: pnpm
+  - run: pnpm install --frozen-lockfile --ignore-scripts
+  - run: |
+      git config user.name "github-actions[bot]"
+      git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      pnpm run run
+    env:
+      GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+```
+
+```yaml
+# 2) Release publish flow after merge (release commit context)
+permissions:
+  contents: write
+
+steps:
+  - uses: actions/checkout@v6
+    with:
+      fetch-depth: 0
+      fetch-tags: true
+  - uses: pnpm/action-setup@v6
+  - uses: actions/setup-node@v6
+    with:
+      node-version-file: .nvmrc
+      cache: pnpm
+  - run: pnpm install --frozen-lockfile --ignore-scripts
+  - run: pnpm run run
+    env:
+      GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+```
+
 Package publication is intentionally out of scope in the current release flow.
 Use separate CI workflows for publishing after Versionary has prepared/tagged
 the release.
