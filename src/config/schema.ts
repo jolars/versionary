@@ -1,11 +1,44 @@
 import { z } from "zod";
 
-const artifactRuleSchema = z.object({
-  type: z.enum(["json", "toml", "yaml", "regex"]),
-  path: z.string().min(1),
-  jsonpath: z.string().optional(),
-  pattern: z.string().optional(),
-});
+const artifactRuleSchema = z
+  .object({
+    type: z.enum(["json", "toml", "yaml", "regex"]),
+    path: z.string().min(1),
+    jsonpath: z.string().optional(),
+    pattern: z.string().optional(),
+  })
+  .superRefine((value, ctx) => {
+    const needsJsonPath =
+      value.type === "json" || value.type === "toml" || value.type === "yaml";
+    if (needsJsonPath && !value.jsonpath) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${value.type} artifact rules require "jsonpath".`,
+        path: ["jsonpath"],
+      });
+    }
+    if (needsJsonPath && value.pattern) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${value.type} artifact rules do not support "pattern".`,
+        path: ["pattern"],
+      });
+    }
+    if (value.type === "regex" && !value.pattern) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'regex artifact rules require "pattern".',
+        path: ["pattern"],
+      });
+    }
+    if (value.type === "regex" && value.jsonpath) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'regex artifact rules do not support "jsonpath".',
+        path: ["jsonpath"],
+      });
+    }
+  });
 
 const packageSchema = z.object({
   "release-type": z.string().optional(),

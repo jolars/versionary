@@ -115,4 +115,44 @@ describe("config loading", () => {
       ],
     });
   });
+
+  it("validates artifact rules by type-specific required fields", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        packages: {
+          ".": {
+            "extra-files": [{ type: "json", path: "package.json" }],
+          },
+        },
+      }),
+      "utf8",
+    );
+    expect(() => loadConfig(dir)).toThrow(/json artifact rules require/i);
+
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        packages: {
+          ".": {
+            "extra-files": [
+              {
+                type: "regex",
+                path: "README.md",
+                jsonpath: "$.version",
+                pattern: "/v(\\d+\\.\\d+\\.\\d+)/",
+              },
+            ],
+          },
+        },
+      }),
+      "utf8",
+    );
+    expect(() => loadConfig(dir)).toThrow(
+      /regex artifact rules do not support/i,
+    );
+  });
 });

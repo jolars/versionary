@@ -29,4 +29,12 @@ describe("plugin capability helpers", () => {
     expect(plugins).toHaveLength(1);
     expect(plugins[0]?.name).toBe("github");
   });
+
+  it("returns empty list when no plugin has requested capability", () => {
+    const plugins = findPluginsByCapability(
+      [directPlugin],
+      "scm.releaseMetadata",
+    );
+    expect(plugins).toEqual([]);
+  });
 });

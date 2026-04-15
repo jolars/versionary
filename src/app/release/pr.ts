@@ -14,6 +14,7 @@ import { resolveVersionStrategy } from "../../domain/strategy/resolve.js";
 import type { ParsedCommit } from "../../infra/git/commits.js";
 import { findPluginsByCapability } from "../../plugins/capabilities.js";
 import { loadRuntimePlugins } from "../../plugins/runtime.js";
+import { applyConfiguredArtifactRules } from "./artifact-rules.js";
 import {
   getBaselineStatePath,
   type ReleaseTargetState,
@@ -109,6 +110,11 @@ export function prepareSimpleReleasePr(cwd = process.cwd()): {
     loaded.config,
     plan.nextVersion,
   );
+  const updatedArtifactFiles = applyConfiguredArtifactRules(
+    cwd,
+    loaded.config,
+    plan,
+  );
   const section = renderSimpleChangelog(plan);
   prependChangelog(cwd, plan.changelogFile, section);
 
@@ -119,7 +125,13 @@ export function prepareSimpleReleasePr(cwd = process.cwd()): {
     cwd,
     stdio: ["ignore", "pipe", "ignore"],
   });
-  const filesToAdd = [...new Set([...updatedVersionFiles, plan.changelogFile])];
+  const filesToAdd = [
+    ...new Set([
+      ...updatedVersionFiles,
+      ...updatedArtifactFiles,
+      plan.changelogFile,
+    ]),
+  ];
   execFileSync("git", ["add", ...filesToAdd], {
     cwd,
     stdio: ["ignore", "pipe", "ignore"],
