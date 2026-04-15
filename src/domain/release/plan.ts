@@ -3,10 +3,11 @@ import path from "node:path";
 import { readBaselineSha } from "../../app/release/state.js";
 import { loadConfig } from "../../config/load-config.js";
 import {
-  analyzeCommits,
+  analyzeParsedCommits,
+  applyRevertSuppression,
   type CommitInfo,
-  getCommitsForPath,
-  getCommitsSinceLastTag,
+  getParsedCommitsForPath,
+  getParsedCommitsSinceLastTag,
 } from "../../infra/git/commits.js";
 import { resolveVersionStrategy } from "../strategy/resolve.js";
 import { bumpVersion, type ReleaseType } from "./semver.js";
@@ -60,8 +61,13 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
   const hasPackages = configuredPackages.length > 0;
 
   if (!hasPackages) {
-    const commits = getCommitsSinceLastTag(cwd, baselineSha);
-    const releaseType = analyzeCommits(commits);
+    const parsedCommits = getParsedCommitsSinceLastTag(cwd, baselineSha);
+    const effectiveCommits = applyRevertSuppression(parsedCommits);
+    const commits: CommitInfo[] = effectiveCommits.map((commit) => ({
+      hash: commit.hash,
+      subject: commit.subject,
+    }));
+    const releaseType = analyzeParsedCommits(parsedCommits);
     const nextVersion = releaseType
       ? bumpVersion(currentVersion, releaseType)
       : null;
@@ -81,13 +87,18 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
 
   const packagePlans = configuredPackages
     .map((pkg) => {
-      const commits = getCommitsForPath(
+      const parsedCommits = getParsedCommitsForPath(
         cwd,
         baselineSha,
         pkg.path,
         pkg["exclude-paths"] ?? [],
       );
-      const releaseType = analyzeCommits(commits);
+      const effectiveCommits = applyRevertSuppression(parsedCommits);
+      const commits: CommitInfo[] = effectiveCommits.map((commit) => ({
+        hash: commit.hash,
+        subject: commit.subject,
+      }));
+      const releaseType = analyzeParsedCommits(parsedCommits);
       const nextVersion = releaseType
         ? bumpVersion(currentVersion, releaseType)
         : null;
@@ -96,13 +107,14 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
         releaseType,
         nextVersion,
         commits,
+        parsedCommits,
       };
     })
     .sort((a, b) => a.path.localeCompare(b.path));
 
   if (monorepoMode === "fixed") {
-    const fixedType = analyzeCommits(
-      packagePlans.flatMap((pkgPlan) => pkgPlan.commits),
+    const fixedType = analyzeParsedCommits(
+      packagePlans.flatMap((pkgPlan) => pkgPlan.parsedCommits),
     );
     const fixedNextVersion = fixedType
       ? bumpVersion(currentVersion, fixedType)
@@ -126,8 +138,8 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
     };
   }
 
-  const overallType = analyzeCommits(
-    packagePlans.flatMap((pkgPlan) => pkgPlan.commits),
+  const overallType = analyzeParsedCommits(
+    packagePlans.flatMap((pkgPlan) => pkgPlan.parsedCommits),
   );
   const overallNextVersion = overallType
     ? bumpVersion(currentVersion, overallType)

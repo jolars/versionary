@@ -89,9 +89,10 @@ a strategy model:
 - Release commit analysis currently follows conventional-commit-style defaults:
   - `feat` => `minor`
   - `fix|perf` => `patch`
-  - `!:` / `BREAKING CHANGE` => `major`
-  - `revert:`, `chore:`, and `refactor:` commits are ignored for release
-    triggering
+  - `!` / `BREAKING CHANGE` footer => `major` (any type)
+  - `revert:` commits do not directly trigger releases
+  - commits reverted within the analyzed release window are suppressed from
+    bump/changelog impact
 - `pr` command requires a clean tracked working tree (except lockfiles),
   creates/resets release branch, commits `chore(release): v*`, and writes
   baseline state.

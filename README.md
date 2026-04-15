@@ -94,6 +94,18 @@ For a quick trial, use:
   - `independent` computes package bumps per path
   - `fixed` computes one shared bump across configured package paths
 
+## Commit parsing and release analysis
+
+Release planning is based on Conventional Commit parsing semantics:
+
+- parses type/scope/description from commit headers
+- recognizes breaking changes from `!` and `BREAKING CHANGE` /
+  `BREAKING-CHANGE` footers
+- maps release impact as `feat => minor`, `fix|perf => patch`, breaking => major
+- treats `revert:` as non-releasable commits
+- suppresses commits that are reverted within the analyzed release window so they
+  do not affect bump/changelog output
+
 Commands:
 
 - `pnpm verify`

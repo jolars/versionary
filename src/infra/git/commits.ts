@@ -7,6 +7,20 @@ export interface CommitInfo {
   subject: string;
 }
 
+export interface ParsedCommit {
+  hash: string;
+  subject: string;
+  body: string;
+  fullMessage: string;
+  type: string | null;
+  scope: string | null;
+  description: string;
+  isBreaking: boolean;
+  isRevert: boolean;
+  footers: Array<{ token: string; value: string }>;
+  revertedShas: string[];
+}
+
 function getReleaseBranchExcludeArgs(cwd: string): string[] {
   const releaseBranchesRaw = execFileSync(
     "git",
@@ -100,6 +114,150 @@ function readGitLog(
     });
 }
 
+function readGitLogFull(
+  cwd: string,
+  range: string,
+  pathspecs: string[] = [],
+): ParsedCommit[] {
+  const recordSeparator = "\x1e";
+  const fieldSeparator = "\x1f";
+  const output = execFileSync(
+    "git",
+    [
+      "log",
+      range,
+      `--pretty=format:%H${fieldSeparator}%s${fieldSeparator}%b${recordSeparator}`,
+      "--",
+      ...pathspecs,
+    ],
+    {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    },
+  );
+
+  if (!output.trim()) {
+    return [];
+  }
+
+  return output
+    .split(recordSeparator)
+    .map((record) => record.trim())
+    .filter((record) => record.length > 0)
+    .map((record) => {
+      const [hash = "", subject = "", body = ""] = record.split(fieldSeparator);
+      return parseCommitMessage(hash, subject.trim(), body.trim());
+    });
+}
+
+function parseHeader(subject: string): {
+  type: string | null;
+  scope: string | null;
+  description: string;
+  isBreakingHeader: boolean;
+} {
+  const conventionalMatch = subject.match(
+    /^([a-z][a-z0-9-]*)(?:\(([^)]+)\))?(!)?:\s+(.+)$/iu,
+  );
+  if (!conventionalMatch) {
+    return {
+      type: null,
+      scope: null,
+      description: subject,
+      isBreakingHeader: false,
+    };
+  }
+
+  return {
+    type: conventionalMatch[1]?.toLowerCase() ?? null,
+    scope: conventionalMatch[2]?.trim() ?? null,
+    isBreakingHeader: conventionalMatch[3] === "!",
+    description: conventionalMatch[4]?.trim() ?? subject,
+  };
+}
+
+function parseFooters(body: string): Array<{ token: string; value: string }> {
+  if (!body) {
+    return [];
+  }
+
+  const lines = body.split("\n");
+  const footers: Array<{ token: string; value: string }> = [];
+  let current: { token: string; value: string } | null = null;
+
+  const pushCurrent = (): void => {
+    if (!current) {
+      return;
+    }
+    footers.push({
+      token: current.token,
+      value: current.value.trim(),
+    });
+    current = null;
+  };
+
+  for (const line of lines) {
+    const footerMatch = line.match(
+      /^(BREAKING CHANGE|BREAKING-CHANGE|[A-Za-z][A-Za-z0-9-]*)(?::\s+|\s+#)(.*)$/u,
+    );
+
+    if (footerMatch) {
+      pushCurrent();
+      current = {
+        token: footerMatch[1] ?? "",
+        value: footerMatch[2] ?? "",
+      };
+      continue;
+    }
+
+    if (current && line.trim().length > 0) {
+      current.value = `${current.value}\n${line}`;
+      continue;
+    }
+
+    pushCurrent();
+  }
+
+  pushCurrent();
+  return footers;
+}
+
+function extractRevertedShas(subject: string, body: string): string[] {
+  const full = `${subject}\n${body}`;
+  const matches = full.match(/\b[0-9a-f]{7,40}\b/giu) ?? [];
+  return [...new Set(matches.map((sha) => sha.toLowerCase()))];
+}
+
+function parseCommitMessage(
+  hash: string,
+  subject: string,
+  body: string,
+): ParsedCommit {
+  const header = parseHeader(subject);
+  const footers = parseFooters(body);
+  const hasBreakingFooter = footers.some((footer) =>
+    /^(BREAKING CHANGE|BREAKING-CHANGE)$/iu.test(footer.token),
+  );
+  const isRevert =
+    (header.type?.toLowerCase() ?? "") === "revert" ||
+    /^revert:\s/i.test(subject);
+
+  return {
+    hash,
+    subject,
+    body,
+    fullMessage: body ? `${subject}\n\n${body}` : subject,
+    type: header.type,
+    scope: header.scope,
+    description: header.description,
+    isBreaking: header.isBreakingHeader || hasBreakingFooter,
+    isRevert,
+    footers,
+    revertedShas: isRevert ? extractRevertedShas(subject, body) : [],
+  };
+}
+
 export function getCommitsSinceLastTag(
   cwd = process.cwd(),
   baselineSha?: string | null,
@@ -128,28 +286,61 @@ export function getCommitsForPath(
   return readGitLog(cwd, range, [normalizedPackagePath, ...excludes]);
 }
 
-export function inferReleaseTypeFromSubject(subject: string): ReleaseType {
-  if (/^revert:\s/i.test(subject)) {
+export function getParsedCommitsSinceLastTag(
+  cwd = process.cwd(),
+  baselineSha?: string | null,
+): ParsedCommit[] {
+  const range = resolveRange(cwd, baselineSha);
+  return readGitLogFull(cwd, range);
+}
+
+export function getParsedCommitsForPath(
+  cwd = process.cwd(),
+  baselineSha?: string | null,
+  packagePath = ".",
+  excludePaths: string[] = [],
+): ParsedCommit[] {
+  const range = resolveRange(cwd, baselineSha);
+  const normalizedPackagePath = packagePath === "." ? "." : packagePath;
+  const excludes = excludePaths.map((excludePath) => {
+    const combined =
+      normalizedPackagePath === "."
+        ? excludePath
+        : path.posix.join(normalizedPackagePath, excludePath);
+    return `:(exclude)${combined}`;
+  });
+  return readGitLogFull(cwd, range, [normalizedPackagePath, ...excludes]);
+}
+
+function inferReleaseTypeFromParsedCommit(commit: ParsedCommit): ReleaseType {
+  if (commit.isRevert) {
     return null;
   }
 
-  if (/^chore(\(.+\))?:\s/i.test(subject)) {
-    return null;
-  }
-
-  if (/!:/u.test(subject) || /BREAKING CHANGE/u.test(subject)) {
+  if (commit.isBreaking) {
     return "major";
   }
 
-  if (/^feat(\(.+\))?:\s/i.test(subject)) {
+  const type = commit.type?.toLowerCase() ?? "";
+  if (type === "feat") {
     return "minor";
   }
 
-  if (/^(fix|perf)(\(.+\))?:\s/i.test(subject)) {
+  if (type === "fix" || type === "perf") {
     return "patch";
   }
 
+  if (type === "chore") {
+    return null;
+  }
+
   return null;
+}
+
+export function inferReleaseTypeFromSubject(subject: string): ReleaseType {
+  return inferReleaseTypeFromParsedCommit(
+    parseCommitMessage("", subject.trim(), ""),
+  );
 }
 
 export function isReleasableCommit(subject: string): boolean {
@@ -175,4 +366,57 @@ export function analyzeCommits(commits: CommitInfo[]): ReleaseType {
   }
 
   return result;
+}
+
+export function applyRevertSuppression(
+  commits: ParsedCommit[],
+): ParsedCommit[] {
+  if (commits.length === 0) {
+    return commits;
+  }
+
+  const presentShas = new Set(
+    commits.map((commit) => commit.hash.toLowerCase()),
+  );
+  const reverted = new Set<string>();
+
+  for (const commit of commits) {
+    if (!commit.isRevert) {
+      continue;
+    }
+    for (const sha of commit.revertedShas) {
+      if (presentShas.has(sha)) {
+        reverted.add(sha);
+      }
+    }
+  }
+
+  return commits.filter((commit) => !reverted.has(commit.hash.toLowerCase()));
+}
+
+export function analyzeParsedCommits(commits: ParsedCommit[]): ReleaseType {
+  let result: ReleaseType = null;
+  const effectiveCommits = applyRevertSuppression(commits);
+
+  for (const commit of effectiveCommits) {
+    const type = inferReleaseTypeFromParsedCommit(commit);
+    if (type === "major") {
+      return "major";
+    }
+
+    if (type === "minor") {
+      result = "minor";
+      continue;
+    }
+
+    if (type === "patch" && result === null) {
+      result = "patch";
+    }
+  }
+
+  return result;
+}
+
+export function isReleasableParsedCommit(commit: ParsedCommit): boolean {
+  return inferReleaseTypeFromParsedCommit(commit) !== null;
 }
