@@ -13,7 +13,9 @@ export function resolveRepositoryWebBaseUrl(cwd: string): string | null {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();
-    const httpsMatch = remote.match(/^(?:https?:\/\/|git@)([^:/]+)[:/]([^/]+\/[^/]+?)(?:\.git)?$/u);
+    const httpsMatch = remote.match(
+      /^(?:https?:\/\/|git@)([^:/]+)[:/]([^/]+\/[^/]+?)(?:\.git)?$/u,
+    );
     if (!httpsMatch) {
       return null;
     }

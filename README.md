@@ -56,6 +56,17 @@ Current implementation focuses on:
 Planned/harder areas include deeper monorepo ergonomics, broader SCM coverage,
 and stronger failure recovery around release steps.
 
+## Architecture layout (current migration)
+
+The repository is moving to explicit layered modules:
+
+- `src/app/`: command-level application services and orchestration boundaries
+- `src/domain/`: release and strategy domain logic/contracts
+- `src/infra/`: platform integrations (SCM, git/runtime adapters)
+
+Legacy `src/simple/` has been removed. Remaining compatibility paths are
+`src/strategies` and `src/scm` while migration is finalized.
+
 Configuration is loaded from `versionary.jsonc` by default.
 
 Schema URL for editor support:

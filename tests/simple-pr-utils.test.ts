@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { isReleaseCommitMessage, renderSimpleReviewRequestBody, splitSafeDirtyFiles } from "../src/simple/pr.js";
+import {
+  isReleaseCommitMessage,
+  renderSimpleReviewRequestBody,
+  splitSafeDirtyFiles,
+} from "../src/app/release/pr.js";
 
 describe("release commit detection", () => {
   it("matches release commit pattern", () => {
@@ -14,13 +18,20 @@ describe("release commit detection", () => {
 
 describe("safe dirty file splitting", () => {
   it("ignores lockfiles but blocks source edits", () => {
-    const result = splitSafeDirtyFiles(["pnpm-lock.yaml", "src/cli/index.ts", "package-lock.json"]);
+    const result = splitSafeDirtyFiles([
+      "pnpm-lock.yaml",
+      "src/cli/index.ts",
+      "package-lock.json",
+    ]);
     expect(result.ignored).toEqual(["pnpm-lock.yaml", "package-lock.json"]);
     expect(result.blocking).toEqual(["src/cli/index.ts"]);
   });
 
   it("blocks unknown tracked files", () => {
-    const result = splitSafeDirtyFiles(["README.md", ".github/workflows/ci.yml"]);
+    const result = splitSafeDirtyFiles([
+      "README.md",
+      ".github/workflows/ci.yml",
+    ]);
     expect(result.ignored).toEqual([]);
     expect(result.blocking).toEqual(["README.md", ".github/workflows/ci.yml"]);
   });
@@ -50,9 +61,15 @@ describe("review request body rendering", () => {
     expect(body).toContain("### Breaking changes");
     expect(body).toContain("### Features");
     expect(body).toContain("### Fixes");
-    expect(body).toContain("- breaking API change ([`eeeeeee`](https://github.com/jolars/versionary/commit/eeeeeee3))");
-    expect(body).toContain("- **editors:** add awesome feature ([`ccccccc`](https://github.com/jolars/versionary/commit/ccccccc1))");
-    expect(body).toContain("- **lsp:** patch bug ([`ddddddd`](https://github.com/jolars/versionary/commit/ddddddd2))");
+    expect(body).toContain(
+      "- breaking API change ([`eeeeeee`](https://github.com/jolars/versionary/commit/eeeeeee3))",
+    );
+    expect(body).toContain(
+      "- **editors:** add awesome feature ([`ccccccc`](https://github.com/jolars/versionary/commit/ccccccc1))",
+    );
+    expect(body).toContain(
+      "- **lsp:** patch bug ([`ddddddd`](https://github.com/jolars/versionary/commit/ddddddd2))",
+    );
     expect(body).not.toContain("ci: tweak workflow");
     expect(body).not.toContain("chore: bump deps");
   });

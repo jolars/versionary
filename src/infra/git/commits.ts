@@ -1,6 +1,6 @@
-import path from "node:path";
 import { execFileSync } from "node:child_process";
-import type { ReleaseType } from "./semver.js";
+import path from "node:path";
+import type { ReleaseType } from "../../domain/release/semver.js";
 
 export interface CommitInfo {
   hash: string;
@@ -8,11 +8,15 @@ export interface CommitInfo {
 }
 
 function getReleaseBranchExcludeArgs(cwd: string): string[] {
-  const releaseBranchesRaw = execFileSync("git", ["branch", "--list", "--format", "%(refname:short)"], {
-    cwd,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "ignore"],
-  });
+  const releaseBranchesRaw = execFileSync(
+    "git",
+    ["branch", "--list", "--format", "%(refname:short)"],
+    {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    },
+  );
   const releaseBranches = releaseBranchesRaw
     .split("\n")
     .map((line) => line.trim())
@@ -24,7 +28,14 @@ function getReleaseBranchExcludeArgs(cwd: string): string[] {
 function getLatestReleaseTag(cwd: string): string {
   const excludeArgs = getReleaseBranchExcludeArgs(cwd);
   try {
-    const cmd = ["describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", ...excludeArgs];
+    const cmd = [
+      "describe",
+      "--tags",
+      "--abbrev=0",
+      "--match",
+      "v[0-9]*",
+      ...excludeArgs,
+    ];
     return execFileSync("git", cmd, {
       cwd,
       encoding: "utf8",
@@ -61,12 +72,20 @@ function resolveRange(cwd: string, baselineSha?: string | null): string {
   return latestTag ? `${latestTag}..HEAD` : "HEAD";
 }
 
-function readGitLog(cwd: string, range: string, pathspecs: string[] = []): CommitInfo[] {
-  const output = execFileSync("git", ["log", range, "--pretty=format:%H%x09%s", "--", ...pathspecs], {
-    cwd,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "ignore"],
-  });
+function readGitLog(
+  cwd: string,
+  range: string,
+  pathspecs: string[] = [],
+): CommitInfo[] {
+  const output = execFileSync(
+    "git",
+    ["log", range, "--pretty=format:%H%x09%s", "--", ...pathspecs],
+    {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    },
+  );
 
   if (!output.trim()) {
     return [];
@@ -81,7 +100,10 @@ function readGitLog(cwd: string, range: string, pathspecs: string[] = []): Commi
     });
 }
 
-export function getCommitsSinceLastTag(cwd = process.cwd(), baselineSha?: string | null): CommitInfo[] {
+export function getCommitsSinceLastTag(
+  cwd = process.cwd(),
+  baselineSha?: string | null,
+): CommitInfo[] {
   const range = resolveRange(cwd, baselineSha);
   return readGitLog(cwd, range);
 }

@@ -1,18 +1,18 @@
 #!/usr/bin/env node
 
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
-import { createSimplePlan } from "../simple/plan.js";
-import { renderSimpleChangelog } from "../simple/changelog.js";
 import {
   isReleaseCommitMessage,
   openOrUpdateSimpleReviewRequest,
   prepareSimpleReleasePr,
   pushReleaseBranch,
-} from "../simple/pr.js";
-import { runSimpleRelease } from "../simple/release.js";
-import { verifyProject } from "../verify/verify-project.js";
+} from "../app/release/pr.js";
+import { runSimpleRelease } from "../app/release/release.js";
+import { verifyProject } from "../app/release/verify.js";
+import { renderSimpleChangelog } from "../domain/release/changelog.js";
+import { createSimplePlan } from "../domain/release/plan.js";
 
 function printVerifyResult(): number {
   const result = verifyProject();
@@ -85,10 +85,16 @@ async function main(): Promise<number> {
     }
 
     const changelogPath = path.join(process.cwd(), plan.changelogFile);
-    const existing = fs.existsSync(changelogPath) ? fs.readFileSync(changelogPath, "utf8") : "";
+    const existing = fs.existsSync(changelogPath)
+      ? fs.readFileSync(changelogPath, "utf8")
+      : "";
     const heading = "# Changelog\n\n";
     const body = existing.replace(/^# Changelog\s*/u, "");
-    fs.writeFileSync(changelogPath, `${heading}${section}\n${body}`.trimEnd() + "\n", "utf8");
+    fs.writeFileSync(
+      changelogPath,
+      `${heading}${section}\n${body}`.trimEnd() + "\n",
+      "utf8",
+    );
     console.log(`Updated ${plan.changelogFile}`);
     return 0;
   }
@@ -117,7 +123,9 @@ async function main(): Promise<number> {
 
   console.log("Usage: versionary <command>");
   console.log("Commands:");
-  console.log("  run     Auto-dispatch release PR/update or release publish by context");
+  console.log(
+    "  run     Auto-dispatch release PR/update or release publish by context",
+  );
   console.log("  verify  Validate config and basic repository shape");
   console.log("  plan    Print release plan (simple mode)");
   console.log("  changelog [--write]  Print or write changelog section");

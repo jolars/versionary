@@ -1,14 +1,16 @@
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
 import { afterEach, describe, expect, it } from "vitest";
-import { createSimplePlan } from "../src/simple/plan.js";
+import { createSimplePlan } from "../src/domain/release/plan.js";
 
 const tempDirs: string[] = [];
 
 function makeTempDir(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "versionary-monorepo-test-"));
+  const dir = fs.mkdtempSync(
+    path.join(os.tmpdir(), "versionary-monorepo-test-"),
+  );
   tempDirs.push(dir);
   return dir;
 }
@@ -116,8 +118,12 @@ describe("simple monorepo planning", () => {
     const plan = createSimplePlan(cwd);
     expect(plan.releaseType).toBe("minor");
     expect(plan.nextVersion).toBe("2.1.0");
-    expect(plan.packages?.every((pkg) => pkg.releaseType === "minor")).toBe(true);
-    expect(plan.packages?.every((pkg) => pkg.nextVersion === "2.1.0")).toBe(true);
+    expect(plan.packages?.every((pkg) => pkg.releaseType === "minor")).toBe(
+      true,
+    );
+    expect(plan.packages?.every((pkg) => pkg.nextVersion === "2.1.0")).toBe(
+      true,
+    );
   });
 
   it("falls back to latest tag when bootstrap-sha is stale", () => {

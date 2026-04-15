@@ -1,7 +1,7 @@
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
-import { loadConfig } from "../config/load-config.js";
+import { loadConfig } from "../../config/load-config.js";
 
 interface SimpleStateFile {
   baselineSha?: string;
@@ -33,7 +33,9 @@ export function readBaselineSha(cwd = process.cwd()): string | null {
     return null;
   }
 
-  const parsed = JSON.parse(fs.readFileSync(filePath, "utf8")) as SimpleStateFile;
+  const parsed = JSON.parse(
+    fs.readFileSync(filePath, "utf8"),
+  ) as SimpleStateFile;
   return parsed.baselineSha ?? null;
 }
 

@@ -2,7 +2,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { parse as parseToml } from "@iarna/toml";
 import { parse as parseJsonc } from "jsonc-parser";
-import type { ConfigFileFormat, LoadedConfig, VersionaryConfig } from "../types/config.js";
+import type {
+  ConfigFileFormat,
+  LoadedConfig,
+  VersionaryConfig,
+} from "../types/config.js";
 import { configSchema } from "./schema.js";
 
 const SUPPORTED_FILES: Array<{ file: string; format: ConfigFileFormat }> = [
@@ -25,14 +29,18 @@ function parseConfig(raw: string, format: ConfigFileFormat): unknown {
     return parseToml(raw);
   }
 
-  throw new Error("JavaScript config loading is not implemented yet. Use JSONC/JSON/TOML for now.");
+  throw new Error(
+    "JavaScript config loading is not implemented yet. Use JSONC/JSON/TOML for now.",
+  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-export function findConfigFile(cwd: string): { path: string; format: ConfigFileFormat } | null {
+export function findConfigFile(
+  cwd: string,
+): { path: string; format: ConfigFileFormat } | null {
   for (const candidate of SUPPORTED_FILES) {
     const candidatePath = path.join(cwd, candidate.file);
     if (fs.existsSync(candidatePath)) {

@@ -53,7 +53,9 @@ describe("verifyProject", () => {
 
     const result = verifyProject(dir);
     expect(result.ok).toBe(false);
-    expect(result.checks.some((c) => c.name.includes("does-not-exist") && !c.ok)).toBe(true);
+    expect(
+      result.checks.some((c) => c.name.includes("does-not-exist") && !c.ok),
+    ).toBe(true);
   });
 
   it("fails when version file is missing", () => {
@@ -68,6 +70,8 @@ describe("verifyProject", () => {
 
     const result = verifyProject(dir);
     expect(result.ok).toBe(false);
-    expect(result.checks.some((c) => c.name.includes("version-file") && !c.ok)).toBe(true);
+    expect(
+      result.checks.some((c) => c.name.includes("version-file") && !c.ok),
+    ).toBe(true);
   });
 });

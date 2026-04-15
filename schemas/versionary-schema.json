@@ -3,19 +3,14 @@
   "$id": "https://raw.githubusercontent.com/jolars/versionary/main/schemas/versionary-schema.json",
   "title": "Versionary configuration",
   "type": "object",
-  "required": [
-    "version"
-  ],
+  "required": ["version"],
   "properties": {
     "version": {
       "const": 1
     },
     "review-mode": {
       "type": "string",
-      "enum": [
-        "direct",
-        "review"
-      ]
+      "enum": ["direct", "review"]
     },
     "version-file": {
       "type": "string"
@@ -34,10 +29,7 @@
     },
     "monorepo-mode": {
       "type": "string",
-      "enum": [
-        "independent",
-        "fixed"
-      ]
+      "enum": ["independent", "fixed"]
     },
     "bump-minor-pre-major": {
       "type": "boolean"
@@ -72,12 +64,7 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "enum": [
-                    "json",
-                    "toml",
-                    "yaml",
-                    "regex"
-                  ]
+                  "enum": ["json", "toml", "yaml", "regex"]
                 },
                 "path": {
                   "type": "string"
@@ -89,10 +76,7 @@
                   "type": "string"
                 }
               },
-              "required": [
-                "type",
-                "path"
-              ],
+              "required": ["type", "path"],
               "additionalProperties": true
             }
           }

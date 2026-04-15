@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { analyzeCommits, isReleasableCommit } from "../src/simple/git.js";
+import {
+  analyzeCommits,
+  isReleasableCommit,
+} from "../src/infra/git/commits.js";
 
 describe("simple commit analysis", () => {
   it("returns highest bump type", () => {
@@ -11,7 +14,9 @@ describe("simple commit analysis", () => {
   });
 
   it("ignores revert commits", () => {
-    const release = analyzeCommits([{ hash: "a", subject: "revert: feat: add thing" }]);
+    const release = analyzeCommits([
+      { hash: "a", subject: "revert: feat: add thing" },
+    ]);
     expect(release).toBeNull();
   });
 

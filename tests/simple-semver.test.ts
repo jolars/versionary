@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bumpVersion, parseVersion } from "../src/simple/semver.js";
+import { bumpVersion, parseVersion } from "../src/domain/release/semver.js";
 
 describe("simple semver", () => {
   it("parses x.y.z", () => {

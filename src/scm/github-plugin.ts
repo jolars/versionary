@@ -30,9 +30,14 @@ function getRepoFromEnv(): ParsedRepo {
 }
 
 function getGitHubToken(): string {
-  const token = process.env.VERSIONARY_PR_TOKEN ?? process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN;
+  const token =
+    process.env.VERSIONARY_PR_TOKEN ??
+    process.env.GH_TOKEN ??
+    process.env.GITHUB_TOKEN;
   if (!token) {
-    throw new Error("Missing GitHub token. Set VERSIONARY_PR_TOKEN, GH_TOKEN, or GITHUB_TOKEN.");
+    throw new Error(
+      "Missing GitHub token. Set VERSIONARY_PR_TOKEN, GH_TOKEN, or GITHUB_TOKEN.",
+    );
   }
   return token;
 }

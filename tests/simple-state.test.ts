@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { readBaselineSha, writeBaselineSha } from "../src/simple/state.js";
+import { readBaselineSha, writeBaselineSha } from "../src/app/release/state.js";
 
 const tempDirs: string[] = [];
 
@@ -24,13 +24,21 @@ afterEach(() => {
 describe("simple baseline state", () => {
   it("reads null when state file missing", () => {
     const dir = makeTempDir();
-    fs.writeFileSync(path.join(dir, "versionary.json"), JSON.stringify({ version: 1 }), "utf8");
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({ version: 1 }),
+      "utf8",
+    );
     expect(readBaselineSha(dir)).toBeNull();
   });
 
   it("writes and reads baseline sha", () => {
     const dir = makeTempDir();
-    fs.writeFileSync(path.join(dir, "versionary.json"), JSON.stringify({ version: 1 }), "utf8");
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({ version: 1 }),
+      "utf8",
+    );
     writeBaselineSha(dir, "abc123");
     expect(readBaselineSha(dir)).toBe("abc123");
     const manifestPath = path.join(dir, ".versionary-manifest.json");

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { renderSimpleChangelog } from "../src/simple/changelog.js";
-import type { SimplePlan } from "../src/simple/plan.js";
+import { renderSimpleChangelog } from "../src/domain/release/changelog.js";
+import type { SimplePlan } from "../src/domain/release/plan.js";
 
 function makePlan(): SimplePlan {
   return {
@@ -39,8 +39,14 @@ describe("simple changelog rendering", () => {
     expect(changelog).toContain("fix: patch bug");
     expect(changelog).not.toContain("ci: update workflow");
     expect(changelog).not.toContain("chore: bump deps");
-    expect(changelog).toContain("## [0.2.0](https://github.com/jolars/versionary/compare/v0.1.0...v0.2.0)");
-    expect(changelog).toContain("[`3333333`](https://github.com/jolars/versionary/commit/3333333)");
-    expect(changelog).toContain("[`4444444`](https://github.com/jolars/versionary/commit/4444444)");
+    expect(changelog).toContain(
+      "## [0.2.0](https://github.com/jolars/versionary/compare/v0.1.0...v0.2.0)",
+    );
+    expect(changelog).toContain(
+      "[`3333333`](https://github.com/jolars/versionary/commit/3333333)",
+    );
+    expect(changelog).toContain(
+      "[`4444444`](https://github.com/jolars/versionary/commit/4444444)",
+    );
   });
 });

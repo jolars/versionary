@@ -13,6 +13,8 @@ workflows.
 - [ ] Improve error surfaces with actionable remediation messages per failed
       step.
 - [ ] Add integration tests for failed SCM operations and rerun behavior.
+- [ ] Harden semantic version computation around the semver and conventional
+      commits specs.
 
 ## Commit analysis and SemVer behavior
 

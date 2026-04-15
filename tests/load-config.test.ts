@@ -26,10 +26,14 @@ describe("config loading", () => {
     const dir = makeTempDir();
     fs.writeFileSync(
       path.join(dir, "versionary.jsonc"),
-      "{\n  // comment\n  \"version\": 1\n}\n",
+      '{\n  // comment\n  "version": 1\n}\n',
       "utf8",
     );
-    fs.writeFileSync(path.join(dir, "versionary.config.toml"), "version = 1\n", "utf8");
+    fs.writeFileSync(
+      path.join(dir, "versionary.config.toml"),
+      "version = 1\n",
+      "utf8",
+    );
 
     const found = findConfigFile(dir);
     expect(found?.format).toBe("jsonc");
@@ -40,7 +44,11 @@ describe("config loading", () => {
 
   it("loads TOML config", () => {
     const dir = makeTempDir();
-    fs.writeFileSync(path.join(dir, "versionary.toml"), "version = 1\n", "utf8");
+    fs.writeFileSync(
+      path.join(dir, "versionary.toml"),
+      "version = 1\n",
+      "utf8",
+    );
 
     const loaded = loadConfig(dir);
     expect(loaded.format).toBe("toml");
@@ -96,7 +104,9 @@ describe("config loading", () => {
           "editors/zed": {
             "release-type": "rust",
             "package-name": "panache-zed",
-            "extra-files": [{ type: "toml", path: "extension.toml", jsonpath: "$.version" }],
+            "extra-files": [
+              { type: "toml", path: "extension.toml", jsonpath: "$.version" },
+            ],
           },
         },
       }),
@@ -111,7 +121,9 @@ describe("config loading", () => {
     expect(loaded.config.packages?.["editors/zed"]).toEqual({
       "release-type": "rust",
       "package-name": "panache-zed",
-      "extra-files": [{ type: "toml", path: "extension.toml", jsonpath: "$.version" }],
+      "extra-files": [
+        { type: "toml", path: "extension.toml", jsonpath: "$.version" },
+      ],
     });
   });
 });

@@ -1,10 +1,15 @@
 import fs from "node:fs";
 import path from "node:path";
-import { loadConfig } from "../config/load-config.js";
-import { resolveVersionStrategy } from "../strategies/resolve.js";
-import { analyzeCommits, getCommitsForPath, getCommitsSinceLastTag, type CommitInfo } from "./git.js";
+import { readBaselineSha } from "../../app/release/state.js";
+import { loadConfig } from "../../config/load-config.js";
+import {
+  analyzeCommits,
+  type CommitInfo,
+  getCommitsForPath,
+  getCommitsSinceLastTag,
+} from "../../infra/git/commits.js";
+import { resolveVersionStrategy } from "../strategy/resolve.js";
 import { bumpVersion, type ReleaseType } from "./semver.js";
-import { readBaselineSha } from "./state.js";
 
 export interface SimplePlan {
   mode: "simple";
@@ -24,7 +29,9 @@ export interface SimplePlan {
   }>;
 }
 
-function getMode(configMode?: "independent" | "fixed"): "independent" | "fixed" {
+function getMode(
+  configMode?: "independent" | "fixed",
+): "independent" | "fixed" {
   return configMode ?? "independent";
 }
 
@@ -33,25 +40,31 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
   const strategy = resolveVersionStrategy(loaded.config);
   const versionFile = strategy.getVersionFile(loaded.config);
   const changelogFile = loaded.config["changelog-file"] ?? "CHANGELOG.md";
-  const releaseBranchPrefix = loaded.config["release-branch"] ?? "versionary/release";
-  const baselineSha = readBaselineSha(cwd) ?? loaded.config["bootstrap-sha"] ?? null;
+  const releaseBranchPrefix =
+    loaded.config["release-branch"] ?? "versionary/release";
+  const baselineSha =
+    readBaselineSha(cwd) ?? loaded.config["bootstrap-sha"] ?? null;
   const versionPath = path.join(cwd, versionFile);
   if (!fs.existsSync(versionPath)) {
     throw new Error(`Versionary requires ${versionFile} to exist.`);
   }
 
   const currentVersion = strategy.readVersion(cwd, loaded.config);
-  const configuredPackages = Object.entries(loaded.config.packages ?? {}).map(([pkgPath, cfg]) => ({
-    path: pkgPath,
-    ...cfg,
-  }));
+  const configuredPackages = Object.entries(loaded.config.packages ?? {}).map(
+    ([pkgPath, cfg]) => ({
+      path: pkgPath,
+      ...cfg,
+    }),
+  );
   const monorepoMode = getMode(loaded.config["monorepo-mode"]);
   const hasPackages = configuredPackages.length > 0;
 
   if (!hasPackages) {
     const commits = getCommitsSinceLastTag(cwd, baselineSha);
     const releaseType = analyzeCommits(commits);
-    const nextVersion = releaseType ? bumpVersion(currentVersion, releaseType) : null;
+    const nextVersion = releaseType
+      ? bumpVersion(currentVersion, releaseType)
+      : null;
 
     return {
       mode: "simple",
@@ -68,9 +81,16 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
 
   const packagePlans = configuredPackages
     .map((pkg) => {
-      const commits = getCommitsForPath(cwd, baselineSha, pkg.path, pkg["exclude-paths"] ?? []);
+      const commits = getCommitsForPath(
+        cwd,
+        baselineSha,
+        pkg.path,
+        pkg["exclude-paths"] ?? [],
+      );
       const releaseType = analyzeCommits(commits);
-      const nextVersion = releaseType ? bumpVersion(currentVersion, releaseType) : null;
+      const nextVersion = releaseType
+        ? bumpVersion(currentVersion, releaseType)
+        : null;
       return {
         path: pkg.path,
         releaseType,
@@ -81,8 +101,12 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
     .sort((a, b) => a.path.localeCompare(b.path));
 
   if (monorepoMode === "fixed") {
-    const fixedType = analyzeCommits(packagePlans.flatMap((pkgPlan) => pkgPlan.commits));
-    const fixedNextVersion = fixedType ? bumpVersion(currentVersion, fixedType) : null;
+    const fixedType = analyzeCommits(
+      packagePlans.flatMap((pkgPlan) => pkgPlan.commits),
+    );
+    const fixedNextVersion = fixedType
+      ? bumpVersion(currentVersion, fixedType)
+      : null;
     const adjusted = packagePlans.map((pkgPlan) => ({
       ...pkgPlan,
       releaseType: fixedType,
@@ -102,8 +126,12 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
     };
   }
 
-  const overallType = analyzeCommits(packagePlans.flatMap((pkgPlan) => pkgPlan.commits));
-  const overallNextVersion = overallType ? bumpVersion(currentVersion, overallType) : null;
+  const overallType = analyzeCommits(
+    packagePlans.flatMap((pkgPlan) => pkgPlan.commits),
+  );
+  const overallNextVersion = overallType
+    ? bumpVersion(currentVersion, overallType)
+    : null;
 
   return {
     mode: "simple",

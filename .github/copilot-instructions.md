@@ -58,17 +58,20 @@ a strategy model:
 
 - `src/cli/index.ts`: command router for `run`, `verify`, `plan`, `changelog`,
   `pr`, `release`
+- `src/app/release/`: application-layer release modules (`pr`, `release`,
+  `verify`, `state`)
+- `src/domain/strategy/`: strategy contracts + implementations (`simple`,
+  `node`) and resolver
+- `src/domain/release/`: release-domain modules (plan/changelog/semver)
+- `src/infra/git/`: git commit/range analysis and repository URL resolution
+- `src/infra/scm/`: SCM integration boundary (`github` plugin + runtime loader)
 - `src/config/`: config discovery/parsing/validation
   - `load-config.ts` loads `versionary.jsonc` (preferred) plus
     `versionary.{json,toml}` and compatibility `versionary.config.*` fallbacks
   - `schema.ts` validates config via `zod`
-- `src/strategies/`: version update strategies
-  - `simple.ts`: updates `version-file` only
-  - `node.ts`: updates `version-file` and `package.json` version
-- `src/simple/`: release engine for commit analysis, plan/changelog generation,
-  PR prep, baseline state, and release metadata publishing
-- `src/plugins/` and `src/scm/`: runtime plugin loading and built-in GitHub
-  plugin capabilities
+- `src/strategies/` and `src/scm/`: compatibility-layer exports during migration
+  to the app/domain/infra layout (`src/simple/` has been removed)
+- `src/plugins/`: plugin capability helpers + compatibility runtime export
 - `src/verify/verify-project.ts`: validates config loading, version file
   presence, and configured package paths
 

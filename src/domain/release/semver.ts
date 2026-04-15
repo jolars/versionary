@@ -9,7 +9,9 @@ export interface ParsedVersion {
 export function parseVersion(version: string): ParsedVersion {
   const match = version.trim().match(/^(\d+)\.(\d+)\.(\d+)$/);
   if (!match) {
-    throw new Error(`Invalid version in version file: "${version}". Expected x.y.z`);
+    throw new Error(
+      `Invalid version in version file: "${version}". Expected x.y.z`,
+    );
   }
 
   return {
@@ -19,7 +21,10 @@ export function parseVersion(version: string): ParsedVersion {
   };
 }
 
-export function bumpVersion(current: string, releaseType: Exclude<ReleaseType, null>): string {
+export function bumpVersion(
+  current: string,
+  releaseType: Exclude<ReleaseType, null>,
+): string {
   const parsed = parseVersion(current);
   if (releaseType === "major") {
     return `${parsed.major + 1}.0.0`;

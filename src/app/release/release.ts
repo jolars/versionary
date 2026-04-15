@@ -1,10 +1,10 @@
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
-import { loadConfig } from "../config/load-config.js";
-import { findPluginsByCapability } from "../plugins/capabilities.js";
-import { loadRuntimePlugins } from "../plugins/runtime.js";
-import { resolveVersionStrategy } from "../strategies/resolve.js";
+import { loadConfig } from "../../config/load-config.js";
+import { resolveVersionStrategy } from "../../domain/strategy/resolve.js";
+import { findPluginsByCapability } from "../../plugins/capabilities.js";
+import { loadRuntimePlugins } from "../../plugins/runtime.js";
 import { isReleaseCommitMessage } from "./pr.js";
 
 function getHeadCommitSubject(cwd: string): string {
@@ -25,11 +25,21 @@ function createTagIfMissing(cwd: string, tag: string): void {
     return;
   }
 
-  execFileSync("git", ["tag", tag], { cwd, stdio: ["ignore", "pipe", "ignore"] });
-  execFileSync("git", ["push", "origin", tag], { cwd, stdio: ["ignore", "pipe", "ignore"] });
+  execFileSync("git", ["tag", tag], {
+    cwd,
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  execFileSync("git", ["push", "origin", tag], {
+    cwd,
+    stdio: ["ignore", "pipe", "ignore"],
+  });
 }
 
-function readReleaseNotes(cwd: string, version: string, changelogFile: string): string {
+function readReleaseNotes(
+  cwd: string,
+  version: string,
+  changelogFile: string,
+): string {
   const changelogPath = path.join(cwd, changelogFile);
   if (!fs.existsSync(changelogPath)) {
     return `Automated release for v${version}`;
@@ -37,7 +47,10 @@ function readReleaseNotes(cwd: string, version: string, changelogFile: string): 
 
   const content = fs.readFileSync(changelogPath, "utf8");
   const lines = content.split("\n");
-  const start = lines.findIndex((line) => line.startsWith(`## ${version} -`) || line.startsWith(`## [${version}](`));
+  const start = lines.findIndex(
+    (line) =>
+      line.startsWith(`## ${version} -`) || line.startsWith(`## [${version}](`),
+  );
   if (start < 0) {
     return `Automated release for v${version}`;
   }
@@ -50,7 +63,10 @@ function readReleaseNotes(cwd: string, version: string, changelogFile: string): 
     }
   }
 
-  const notes = lines.slice(start + 1, end).join("\n").trim();
+  const notes = lines
+    .slice(start + 1, end)
+    .join("\n")
+    .trim();
   return notes.length > 0 ? notes : `Automated release for v${version}`;
 }
 
@@ -62,7 +78,6 @@ export async function runSimpleRelease(cwd = process.cwd()): Promise<string> {
 
   const loaded = loadConfig(cwd);
   const strategy = resolveVersionStrategy(loaded.config);
-  const versionFile = strategy.getVersionFile(loaded.config);
   const changelogFile = loaded.config["changelog-file"] ?? "CHANGELOG.md";
   const version = strategy.readVersion(cwd, loaded.config);
   const tag = `v${version}`;
@@ -76,7 +91,9 @@ export async function runSimpleRelease(cwd = process.cwd()): Promise<string> {
 
   const plugin = scmPlugins[0];
   if (!plugin?.createReleaseMetadata) {
-    throw new Error(`Plugin "${plugin?.name ?? "unknown"}" does not implement createReleaseMetadata.`);
+    throw new Error(
+      `Plugin "${plugin?.name ?? "unknown"}" does not implement createReleaseMetadata.`,
+    );
   }
 
   const notes = readReleaseNotes(cwd, version, changelogFile);

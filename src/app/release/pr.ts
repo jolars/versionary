@@ -1,15 +1,17 @@
-import fs from "node:fs";
-import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { loadConfig } from "../config/load-config.js";
-import { findPluginsByCapability } from "../plugins/capabilities.js";
-import { loadRuntimePlugins } from "../plugins/runtime.js";
-import { resolveVersionStrategy } from "../strategies/resolve.js";
-import { createSimplePlan } from "./plan.js";
-import type { CommitInfo } from "./git.js";
-import { inferReleaseTypeFromSubject } from "./git.js";
-import { resolveRepositoryWebBaseUrl } from "./repo-url.js";
-import { prependChangelog, renderSimpleChangelog } from "./changelog.js";
+import path from "node:path";
+import { loadConfig } from "../../config/load-config.js";
+import {
+  prependChangelog,
+  renderSimpleChangelog,
+} from "../../domain/release/changelog.js";
+import { createSimplePlan } from "../../domain/release/plan.js";
+import { resolveVersionStrategy } from "../../domain/strategy/resolve.js";
+import type { CommitInfo } from "../../infra/git/commits.js";
+import { inferReleaseTypeFromSubject } from "../../infra/git/commits.js";
+import { resolveRepositoryWebBaseUrl } from "../../infra/git/repo-url.js";
+import { findPluginsByCapability } from "../../plugins/capabilities.js";
+import { loadRuntimePlugins } from "../../plugins/runtime.js";
 import { getBaselineStatePath, writeBaselineSha } from "./state.js";
 
 const SAFE_DIRTY_FILES = new Set([
@@ -21,11 +23,15 @@ const SAFE_DIRTY_FILES = new Set([
 ]);
 
 function listTrackedDirtyFiles(cwd: string): string[] {
-  const status = execFileSync("git", ["status", "--porcelain", "--untracked-files=no"], {
-    cwd,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "ignore"],
-  });
+  const status = execFileSync(
+    "git",
+    ["status", "--porcelain", "--untracked-files=no"],
+    {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    },
+  );
 
   return status
     .split("\n")
@@ -39,7 +45,10 @@ function listTrackedDirtyFiles(cwd: string): string[] {
     .filter((filePath) => filePath.length > 0);
 }
 
-export function splitSafeDirtyFiles(files: string[]): { ignored: string[]; blocking: string[] } {
+export function splitSafeDirtyFiles(files: string[]): {
+  ignored: string[];
+  blocking: string[];
+} {
   const ignored: string[] = [];
   const blocking: string[] = [];
   for (const file of files) {
@@ -64,7 +73,9 @@ function ensureCleanWorktree(cwd: string): void {
   }
 
   if (ignored.length > 0) {
-    console.warn(`Ignoring safe tracked changes before versionary pr:\n${ignored.join("\n")}`);
+    console.warn(
+      `Ignoring safe tracked changes before versionary pr:\n${ignored.join("\n")}`,
+    );
   }
 }
 
@@ -78,31 +89,46 @@ export function prepareSimpleReleasePr(cwd = process.cwd()): {
   const loaded = loadConfig(cwd);
   const strategy = resolveVersionStrategy(loaded.config);
   if (!plan.nextVersion) {
-    throw new Error("No releasable commits found. Nothing to open a release PR for.");
+    throw new Error(
+      "No releasable commits found. Nothing to open a release PR for.",
+    );
   }
 
   ensureCleanWorktree(cwd);
 
-  const updatedVersionFiles = strategy.writeVersion(cwd, loaded.config, plan.nextVersion);
+  const updatedVersionFiles = strategy.writeVersion(
+    cwd,
+    loaded.config,
+    plan.nextVersion,
+  );
   const section = renderSimpleChangelog(plan);
   prependChangelog(cwd, plan.changelogFile, section);
 
   const branch = plan.releaseBranchPrefix;
   const title = `chore(release): v${plan.nextVersion}`;
 
-  execFileSync("git", ["checkout", "-B", branch], { cwd, stdio: ["ignore", "pipe", "ignore"] });
+  execFileSync("git", ["checkout", "-B", branch], {
+    cwd,
+    stdio: ["ignore", "pipe", "ignore"],
+  });
   const filesToAdd = [...new Set([...updatedVersionFiles, plan.changelogFile])];
   execFileSync("git", ["add", ...filesToAdd], {
     cwd,
     stdio: ["ignore", "pipe", "ignore"],
   });
-  execFileSync("git", ["commit", "-m", title], { cwd, stdio: ["ignore", "pipe", "ignore"] });
+  execFileSync("git", ["commit", "-m", title], {
+    cwd,
+    stdio: ["ignore", "pipe", "ignore"],
+  });
   writeBaselineSha(cwd);
   execFileSync("git", ["add", getBaselineStatePath(cwd)], {
     cwd,
     stdio: ["ignore", "pipe", "ignore"],
   });
-  execFileSync("git", ["commit", "--amend", "--no-edit"], { cwd, stdio: ["ignore", "pipe", "ignore"] });
+  execFileSync("git", ["commit", "--amend", "--no-edit"], {
+    cwd,
+    stdio: ["ignore", "pipe", "ignore"],
+  });
 
   return {
     branch,
@@ -112,7 +138,10 @@ export function prepareSimpleReleasePr(cwd = process.cwd()): {
   };
 }
 
-function formatCommitMessage(subject: string): { label: string; message: string } {
+function formatCommitMessage(subject: string): {
+  label: string;
+  message: string;
+} {
   const conventional = subject.match(/^[a-z]+(?:\(([^)]+)\))?!?:\s+(.+)$/iu);
   if (!conventional) {
     return { label: "", message: subject };
@@ -124,7 +153,11 @@ function formatCommitMessage(subject: string): { label: string; message: string 
   return { label, message };
 }
 
-export function renderSimpleReviewRequestBody(version: string, commits: CommitInfo[], cwd = process.cwd()): string {
+export function renderSimpleReviewRequestBody(
+  version: string,
+  commits: CommitInfo[],
+  cwd = process.cwd(),
+): string {
   const breaking: string[] = [];
   const features: string[] = [];
   const fixes: string[] = [];
@@ -134,7 +167,9 @@ export function renderSimpleReviewRequestBody(version: string, commits: CommitIn
     const subject = commit.subject;
     const { label, message } = formatCommitMessage(subject);
     const hash = commit.hash.slice(0, 7);
-    const hashLabel = commitBaseUrl ? `[\`${hash}\`](${commitBaseUrl}/commit/${commit.hash})` : `\`${hash}\``;
+    const hashLabel = commitBaseUrl
+      ? `[\`${hash}\`](${commitBaseUrl}/commit/${commit.hash})`
+      : `\`${hash}\``;
     const type = inferReleaseTypeFromSubject(subject);
     if (!type) {
       continue;
@@ -195,12 +230,16 @@ export async function openOrUpdateSimpleReviewRequest(
   const plugins = loadRuntimePlugins();
   const scmPlugins = findPluginsByCapability(plugins, "scm.reviewRequest");
   if (scmPlugins.length === 0) {
-    throw new Error("review-mode is review but no scm.reviewRequest plugin is available.");
+    throw new Error(
+      "review-mode is review but no scm.reviewRequest plugin is available.",
+    );
   }
 
   const plugin = scmPlugins[0];
   if (!plugin?.createOrUpdateReviewRequest) {
-    throw new Error(`Plugin "${plugin?.name ?? "unknown"}" does not implement createOrUpdateReviewRequest.`);
+    throw new Error(
+      `Plugin "${plugin?.name ?? "unknown"}" does not implement createOrUpdateReviewRequest.`,
+    );
   }
 
   const result = await plugin.createOrUpdateReviewRequest(

@@ -1,8 +1,1 @@
-import type { VersionaryConfig } from "../types/config.js";
-
-export interface VersionStrategy {
-  name: "simple" | "node";
-  getVersionFile(config: VersionaryConfig): string;
-  readVersion(cwd: string, config: VersionaryConfig): string;
-  writeVersion(cwd: string, config: VersionaryConfig, version: string): string[];
-}
+export type { VersionStrategy } from "../domain/strategy/types.js";

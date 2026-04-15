@@ -1,14 +1,16 @@
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
 import { afterEach, describe, expect, it } from "vitest";
-import { prepareSimpleReleasePr } from "../src/simple/pr.js";
+import { prepareSimpleReleasePr } from "../src/app/release/pr.js";
 
 const tempDirs: string[] = [];
 
 function makeTempDir(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "versionary-pr-package-test-"));
+  const dir = fs.mkdtempSync(
+    path.join(os.tmpdir(), "versionary-pr-package-test-"),
+  );
   tempDirs.push(dir);
   return dir;
 }
@@ -48,7 +50,11 @@ describe("release PR package version update", () => {
     write(
       cwd,
       "package.json",
-      JSON.stringify({ name: "demo", version: "1.0.0", private: true }, null, 2) + "\n",
+      JSON.stringify(
+        { name: "demo", version: "1.0.0", private: true },
+        null,
+        2,
+      ) + "\n",
     );
     write(
       cwd,
@@ -73,7 +79,9 @@ describe("release PR package version update", () => {
     const result = prepareSimpleReleasePr(cwd);
     expect(result.version).toBe("1.1.0");
 
-    const pkg = JSON.parse(fs.readFileSync(path.join(cwd, "package.json"), "utf8")) as { version: string };
+    const pkg = JSON.parse(
+      fs.readFileSync(path.join(cwd, "package.json"), "utf8"),
+    ) as { version: string };
     expect(pkg.version).toBe("1.1.0");
   });
 
@@ -88,7 +96,11 @@ describe("release PR package version update", () => {
     write(
       cwd,
       "package.json",
-      JSON.stringify({ name: "demo", version: "1.0.0", private: true }, null, 2) + "\n",
+      JSON.stringify(
+        { name: "demo", version: "1.0.0", private: true },
+        null,
+        2,
+      ) + "\n",
     );
     write(
       cwd,
@@ -112,7 +124,9 @@ describe("release PR package version update", () => {
     const result = prepareSimpleReleasePr(cwd);
     expect(result.version).toBe("1.1.0");
 
-    const pkg = JSON.parse(fs.readFileSync(path.join(cwd, "package.json"), "utf8")) as { version: string };
+    const pkg = JSON.parse(
+      fs.readFileSync(path.join(cwd, "package.json"), "utf8"),
+    ) as { version: string };
     expect(pkg.version).toBe("1.0.0");
   });
 });
