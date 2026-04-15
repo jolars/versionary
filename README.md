@@ -261,6 +261,11 @@ Action outputs:
 - `tag_names`: JSON array of published tags
 - `review_url`: review request URL when PR flow runs
 
+For GitHub Action consumers, publish immutable tags (for example `v1.2.3`) and
+maintain a moving major tag (`v1`, `v2`, ...). A small release-triggered
+workflow should update `v<major>` to the latest release tag so `uses:
+jolars/versionary@v1` stays current without breaking major compatibility.
+
 Package publication is intentionally out of scope in the current release flow.
 Use separate CI workflows for publishing after Versionary has prepared/tagged
 the release.
