@@ -18,11 +18,11 @@ workflows.
 
 ## Commit analysis and SemVer behavior
 
-- [ ] Improve revert handling so reverted features/fixes do not trigger
+- [x] Improve revert handling so reverted features/fixes do not trigger
       incorrect bumps.
-- [ ] Add first-class pre-1.0.0 behavior controls (including conventional-commit
+- [x] Add first-class pre-1.0.0 behavior controls (including conventional-commit
       expectations).
-- [ ] Add tests for edge-case commit parsing across scopes, breaking markers,
+- [x] Add tests for edge-case commit parsing across scopes, breaking markers,
       and multi-line bodies.
 
 ## Trunk-based development support
@@ -35,11 +35,11 @@ workflows.
 
 ## Monorepo ergonomics
 
-- [ ] Expand `packages` path handling and exclusion semantics for large
+- [x] Expand `packages` path handling and exclusion semantics for large
       monorepos.
-- [ ] Improve fixed vs independent mode UX and diagnostics.
+- [x] Improve fixed vs independent mode UX and diagnostics.
 - [ ] Add fixtures for Rust cargo workspaces and mixed-language repos.
-- [ ] Support clearer per-package release previews in `plan` output.
+- [x] Support clearer per-package release previews in `plan` output.
 
 ## Plugin and extension model
 
@@ -77,6 +77,6 @@ workflows.
 ## Short-term priority (suggested)
 
 1. SCM failure recovery and idempotency.
-2. Revert + pre-1.0.0 behavior correctness.
-3. Monorepo/cargo workspace fixtures and tests.
-4. GitHub integration hardening and docs/examples.
+2. GitHub integration hardening and docs/examples.
+3. Monorepo cargo-workspace and mixed-language fixtures.
+4. CLI machine-readable output + dry-run guarantees.
