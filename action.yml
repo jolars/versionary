@@ -1,6 +1,9 @@
 name: Versionary Action
 description: Run Versionary release orchestration with machine-readable outputs
 author: Johan Larsson
+branding:
+  icon: git-branch
+  color: gray-dark
 inputs:
   github-token:
     description: GitHub token used by Versionary SCM integration
