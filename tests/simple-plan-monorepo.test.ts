@@ -199,4 +199,46 @@ describe("simple monorepo planning", () => {
     expect(optedInPlan.releaseType).toBe("major");
     expect(optedInPlan.nextVersion).toBe("1.0.0");
   });
+
+  it("respects package exclude-paths when collecting commits", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "version.txt", "1.0.0\n");
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "monorepo-mode": "independent",
+        packages: {
+          "packages/a": {
+            "exclude-paths": ["generated"],
+          },
+        },
+      }),
+    );
+    write(cwd, "packages/a/index.ts", "export const a = 1;\n");
+    write(cwd, "packages/a/generated/data.json", '{ "ok": true }\n');
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v1.0.0");
+
+    write(cwd, "packages/a/generated/data.json", '{ "ok": false }\n');
+    git(cwd, "add", "packages/a/generated/data.json");
+    git(cwd, "commit", "-m", "feat: generated update");
+
+    write(cwd, "packages/a/index.ts", "export const a = 2;\n");
+    git(cwd, "add", "packages/a/index.ts");
+    git(cwd, "commit", "-m", "fix: package source update");
+
+    const plan = createSimplePlan(cwd);
+    const packageA = plan.packages?.find((pkg) => pkg.path === "packages/a");
+    expect(packageA?.releaseType).toBe("patch");
+    expect(packageA?.commits.map((commit) => commit.subject)).toEqual([
+      "fix: package source update",
+    ]);
+  });
 });

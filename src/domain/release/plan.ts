@@ -25,6 +25,7 @@ export interface SimplePlan {
   packages?: Array<{
     path: string;
     releaseType: ReleaseType;
+    currentVersion: string;
     nextVersion: string | null;
     commits: ParsedCommit[];
   }>;
@@ -100,6 +101,7 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
       return {
         path: pkg.path,
         releaseType,
+        currentVersion,
         nextVersion,
         commits,
         parsedCommits,

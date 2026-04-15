@@ -6,6 +6,7 @@ import { resolveVersionStrategy } from "../../domain/strategy/resolve.js";
 import { findPluginsByCapability } from "../../plugins/capabilities.js";
 import { loadRuntimePlugins } from "../../plugins/runtime.js";
 import { isReleaseCommitMessage } from "./pr.js";
+import { readReleaseTargets } from "./state.js";
 
 function getHeadCommitSubject(cwd: string): string {
   return execFileSync("git", ["log", "-1", "--pretty=%s"], {
@@ -80,8 +81,7 @@ export async function runSimpleRelease(cwd = process.cwd()): Promise<string> {
   const strategy = resolveVersionStrategy(loaded.config);
   const changelogFile = loaded.config["changelog-file"] ?? "CHANGELOG.md";
   const version = strategy.readVersion(cwd, loaded.config);
-  const tag = `v${version}`;
-  createTagIfMissing(cwd, tag);
+  const defaultTag = `v${version}`;
 
   const plugins = loadRuntimePlugins();
   const scmPlugins = findPluginsByCapability(plugins, "scm.releaseMetadata");
@@ -96,10 +96,32 @@ export async function runSimpleRelease(cwd = process.cwd()): Promise<string> {
     );
   }
 
-  const notes = readReleaseNotes(cwd, version, changelogFile);
-  const result = await plugin.createReleaseMetadata(
-    { tag, version, notes },
-    { cwd, logger: console },
-  );
-  return `Published release ${tag}: ${result.url}`;
+  const releaseTargets = readReleaseTargets(cwd);
+  const targets =
+    releaseTargets.length > 0
+      ? releaseTargets
+      : [
+          {
+            path: ".",
+            version,
+            tag: defaultTag,
+            notes: readReleaseNotes(cwd, version, changelogFile),
+          },
+        ];
+
+  const published: string[] = [];
+  for (const target of targets) {
+    createTagIfMissing(cwd, target.tag);
+    const result = await plugin.createReleaseMetadata(
+      {
+        tag: target.tag,
+        version: target.version,
+        notes:
+          target.notes ?? readReleaseNotes(cwd, target.version, changelogFile),
+      },
+      { cwd, logger: console },
+    );
+    published.push(`${target.tag}: ${result.url}`);
+  }
+  return `Published releases ${published.join(", ")}`;
 }

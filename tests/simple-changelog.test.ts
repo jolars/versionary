@@ -45,8 +45,10 @@ describe("simple changelog rendering", () => {
       process.env.GITHUB_REPOSITORY = prevRepo;
     }
 
-    expect(changelog).toContain("feat: add feature");
-    expect(changelog).toContain("fix: patch bug");
+    expect(changelog).toContain("### Features");
+    expect(changelog).toContain("### Bug Fixes");
+    expect(changelog).toContain("- add feature");
+    expect(changelog).toContain("- patch bug");
     expect(changelog).not.toContain("ci: update workflow");
     expect(changelog).not.toContain("chore: bump deps");
     expect(changelog).toContain(

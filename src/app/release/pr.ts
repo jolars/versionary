@@ -4,15 +4,21 @@ import { loadConfig } from "../../config/load-config.js";
 import {
   prependChangelog,
   renderSimpleChangelog,
+  renderSimpleReleaseNotes,
 } from "../../domain/release/changelog.js";
-import { createSimplePlan } from "../../domain/release/plan.js";
+import {
+  createSimplePlan,
+  type SimplePlan,
+} from "../../domain/release/plan.js";
 import { resolveVersionStrategy } from "../../domain/strategy/resolve.js";
 import type { ParsedCommit } from "../../infra/git/commits.js";
-import { inferReleaseTypeFromParsedCommit } from "../../infra/git/commits.js";
-import { resolveRepositoryWebBaseUrl } from "../../infra/git/repo-url.js";
 import { findPluginsByCapability } from "../../plugins/capabilities.js";
 import { loadRuntimePlugins } from "../../plugins/runtime.js";
-import { getBaselineStatePath, writeBaselineSha } from "./state.js";
+import {
+  getBaselineStatePath,
+  type ReleaseTargetState,
+  writeBaselineSha,
+} from "./state.js";
 
 const SAFE_DIRTY_FILES = new Set([
   "pnpm-lock.yaml",
@@ -85,6 +91,7 @@ export function prepareSimpleReleasePr(cwd = process.cwd()): {
   version: string;
   previousVersion: string;
   commits: ParsedCommit[];
+  plan: SimplePlan;
 } {
   const plan = createSimplePlan(cwd);
   const loaded = loadConfig(cwd);
@@ -121,7 +128,43 @@ export function prepareSimpleReleasePr(cwd = process.cwd()): {
     cwd,
     stdio: ["ignore", "pipe", "ignore"],
   });
-  writeBaselineSha(cwd);
+  const releaseTargets: ReleaseTargetState[] = plan.packages
+    ? plan.packages
+        .filter((pkg) => pkg.nextVersion)
+        .map((pkg) => ({
+          path: pkg.path,
+          version: pkg.nextVersion ?? "",
+          tag:
+            pkg.path === "."
+              ? `v${pkg.nextVersion ?? ""}`
+              : `${pkg.path.replaceAll("/", "-")}-v${pkg.nextVersion ?? ""}`,
+          notes: renderSimpleReleaseNotes(
+            {
+              currentVersion: pkg.currentVersion,
+              nextVersion: pkg.nextVersion ?? "",
+              commits: pkg.commits,
+              cwd,
+            },
+            { includeFooter: false },
+          ),
+        }))
+    : [
+        {
+          path: ".",
+          version: plan.nextVersion,
+          tag: `v${plan.nextVersion}`,
+          notes: renderSimpleReleaseNotes(
+            {
+              currentVersion: plan.currentVersion,
+              nextVersion: plan.nextVersion,
+              commits: plan.commits,
+              cwd,
+            },
+            { includeFooter: false },
+          ),
+        },
+      ];
+  writeBaselineSha(cwd, undefined, releaseTargets);
   execFileSync("git", ["add", getBaselineStatePath(cwd)], {
     cwd,
     stdio: ["ignore", "pipe", "ignore"],
@@ -137,118 +180,46 @@ export function prepareSimpleReleasePr(cwd = process.cwd()): {
     version: plan.nextVersion,
     previousVersion: plan.currentVersion,
     commits: plan.commits,
+    plan,
   };
-}
-
-function formatCommitMessage(subject: string): {
-  label: string;
-  message: string;
-} {
-  const conventional = subject.match(/^[a-z]+(?:\(([^)]+)\))?!?:\s+(.+)$/iu);
-  if (!conventional) {
-    return { label: "", message: subject };
-  }
-
-  const scope = conventional[1]?.trim();
-  const message = conventional[2]?.trim() ?? subject;
-  const label = scope ? `**${scope}:** ` : "";
-  return { label, message };
-}
-
-function formatCommitReferences(
-  commit: ParsedCommit,
-  repoBaseUrl: string | null,
-): string {
-  const references = commit.references ?? [];
-  if (references.length === 0) {
-    return "";
-  }
-
-  return references
-    .map((reference) => {
-      const issue = reference.issue;
-      if (!issue) {
-        return "";
-      }
-      const action = reference.action?.trim() || "Refs";
-      if (!repoBaseUrl) {
-        return `${action} #${issue}`;
-      }
-      return `${action} [#${issue}](${repoBaseUrl}/issues/${issue})`;
-    })
-    .filter((entry) => entry.length > 0)
-    .join(", ");
 }
 
 export function renderSimpleReviewRequestBody(
   version: string,
   previousVersion: string,
   commits: ParsedCommit[],
+  plan: SimplePlan | null = null,
   cwd = process.cwd(),
 ): string {
-  const breaking: string[] = [];
-  const features: string[] = [];
-  const fixes: string[] = [];
-  const commitBaseUrl = resolveRepositoryWebBaseUrl(cwd);
-  let releasableCount = 0;
-
-  for (const commit of commits) {
-    const subject = commit.subject;
-    const { label, message } = formatCommitMessage(subject);
-    const hash = commit.hash.slice(0, 7);
-    const hashLabel = commitBaseUrl
-      ? `[\`${hash}\`](${commitBaseUrl}/commit/${commit.hash})`
-      : `\`${hash}\``;
-    const type = inferReleaseTypeFromParsedCommit(commit);
-    if (!type) {
-      continue;
-    }
-    releasableCount += 1;
-
-    const references = formatCommitReferences(commit, commitBaseUrl);
-    const referencesSuffix = references ? ` — ${references}` : "";
-    const item = `- ${label}${message} (${hashLabel})${referencesSuffix}`;
-    const commitType = (commit.type ?? "").toLowerCase();
-    const isBreaking = type === "major";
-    if (isBreaking) {
-      breaking.push(item);
-    }
-    if (commitType === "feat" || (!isBreaking && type === "minor")) {
-      features.push(item);
-      continue;
-    }
-    if (
-      commitType === "fix" ||
-      commitType === "perf" ||
-      (!isBreaking && type === "patch")
-    ) {
-      fixes.push(item);
-    }
+  if (plan?.packages && plan.packages.length > 0) {
+    const sections = plan.packages
+      .filter((pkg) => pkg.nextVersion)
+      .map((pkg) => {
+        const packageHeader = `<details><summary>${pkg.path}: ${pkg.nextVersion}</summary>\n\n`;
+        const notes = renderSimpleReleaseNotes(
+          {
+            currentVersion: pkg.currentVersion,
+            nextVersion: pkg.nextVersion ?? "",
+            commits: pkg.commits,
+            cwd,
+          },
+          { includeFooter: false },
+        );
+        return `${packageHeader}${notes}\n</details>`;
+      })
+      .join("\n\n");
+    return `${sections}\n\nThis PR was generated by Versionary.`;
   }
 
-  const sections: string[] = [];
-  if (breaking.length > 0) {
-    sections.push("### Breaking changes", ...breaking, "");
-  }
-  if (features.length > 0) {
-    sections.push("### Features", ...features, "");
-  }
-  if (fixes.length > 0) {
-    sections.push("### Bug Fixes", ...fixes, "");
-  }
-
-  const date = new Date().toISOString().slice(0, 10);
-  const releaseHeader = commitBaseUrl
-    ? `## [${version}](${commitBaseUrl}/compare/v${previousVersion}...v${version}) (${date})`
-    : `## ${version} (${date})`;
-
-  return [
-    releaseHeader,
-    "",
-    ...sections,
-    `<!-- releasable: ${releasableCount}, breaking: ${breaking.length}, features: ${features.length}, fixes: ${fixes.length} -->`,
-    "This PR was generated by Versionary.",
-  ].join("\n");
+  return renderSimpleReleaseNotes(
+    {
+      currentVersion: previousVersion,
+      nextVersion: version,
+      commits,
+      cwd,
+    },
+    { includeFooter: true },
+  );
 }
 
 export async function openOrUpdateSimpleReviewRequest(
@@ -258,6 +229,7 @@ export async function openOrUpdateSimpleReviewRequest(
   version: string,
   previousVersion: string,
   commits: ParsedCommit[],
+  plan: SimplePlan | null = null,
 ): Promise<string> {
   const loaded = loadConfig(cwd);
   const releaseFlow = loaded.config["review-mode"] ?? "direct";
@@ -289,6 +261,7 @@ export async function openOrUpdateSimpleReviewRequest(
         version,
         previousVersion,
         commits,
+        plan,
         cwd,
       ),
       labels: ["release"],

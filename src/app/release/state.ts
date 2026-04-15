@@ -5,6 +5,14 @@ import { loadConfig } from "../../config/load-config.js";
 
 interface SimpleStateFile {
   baselineSha?: string;
+  releaseTargets?: ReleaseTargetState[];
+}
+
+export interface ReleaseTargetState {
+  path: string;
+  version: string;
+  tag: string;
+  notes?: string;
 }
 
 export function getBaselineStatePath(cwd: string): string {
@@ -39,7 +47,23 @@ export function readBaselineSha(cwd = process.cwd()): string | null {
   return parsed.baselineSha ?? null;
 }
 
-export function writeBaselineSha(cwd = process.cwd(), sha?: string): void {
+export function readReleaseTargets(cwd = process.cwd()): ReleaseTargetState[] {
+  const filePath = getBaselineStatePath(cwd);
+  if (!fs.existsSync(filePath)) {
+    return [];
+  }
+
+  const parsed = JSON.parse(
+    fs.readFileSync(filePath, "utf8"),
+  ) as SimpleStateFile;
+  return parsed.releaseTargets ?? [];
+}
+
+export function writeBaselineSha(
+  cwd = process.cwd(),
+  sha?: string,
+  releaseTargets: ReleaseTargetState[] = [],
+): void {
   const baselineSha =
     sha ??
     execFileSync("git", ["rev-parse", "HEAD"], {
@@ -48,6 +72,9 @@ export function writeBaselineSha(cwd = process.cwd(), sha?: string): void {
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();
   const filePath = getBaselineStatePath(cwd);
-  const next: SimpleStateFile = { baselineSha };
+  const next: SimpleStateFile = {
+    baselineSha,
+    releaseTargets,
+  };
   fs.writeFileSync(filePath, `${JSON.stringify(next, null, 2)}\n`, "utf8");
 }

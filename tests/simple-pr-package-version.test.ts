@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { prepareSimpleReleasePr } from "../src/app/release/pr.js";
+import { readReleaseTargets } from "../src/app/release/state.js";
 
 const tempDirs: string[] = [];
 
@@ -128,5 +129,49 @@ describe("release PR package version update", () => {
       fs.readFileSync(path.join(cwd, "package.json"), "utf8"),
     ) as { version: string };
     expect(pkg.version).toBe("1.0.0");
+  });
+
+  it("stores monorepo release targets in baseline state", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "version.txt", "1.0.0\n");
+    write(cwd, "CHANGELOG.md", "# Changelog\n\n");
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "review-mode": "direct",
+        "monorepo-mode": "independent",
+        packages: {
+          "packages/a": {},
+          "packages/b": {},
+        },
+      }),
+    );
+    write(cwd, "packages/a/index.ts", "export const a = 1;\n");
+    write(cwd, "packages/b/index.ts", "export const b = 1;\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v1.0.0");
+
+    write(cwd, "packages/a/index.ts", "export const a = 2;\n");
+    git(cwd, "add", "packages/a/index.ts");
+    git(cwd, "commit", "-m", "feat: add package a feature");
+    write(cwd, "packages/b/index.ts", "export const b = 2;\n");
+    git(cwd, "add", "packages/b/index.ts");
+    git(cwd, "commit", "-m", "fix: patch package b");
+
+    const result = prepareSimpleReleasePr(cwd);
+    expect(result.plan.packages).toHaveLength(2);
+    const targets = readReleaseTargets(cwd);
+    expect(targets).toHaveLength(2);
+    expect(targets.map((target) => target.path).sort()).toEqual([
+      "packages/a",
+      "packages/b",
+    ]);
   });
 });
