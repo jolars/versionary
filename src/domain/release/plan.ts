@@ -51,6 +51,7 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
   }
 
   const currentVersion = strategy.readVersion(cwd, loaded.config);
+  const allowStableMajor = loaded.config["allow-stable-major"] ?? false;
   const configuredPackages = Object.entries(loaded.config.packages ?? {}).map(
     ([pkgPath, cfg]) => ({
       path: pkgPath,
@@ -66,7 +67,7 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
     const commits = effectiveCommits;
     const releaseType = analyzeParsedCommits(parsedCommits);
     const nextVersion = releaseType
-      ? bumpVersion(currentVersion, releaseType)
+      ? bumpVersion(currentVersion, releaseType, { allowStableMajor })
       : null;
 
     return {
@@ -94,7 +95,7 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
       const commits = effectiveCommits;
       const releaseType = analyzeParsedCommits(parsedCommits);
       const nextVersion = releaseType
-        ? bumpVersion(currentVersion, releaseType)
+        ? bumpVersion(currentVersion, releaseType, { allowStableMajor })
         : null;
       return {
         path: pkg.path,
@@ -111,7 +112,7 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
       packagePlans.flatMap((pkgPlan) => pkgPlan.parsedCommits),
     );
     const fixedNextVersion = fixedType
-      ? bumpVersion(currentVersion, fixedType)
+      ? bumpVersion(currentVersion, fixedType, { allowStableMajor })
       : null;
     const adjusted = packagePlans.map((pkgPlan) => ({
       ...pkgPlan,
@@ -136,7 +137,7 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
     packagePlans.flatMap((pkgPlan) => pkgPlan.parsedCommits),
   );
   const overallNextVersion = overallType
-    ? bumpVersion(currentVersion, overallType)
+    ? bumpVersion(currentVersion, overallType, { allowStableMajor })
     : null;
 
   return {

@@ -24,6 +24,7 @@ export const configSchema = z.object({
   "bootstrap-sha": z.string().optional(),
   "monorepo-mode": z.enum(["independent", "fixed"]).optional(),
   "bump-minor-pre-major": z.boolean().optional(),
+  "allow-stable-major": z.boolean().optional(),
   "include-commit-authors": z.boolean().optional(),
   "release-type": z.string().optional(),
   packages: z.record(z.string().min(1), packageSchema).optional(),

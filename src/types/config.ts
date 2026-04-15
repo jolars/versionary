@@ -24,6 +24,7 @@ export interface VersionaryConfig {
   "bootstrap-sha"?: string;
   "monorepo-mode"?: "independent" | "fixed";
   "bump-minor-pre-major"?: boolean;
+  "allow-stable-major"?: boolean;
   "include-commit-authors"?: boolean;
   "release-type"?: string;
   packages?: Record<string, VersionaryPackage>;

@@ -86,6 +86,8 @@ a strategy model:
   - `changelog-file = "CHANGELOG.md"`
   - `release-branch = "versionary/release"`
   - `baseline-file = ".versionary-manifest.json"`
+  - pre-1.0 handling: breaking changes on `0.y.z` bump to `0.(y+1).0` by
+    default; `allow-stable-major = true` permits `1.0.0` transition
 - Release commit analysis currently follows conventional-commit-style defaults:
   - parser emits structured AST fields (`header/body/footer`, `notes`,
     `references`, `mentions`, `revert`) and diagnostics independently from

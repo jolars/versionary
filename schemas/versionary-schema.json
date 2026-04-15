@@ -34,6 +34,9 @@
     "bump-minor-pre-major": {
       "type": "boolean"
     },
+    "allow-stable-major": {
+      "type": "boolean"
+    },
     "include-commit-authors": {
       "type": "boolean"
     },

@@ -65,6 +65,7 @@ describe("config loading", () => {
         version: 1,
         "bootstrap-sha": "abc123",
         "bump-minor-pre-major": true,
+        "allow-stable-major": true,
         "include-commit-authors": true,
         "release-type": "node",
       }),
@@ -74,6 +75,7 @@ describe("config loading", () => {
     const loaded = loadConfig(dir);
     expect(loaded.config["bootstrap-sha"]).toBe("abc123");
     expect(loaded.config["bump-minor-pre-major"]).toBe(true);
+    expect(loaded.config["allow-stable-major"]).toBe(true);
     expect(loaded.config["include-commit-authors"]).toBe(true);
     expect(loaded.config["release-type"]).toBe("node");
   });

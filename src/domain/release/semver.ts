@@ -8,6 +8,10 @@ export interface ParsedVersion {
   build: string[];
 }
 
+export interface BumpVersionOptions {
+  allowStableMajor?: boolean;
+}
+
 const SEMVER_PATTERN =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/u;
 
@@ -119,9 +123,17 @@ export function compareVersions(leftRaw: string, rightRaw: string): number {
 export function bumpVersion(
   current: string,
   releaseType: Exclude<ReleaseType, null>,
+  options: BumpVersionOptions = {},
 ): string {
   const parsed = parseVersion(current);
+  const allowStableMajor = options.allowStableMajor ?? false;
   if (releaseType === "major") {
+    if (parsed.major === 0 && !allowStableMajor) {
+      return `0.${parsed.minor + 1}.0`;
+    }
+    if (parsed.major === 0 && allowStableMajor) {
+      return "1.0.0";
+    }
     return `${parsed.major + 1}.0.0`;
   }
 

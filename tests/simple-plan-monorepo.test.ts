@@ -159,4 +159,44 @@ describe("simple monorepo planning", () => {
     expect(plan.commits).toHaveLength(1);
     expect(plan.commits[0]?.subject).toBe("fix: second release commit");
   });
+
+  it("uses pre-1 major policy and allows explicit 1.0 opt-in", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "version.txt", "0.4.2\n");
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+      }),
+    );
+    write(cwd, "src/index.ts", "export const ok = true;\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v0.4.2");
+
+    write(cwd, "src/index.ts", "export const ok = false;\n");
+    git(cwd, "add", "src/index.ts");
+    git(cwd, "commit", "-m", "feat!: breaking change");
+
+    const defaultPlan = createSimplePlan(cwd);
+    expect(defaultPlan.releaseType).toBe("major");
+    expect(defaultPlan.nextVersion).toBe("0.5.0");
+
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "allow-stable-major": true,
+      }),
+    );
+    const optedInPlan = createSimplePlan(cwd);
+    expect(optedInPlan.releaseType).toBe("major");
+    expect(optedInPlan.nextVersion).toBe("1.0.0");
+  });
 });

@@ -88,6 +88,9 @@ For a quick trial, use:
   release PRs are updated in-place
 - `baseline-file` (default `.versionary-manifest.json`) tracks baseline SHA for
   deterministic commit ranges independent of tags
+- pre-1.0 policy defaults to conservative major handling: for `0.y.z`, breaking
+  changes bump to `0.(y+1).0`; set `allow-stable-major: true` to allow explicit
+  auto-transition to `1.0.0` on a breaking release
 - review mode (`review-mode`): `review` (PR/MR style) or `direct` (no review
   request)
 - optional monorepo planning with `monorepo-mode` and `packages`:
