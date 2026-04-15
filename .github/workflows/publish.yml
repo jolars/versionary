@@ -32,3 +32,33 @@ jobs:
 
       - name: Publish to npm
         run: pnpm --filter versionary publish --no-git-checks --access public
+
+  update-action-major-tag:
+    name: Update action major tag
+    if: github.event_name == 'release'
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Move v<major> tag to latest release
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          RELEASE_TAG="${{ github.event.release.tag_name }}"
+          if [[ ! "$RELEASE_TAG" =~ ^v([0-9]+)\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tag '$RELEASE_TAG' is not semver-like; skipping major tag update."
+            exit 0
+          fi
+
+          MAJOR_TAG="v${BASH_REMATCH[1]}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f "$MAJOR_TAG" "$RELEASE_TAG"
+          git push origin "refs/tags/$MAJOR_TAG" --force
