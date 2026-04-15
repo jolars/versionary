@@ -80,7 +80,7 @@ workflows.
 
 ## Short-term priority (suggested)
 
-1. [ ] SCM failure recovery and idempotency.
-2. [ ] GitHub integration hardening and docs/examples.
+1. [x] SCM failure recovery and idempotency.
+2. [x] GitHub integration hardening and docs/examples.
 3. [ ] Monorepo cargo-workspace and mixed-language fixtures.
 4. [ ] CLI machine-readable output + dry-run guarantees.
