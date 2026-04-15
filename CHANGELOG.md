@@ -1,3 +1,17 @@
+# Changelog
+
+## [0.4.0](https://github.com/jolars/versionary/compare/v0.3.0...v0.4.0) (2026-04-15)
+
+### Features
+- add github action ([`79eff26`](https://github.com/jolars/versionary/commit/79eff2672d990993bcee7023ec4ebf420761c7c5))
+- add schema for manifest ([`bd67225`](https://github.com/jolars/versionary/commit/bd67225945844719e228f4187120edff5cd311d5))
+- add `manifestVersion` to schema ([`dc8b2ce`](https://github.com/jolars/versionary/commit/dc8b2ce6d064bc8d2a49047878090bcbca914e68))
+- drop `notes` field from manifest ([`0f47496`](https://github.com/jolars/versionary/commit/0f474966acb92e2a62f1ba4ead503e71f826940f))
+- add yaml, json, toml, regex engines ([`d5f16aa`](https://github.com/jolars/versionary/commit/d5f16aa2b030e481b705e76a7a2db14181dbf569))
+- add a strategy for R ([`53156d5`](https://github.com/jolars/versionary/commit/53156d5795b3e6ba57d3455dfa2844cca0683099))
+- don't require `version.txt` on node strategy ([`4ee363a`](https://github.com/jolars/versionary/commit/4ee363a60a2f7a3304cf0a0a609f9b787d618cb3))
+- implement rust strategy ([`044922a`](https://github.com/jolars/versionary/commit/044922aaa7911c87e54302691ae9741be6456ce8))
+
 ## [0.3.0](https://github.com/jolars/versionary/compare/v0.2.0...v0.3.0) (2026-04-15)
 
 ### Breaking changes
