@@ -82,6 +82,8 @@ For a quick trial, use:
 - `changelog-file` (default `CHANGELOG.md`) as release notes output
 - `release-type: "node"` uses `package.json` as version source and updates it
   during release PR prep
+- `release-type: "r"` uses `DESCRIPTION` as version source and updates the
+  `Version:` field
 - `release-type: "rust"` uses Cargo manifests (`Cargo.toml`) as version source;
   `version-file` must point to a `Cargo.toml` (default: `Cargo.toml`)
 - simple/default strategy keeps `version.txt` as source of truth and does not
