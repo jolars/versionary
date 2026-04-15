@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/jolars/versionary/main/schemas/versionary-manifest-schema.json",
+  "title": "Versionary release manifest",
+  "type": "object",
+  "properties": {
+    "manifestVersion": {
+      "const": 1
+    },
+    "baselineSha": {
+      "type": "string"
+    },
+    "releaseTargets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "version", "tag"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "tag": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
