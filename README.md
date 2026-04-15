@@ -82,6 +82,8 @@ For a quick trial, use:
 - `changelog-file` (default `CHANGELOG.md`) as release notes output
 - `release-type: "node"` uses `package.json` as version source and updates it
   during release PR prep
+- `release-type: "rust"` uses Cargo manifests (`Cargo.toml`) as version source;
+  `version-file` must point to a `Cargo.toml` (default: `Cargo.toml`)
 - simple/default strategy keeps `version.txt` as source of truth and does not
   update `package.json`
 - stable release branch (`release-branch`, default: `versionary/release`) so
@@ -96,6 +98,41 @@ For a quick trial, use:
 - optional monorepo planning with `monorepo-mode` and `packages`:
   - `independent` computes package bumps per path
   - `fixed` computes one shared bump across configured package paths
+
+Rust strategy examples:
+
+```jsonc
+// Single crate
+{
+  "release-type": "rust",
+  "version-file": "Cargo.toml"
+}
+```
+
+```jsonc
+// Workspace root (virtual or root crate + members)
+{
+  "release-type": "rust",
+  "version-file": "Cargo.toml"
+}
+```
+
+Current rust auto-update behavior (phase scope):
+
+- updates crate versions in each targeted crate `[package].version`
+- updates internal workspace dependency versions when the dependency name
+  matches another targeted crate name
+- applies dependency version rewrites in:
+  - `[dependencies]`, `[dev-dependencies]`, `[build-dependencies]`
+  - `[target.*.dependencies]`, `[target.*.dev-dependencies]`,
+    `[target.*.build-dependencies]`
+
+Current rust non-goals/limits:
+
+- does not update external dependency versions
+- does not update `workspace.dependencies`
+- does not add missing `version = ...` fields to dependency inline tables
+- does not perform Cargo publish/release to crates.io
 
 ## Commit parsing and release analysis
 

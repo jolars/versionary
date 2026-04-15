@@ -131,6 +131,55 @@ describe("release PR package version update", () => {
     expect(pkg.version).toBe("1.0.0");
   });
 
+  it("does not update package.json for rust release-type", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(
+      cwd,
+      "Cargo.toml",
+      ["[package]", 'name = "demo-rust"', 'version = "1.0.0"', ""].join("\n"),
+    );
+    write(cwd, "CHANGELOG.md", "# Changelog\n\n");
+    write(
+      cwd,
+      "package.json",
+      JSON.stringify(
+        { name: "demo", version: "1.0.0", private: true },
+        null,
+        2,
+      ) + "\n",
+    );
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "release-type": "rust",
+        "review-mode": "direct",
+        "changelog-file": "CHANGELOG.md",
+      }),
+    );
+
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v1.0.0");
+
+    write(cwd, "src/index.ts", "export const value = 1;\n");
+    git(cwd, "add", "src/index.ts");
+    git(cwd, "commit", "-m", "feat: add value");
+
+    const result = prepareSimpleReleasePr(cwd);
+    expect(result.version).toBe("1.1.0");
+
+    const pkg = JSON.parse(
+      fs.readFileSync(path.join(cwd, "package.json"), "utf8"),
+    ) as { version: string };
+    expect(pkg.version).toBe("1.0.0");
+  });
+
   it("stores monorepo release targets in baseline state", () => {
     const cwd = makeTempDir();
     git(cwd, "init");

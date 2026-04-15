@@ -1,0 +1,22 @@
+[package]
+name = "util-lib"
+version = "0.1.0"
+
+[dependencies]
+core-lib = { version = "0.1.0", features = ["std"] }
+reqwest = "0.12"
+
+[dev-dependencies]
+core-lib = "0.1.0"
+
+[build-dependencies]
+core-lib = { version = "0.1.0", optional = true }
+
+[target.'cfg(unix)'.dependencies]
+core-lib = "0.1.0"
+
+[target.'cfg(windows)'.dev-dependencies]
+core-lib = { version = "0.1.0", default-features = false }
+
+[target.'cfg(target_os = "linux")'.build-dependencies]
+core-lib = "0.1.0"

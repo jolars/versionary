@@ -1,5 +1,6 @@
 import type { VersionaryConfig } from "../../types/config.js";
 import { nodeVersionStrategy } from "./node.js";
+import { rustVersionStrategy } from "./rust.js";
 import { simpleVersionStrategy } from "./simple.js";
 import type { VersionStrategy } from "./types.js";
 
@@ -8,6 +9,9 @@ export function resolveVersionStrategy(
 ): VersionStrategy {
   if (config["release-type"] === "node") {
     return nodeVersionStrategy;
+  }
+  if (config["release-type"] === "rust") {
+    return rustVersionStrategy;
   }
   return simpleVersionStrategy;
 }
