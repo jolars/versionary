@@ -247,4 +247,107 @@ describe("release PR package version update", () => {
       "packages/b",
     ]);
   });
+
+  it("updates package-specific version files for mixed release strategies", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "version.txt", "9.9.9\n");
+    write(cwd, "CHANGELOG.md", "# Changelog\n\n");
+    write(
+      cwd,
+      "Cargo.toml",
+      ["[package]", 'name = "root-rust"', 'version = "2.34.0"', ""].join("\n"),
+    );
+    write(
+      cwd,
+      "crates/panache-parser/Cargo.toml",
+      ["[package]", 'name = "panache-parser"', 'version = "0.3.0"', ""].join(
+        "\n",
+      ),
+    );
+    write(
+      cwd,
+      "editors/code/package.json",
+      JSON.stringify({ name: "panache-code", version: "2.34.0" }, null, 2) +
+        "\n",
+    );
+    write(
+      cwd,
+      "editors/zed/Cargo.toml",
+      ["[package]", 'name = "zed_panache"', 'version = "2.32.1"', ""].join(
+        "\n",
+      ),
+    );
+    write(cwd, "editors/zed/extension.toml", 'version = "2.32.1"\n');
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "review-mode": "direct",
+        "release-type": "rust",
+        "version-file": "Cargo.toml",
+        "changelog-file": "CHANGELOG.md",
+        "monorepo-mode": "independent",
+        packages: {
+          ".": {},
+          "crates/panache-parser": {
+            "release-type": "rust",
+          },
+          "editors/code": {
+            "release-type": "node",
+          },
+          "editors/zed": {
+            "release-type": "rust",
+            "extra-files": [
+              {
+                type: "toml",
+                path: "extension.toml",
+                jsonpath: "$.version",
+              },
+            ],
+          },
+        },
+      }),
+    );
+
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v2.34.0");
+
+    write(cwd, "crates/panache-parser/lib.rs", "pub fn parser() {}\n");
+    write(cwd, "editors/code/src/index.ts", "export const x = 1;\n");
+    write(cwd, "editors/zed/src/lib.rs", "pub fn zed() {}\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "feat: update panache components");
+
+    const result = prepareSimpleReleasePr(cwd);
+    expect(result.plan.packages).toHaveLength(4);
+
+    const rootCargo = fs.readFileSync(path.join(cwd, "Cargo.toml"), "utf8");
+    const parserCargo = fs.readFileSync(
+      path.join(cwd, "crates/panache-parser/Cargo.toml"),
+      "utf8",
+    );
+    const codePackage = JSON.parse(
+      fs.readFileSync(path.join(cwd, "editors/code/package.json"), "utf8"),
+    ) as { version: string };
+    const zedCargo = fs.readFileSync(
+      path.join(cwd, "editors/zed/Cargo.toml"),
+      "utf8",
+    );
+    const zedExtension = fs.readFileSync(
+      path.join(cwd, "editors/zed/extension.toml"),
+      "utf8",
+    );
+
+    expect(rootCargo).toContain('version = "2.35.0"');
+    expect(parserCargo).toContain('version = "0.4.0"');
+    expect(codePackage.version).toBe("2.35.0");
+    expect(zedCargo).toContain('version = "2.33.0"');
+    expect(zedExtension).toContain('version = "2.33.0"');
+  });
 });

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { loadConfig } from "../config/load-config.js";
+import { resolvePackageStrategyContext } from "../domain/strategy/package-context.js";
 import { resolveVersionStrategy } from "../domain/strategy/resolve.js";
 
 export interface VerifyResult {
@@ -28,7 +29,9 @@ export function verifyProject(cwd = process.cwd()): VerifyResult {
   });
 
   if (config.config.packages) {
-    for (const pkgPathRaw of Object.keys(config.config.packages)) {
+    for (const [pkgPathRaw, packageConfig] of Object.entries(
+      config.config.packages,
+    )) {
       const pkgPath = path.join(cwd, pkgPathRaw);
       const exists = fs.existsSync(pkgPath);
       checks.push({
@@ -36,6 +39,25 @@ export function verifyProject(cwd = process.cwd()): VerifyResult {
         ok: exists,
         details: exists ? "Path exists" : `Missing path: ${pkgPathRaw}`,
       });
+
+      if (exists) {
+        const packageContext = resolvePackageStrategyContext(
+          config.config,
+          pkgPathRaw,
+          packageConfig,
+        );
+        const packageVersionFile = packageContext.versionFile;
+        const packageVersionExists = fs.existsSync(
+          path.join(cwd, packageVersionFile),
+        );
+        checks.push({
+          name: `version-file:${packageVersionFile}`,
+          ok: packageVersionExists,
+          details: packageVersionExists
+            ? "Version file exists"
+            : `Missing ${packageVersionFile}`,
+        });
+      }
     }
   }
 

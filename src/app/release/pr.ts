@@ -10,6 +10,7 @@ import {
   createSimplePlan,
   type SimplePlan,
 } from "../../domain/release/plan.js";
+import { resolvePackageStrategyContext } from "../../domain/strategy/package-context.js";
 import { resolveVersionStrategy } from "../../domain/strategy/resolve.js";
 import type { ParsedCommit } from "../../infra/git/commits.js";
 import { findPluginsByCapability } from "../../plugins/capabilities.js";
@@ -112,11 +113,30 @@ export function prepareSimpleReleasePr(
 
   ensureCleanWorktree(cwd, options.logger);
 
-  const updatedVersionFiles = strategy.writeVersion(
-    cwd,
-    loaded.config,
-    plan.nextVersion,
-  );
+  const updatedVersionFiles: string[] = [];
+  if (plan.packages && plan.packages.length > 0) {
+    for (const packagePlan of plan.packages) {
+      if (!packagePlan.nextVersion) {
+        continue;
+      }
+      const packageConfig = loaded.config.packages?.[packagePlan.path] ?? {};
+      const packageContext = resolvePackageStrategyContext(
+        loaded.config,
+        packagePlan.path,
+        packageConfig,
+      );
+      const packageUpdated = packageContext.strategy.writeVersion(
+        cwd,
+        packageContext.config,
+        packagePlan.nextVersion,
+      );
+      updatedVersionFiles.push(...packageUpdated);
+    }
+  } else {
+    updatedVersionFiles.push(
+      ...strategy.writeVersion(cwd, loaded.config, plan.nextVersion),
+    );
+  }
   const updatedArtifactFiles = applyConfiguredArtifactRules(
     cwd,
     loaded.config,

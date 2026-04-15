@@ -9,6 +9,7 @@ import {
   getParsedCommitsSinceLastTag,
   type ParsedCommit,
 } from "../../infra/git/commits.js";
+import { resolvePackageStrategyContext } from "../strategy/package-context.js";
 import { resolveVersionStrategy } from "../strategy/resolve.js";
 import { bumpVersion, type ReleaseType } from "./semver.js";
 
@@ -86,6 +87,15 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
 
   const packagePlans = configuredPackages
     .map((pkg) => {
+      const packageContext = resolvePackageStrategyContext(
+        loaded.config,
+        pkg.path,
+        pkg,
+      );
+      const packageCurrentVersion = packageContext.strategy.readVersion(
+        cwd,
+        packageContext.config,
+      );
       const parsedCommits = getParsedCommitsForPath(
         cwd,
         baselineSha,
@@ -96,12 +106,12 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
       const commits = effectiveCommits;
       const releaseType = analyzeParsedCommits(parsedCommits);
       const nextVersion = releaseType
-        ? bumpVersion(currentVersion, releaseType, { allowStableMajor })
+        ? bumpVersion(packageCurrentVersion, releaseType, { allowStableMajor })
         : null;
       return {
         path: pkg.path,
         releaseType,
-        currentVersion,
+        currentVersion: packageCurrentVersion,
         nextVersion,
         commits,
         parsedCommits,

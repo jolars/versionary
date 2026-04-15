@@ -203,6 +203,7 @@ function resolveWorkspaceMemberManifests(
 function collectRustTargetManifests(
   cwd: string,
   versionFile: string,
+  includeWorkspaceMembers: boolean,
 ): string[] {
   if (path.basename(versionFile) !== "Cargo.toml") {
     throw new Error(
@@ -219,10 +220,9 @@ function collectRustTargetManifests(
   const parsedRoot = parseCargoManifest(versionFile, rootRaw);
   const rootIsCrate = parsedRoot.packageTable !== null;
   const rootDir = path.dirname(rootManifestPath);
-  const workspaceMembers = resolveWorkspaceMemberManifests(
-    rootDir,
-    parsedRoot.workspaceTable,
-  );
+  const workspaceMembers = includeWorkspaceMembers
+    ? resolveWorkspaceMemberManifests(rootDir, parsedRoot.workspaceTable)
+    : [];
 
   if (rootIsCrate) {
     const relRoot = normalizeSlashPath(path.relative(cwd, rootManifestPath));
@@ -465,7 +465,11 @@ export const rustVersionStrategy: VersionStrategy = {
   },
   readVersion(cwd: string, config: VersionaryConfig): string {
     const versionFile = this.getVersionFile(config);
-    const manifests = collectRustTargetManifests(cwd, versionFile);
+    const manifests = collectRustTargetManifests(
+      cwd,
+      versionFile,
+      !config.packages,
+    );
     const selectedManifest = manifests[0];
     if (!selectedManifest) {
       throw new Error(
@@ -484,7 +488,11 @@ export const rustVersionStrategy: VersionStrategy = {
     version: string,
   ): string[] {
     const versionFile = this.getVersionFile(config);
-    const manifests = collectRustTargetManifests(cwd, versionFile);
+    const manifests = collectRustTargetManifests(
+      cwd,
+      versionFile,
+      !config.packages,
+    );
     const updatedFiles: string[] = [];
     const internalCrates = new Set<string>();
 
