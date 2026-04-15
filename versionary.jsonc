@@ -3,10 +3,7 @@
   "$schema": "https://raw.githubusercontent.com/jolars/versionary/main/schemas/versionary-schema.json",
   "version": 1,
   "review-mode": "review",
-  "changelog-file": "CHANGELOG.md",
   "release-type": "node",
-  "release-branch": "versionary/release",
-  "baseline-file": ".versionary-manifest.json",
   "bootstrap-sha": "f46f767",
   "monorepo-mode": "independent",
   "packages": {
