@@ -1,3 +1,18 @@
+# Changelog
+
+## [0.10.0](https://github.com/jolars/versionary/compare/v0.9.0...v0.10.0) (2026-04-16)
+
+### Breaking changes
+- change review-mode to pr + direct, and make pr default ([`e0975be`](https://github.com/jolars/versionary/commit/e0975bea405240c938cf301b569647f98e669ad5))
+
+### Features
+- change review-mode to pr + direct, and make pr default ([`e0975be`](https://github.com/jolars/versionary/commit/e0975bea405240c938cf301b569647f98e669ad5))
+- **pr:** shorten pr title ([`578020d`](https://github.com/jolars/versionary/commit/578020d658eb7aac3f0fdc505f5f4f521be913af))
+- add `--dry-un` and machine-readable output ([`2bc7143`](https://github.com/jolars/versionary/commit/2bc714376d74352db3d1584e025865f1f62fd992))
+
+### Bug Fixes
+- maintain release targets from manifest ([`5330da1`](https://github.com/jolars/versionary/commit/5330da1b909411fbef8ccc639a1761d70a7f6bb5))
+
 ## [0.9.0](https://github.com/jolars/versionary/compare/v0.8.2...v0.9.0) (2026-04-16)
 
 ### Features
