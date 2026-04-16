@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.12.0](https://github.com/jolars/versionary/compare/v0.11.1...v0.12.0) (2026-04-16)
+
+### Features
+- **changelog:** add "Dependencies" section ([`f3372b8`](https://github.com/jolars/versionary/commit/f3372b8fe9572fac5438b3c7fb4faaf5c1fdbb79))
+- support github draft releases ([`88d48a2`](https://github.com/jolars/versionary/commit/88d48a2cd445e7e8ef03ba632974731d58fa6b8e))
+- modularize changelog, improve R strategy ([`e30d0c3`](https://github.com/jolars/versionary/commit/e30d0c3b5ffe1ef0b39c5f658731fe4f334a9291))
+
+### Bug Fixes
+- **rust:** don't bump non-related crate ([`4115473`](https://github.com/jolars/versionary/commit/41154732a4bf040683558b32d7dfcdd11dbc092d))
+- **changelog:** don't strip changelog title ([`16f6b4f`](https://github.com/jolars/versionary/commit/16f6b4f8cb43f48a0a4454e2123f13b93ecfa587))
+
 ## [0.11.1](https://github.com/jolars/versionary/compare/v0.11.0...v0.11.1) (2026-04-16)
 
 ### Bug Fixes
