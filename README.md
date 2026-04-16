@@ -273,6 +273,10 @@ steps:
     run: echo "Released ${{ steps.versionary.outputs.tag_name }}"
 ```
 
+`github-token` is used for both GitHub API calls and git push authentication in
+the composite action. This means release-branch force-pushes are attributed to
+that token and can trigger downstream workflows when using a PAT/App token.
+
 Action outputs:
 
 - `action`: `noop`, `pr-prepared`, `release-published`, `release-skipped`
