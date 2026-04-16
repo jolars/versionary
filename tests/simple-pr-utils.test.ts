@@ -10,6 +10,9 @@ describe("release commit detection", () => {
   it("matches release commit pattern and merge suffixes", () => {
     expect(isReleaseCommitMessage("chore(release): v1.2.3")).toBe(true);
     expect(isReleaseCommitMessage("chore(release): v1.2.3 (#12)")).toBe(true);
+    expect(isReleaseCommitMessage("chore(release): v1.2.3 (+3 more)")).toBe(
+      true,
+    );
     expect(
       isReleaseCommitMessage(
         "chore(release): v1.2.3, parser-v0.4.0, code-v2.0.0 (#99)",

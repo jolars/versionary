@@ -328,7 +328,10 @@ function formatReleaseCommitTitle(
     return "chore(release): v0.0.0";
   }
   const tags = releaseTargets.map((target) => target.tag);
-  return `chore(release): ${tags.join(", ")}`;
+  if (tags.length === 1) {
+    return `chore(release): ${tags[0]}`;
+  }
+  return `chore(release): ${tags[0]} (+${tags.length - 1} more)`;
 }
 
 export function prepareSimpleReleasePr(
@@ -604,7 +607,7 @@ export function isReleaseCommitMessage(commitMessage: string): boolean {
     return true;
   }
   const subject = commitMessage.split("\n")[0]?.trim() ?? "";
-  return /^chore\(release\):\s+(?:v\d+\.\d+\.\d+|\S+-v\d+\.\d+\.\d+)(?:,\s+(?:v\d+\.\d+\.\d+|\S+-v\d+\.\d+\.\d+))*(?:\s+\(#\d+\))?$/u.test(
+  return /^chore\(release\):\s+(?:(?:v\d+\.\d+\.\d+|\S+-v\d+\.\d+\.\d+)(?:,\s+(?:v\d+\.\d+\.\d+|\S+-v\d+\.\d+\.\d+))*|(?:v\d+\.\d+\.\d+|\S+-v\d+\.\d+\.\d+)\s+\(\+\d+\s+more\))(?:\s+\(#\d+\))?$/u.test(
     subject,
   );
 }

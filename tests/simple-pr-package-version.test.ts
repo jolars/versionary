@@ -249,6 +249,10 @@ describe("release PR package version update", () => {
 
     const result = prepareSimpleReleasePr(cwd);
     expect(result.plan.packages).toHaveLength(2);
+    const releaseMessage = git(cwd, "log", "-1", "--pretty=%B");
+    expect(releaseMessage).toContain(
+      "chore(release): packages-a-v1.1.0 (+1 more)",
+    );
     const targets = readReleaseTargets(cwd);
     expect(targets).toHaveLength(2);
     expect(targets.map((target) => target.path).sort()).toEqual([
