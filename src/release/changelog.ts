@@ -113,6 +113,10 @@ export function renderSimpleReleaseNotes(
     nextVersion: string;
     commits: ParsedCommit[];
     cwd?: string;
+    dependencies?: Array<{
+      name: string;
+      version: string;
+    }>;
   },
   options: {
     includeFooter?: boolean;
@@ -137,7 +141,16 @@ export function renderSimpleReleaseNotes(
   if (grouped.reverts.length > 0) {
     sections.push("### Reverts", ...grouped.reverts, "");
   }
-
+  if (input.dependencies && input.dependencies.length > 0) {
+    sections.push(
+      "### Dependencies",
+      ...input.dependencies.map(
+        (dependency) =>
+          `- updated ${dependency.name} to v${dependency.version}`,
+      ),
+      "",
+    );
+  }
   const lines = [header, "", ...sections];
   if (options.includeFooter) {
     lines.push(
@@ -151,6 +164,27 @@ export function renderSimpleChangelog(plan: SimplePlan): string {
   if (!plan.nextVersion) {
     return "";
   }
+  const propagatedRootPackage = plan.packages?.find(
+    (pkg) => pkg.path === "." && pkg.bumpReason === "dependency-propagation",
+  );
+  const isDirectBump = (
+    pkg: NonNullable<SimplePlan["packages"]>[number],
+  ): boolean =>
+    pkg.bumpReason === "direct" ||
+    (pkg.bumpReason === undefined &&
+      Boolean(pkg.nextVersion) &&
+      pkg.commits.length > 0);
+  const dependencies =
+    propagatedRootPackage && plan.packages
+      ? plan.packages
+          .filter(
+            (pkg) => pkg.path !== "." && isDirectBump(pkg) && pkg.nextVersion,
+          )
+          .map((pkg) => ({
+            name: pkg.path,
+            version: pkg.nextVersion as string,
+          }))
+      : [];
   if (plan.changelogFormat === "r-news") {
     return renderRNewsReleaseNotes({
       packageName: plan.packageName,
@@ -164,6 +198,7 @@ export function renderSimpleChangelog(plan: SimplePlan): string {
     nextVersion: plan.nextVersion,
     commits: plan.commits,
     cwd: process.cwd(),
+    dependencies,
   });
 }
 

@@ -475,18 +475,48 @@ export function renderSimpleReviewRequestBody(
   const rootPackageLabel = path.basename(cwd);
   const formatPackageLabel = (packagePath: string): string =>
     packagePath === "." ? rootPackageLabel : packagePath;
+  const isDirectBump = (
+    pkg: NonNullable<SimplePlan["packages"]>[number],
+  ): boolean =>
+    pkg.bumpReason === "direct" ||
+    (pkg.bumpReason === undefined &&
+      Boolean(pkg.nextVersion) &&
+      pkg.commits.length > 0);
+  const findPropagatedDependencies = (
+    packagePath: string,
+    packages: NonNullable<SimplePlan["packages"]>,
+  ): Array<{ name: string; version: string }> => {
+    const target = packages.find((pkg) => pkg.path === packagePath);
+    if (!target || target.bumpReason !== "dependency-propagation") {
+      return [];
+    }
+    const directSources = packages
+      .filter((pkg) => isDirectBump(pkg))
+      .map((pkg) => ({
+        name: formatPackageLabel(pkg.path),
+        version: pkg.nextVersion ?? "",
+      }))
+      .filter((dependency) => dependency.version.length > 0)
+      .sort((a, b) => a.name.localeCompare(b.name));
+    return directSources;
+  };
 
   if (plan?.packages && plan.packages.length > 1) {
     const sections = plan.packages
       .filter((pkg) => pkg.nextVersion)
       .map((pkg) => {
         const packageLabel = formatPackageLabel(pkg.path);
+        const propagatedDependencies = findPropagatedDependencies(
+          pkg.path,
+          plan.packages ?? [],
+        );
         const notes = renderSimpleReleaseNotes(
           {
             currentVersion: pkg.currentVersion,
             nextVersion: pkg.nextVersion ?? "",
             commits: pkg.commits,
             cwd,
+            dependencies: propagatedDependencies,
           },
           { includeFooter: false },
         );

@@ -88,4 +88,45 @@ describe("simple changelog rendering", () => {
       "[`5555555`](https://github.com/jolars/versionary/commit/5555555)",
     );
   });
+
+  it("adds Dependencies section for dependency-propagated root bumps", () => {
+    const prevServer = process.env.GITHUB_SERVER_URL;
+    const prevRepo = process.env.GITHUB_REPOSITORY;
+    let changelog = "";
+    try {
+      process.env.GITHUB_SERVER_URL = "https://github.com";
+      process.env.GITHUB_REPOSITORY = "jolars/versionary";
+      const plan = makePlan();
+      plan.packages = [
+        {
+          path: ".",
+          releaseType: "patch",
+          currentVersion: "0.1.0",
+          nextVersion: "0.1.1",
+          bumpReason: "dependency-propagation",
+          commits: [],
+        },
+        {
+          path: "crates/panache-parser",
+          releaseType: "patch",
+          currentVersion: "0.3.1",
+          nextVersion: "0.3.2",
+          bumpReason: "direct",
+          commits: [
+            {
+              ...parseConventionalCommitMessage("fix(parser): bug"),
+              hash: "6666666",
+            },
+          ],
+        },
+      ];
+      changelog = renderSimpleChangelog(plan);
+    } finally {
+      process.env.GITHUB_SERVER_URL = prevServer;
+      process.env.GITHUB_REPOSITORY = prevRepo;
+    }
+
+    expect(changelog).toContain("### Dependencies");
+    expect(changelog).toContain("- updated crates/panache-parser to v0.3.2");
+  });
 });

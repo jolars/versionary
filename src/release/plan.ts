@@ -38,6 +38,7 @@ export interface SimplePlan {
     releaseType: ReleaseType;
     currentVersion: string;
     nextVersion: string | null;
+    bumpReason?: "direct" | "dependency-propagation";
     commits: ParsedCommit[];
   }>;
 }
@@ -150,6 +151,7 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
         releaseType,
         currentVersion: packageCurrentVersion,
         nextVersion,
+        bumpReason: nextVersion ? ("direct" as const) : undefined,
         commits,
         parsedCommits,
       };
@@ -213,6 +215,7 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
       ...pkgPlan,
       releaseType: "patch" as ReleaseType,
       nextVersion: bumpVersion(current, "patch", { allowStableMajor }),
+      bumpReason: "dependency-propagation" as const,
     };
   });
 
