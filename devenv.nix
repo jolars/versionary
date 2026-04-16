@@ -27,8 +27,6 @@
   };
 
   git-hooks.hooks = {
-    eslint.enable = true;
-
     biome = {
       enable = true;
     };
