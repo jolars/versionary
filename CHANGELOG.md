@@ -1,4 +1,7 @@
-# Changelog
+## [0.8.1](https://github.com/jolars/versionary/compare/v0.8.0...v0.8.1) (2026-04-16)
+
+### Bug Fixes
+- **action:** actually track action script ([`8ef3b55`](https://github.com/jolars/versionary/commit/8ef3b559c6507fdac91bf23c15d3cd6f29e6b925))
 
 ## [0.8.0](https://github.com/jolars/versionary/compare/v0.7.0...v0.8.0) (2026-04-16)
 
