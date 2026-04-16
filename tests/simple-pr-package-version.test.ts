@@ -30,6 +30,12 @@ function write(cwd: string, relative: string, content: string): void {
   fs.writeFileSync(target, content, "utf8");
 }
 
+function writeExecutable(cwd: string, relative: string, content: string): void {
+  const target = path.join(cwd, relative);
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(target, content, { encoding: "utf8", mode: 0o755 });
+}
+
 afterEach(() => {
   while (tempDirs.length > 0) {
     const dir = tempDirs.pop();
@@ -469,6 +475,118 @@ describe("release PR package version update", () => {
     expect(() => prepareSimpleReleasePr(cwd)).toThrow(
       /Duplicate release tag "shared-v1\.1\.0"/,
     );
+  });
+
+  it("updates Cargo.lock when rust versions change and cargo is available", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "CHANGELOG.md", "# Changelog\n\n");
+    write(
+      cwd,
+      "Cargo.toml",
+      ["[package]", 'name = "demo"', 'version = "1.0.0"', ""].join("\n"),
+    );
+    write(cwd, "Cargo.lock", "old-lock\n");
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "review-mode": "direct",
+        "release-type": "rust",
+        "changelog-file": "CHANGELOG.md",
+      }),
+    );
+    write(cwd, "src/lib.rs", "pub fn demo() {}\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v1.0.0");
+    write(cwd, "src/lib.rs", "pub fn demo2() {}\n");
+    git(cwd, "add", "src/lib.rs");
+    git(cwd, "commit", "-m", "feat: demo");
+
+    const fakeBin = path.join(cwd, ".fake-bin");
+    writeExecutable(
+      cwd,
+      ".fake-bin/cargo",
+      [
+        "#!/usr/bin/env bash",
+        "set -euo pipefail",
+        'if [ "$1" = "generate-lockfile" ]; then',
+        '  printf "new-lock\\n" > "$PWD/Cargo.lock"',
+        "  exit 0",
+        "fi",
+        "exit 1",
+        "",
+      ].join("\n"),
+    );
+    const prevPath = process.env.PATH ?? "";
+    process.env.PATH = `${fakeBin}:${prevPath}`;
+    try {
+      prepareSimpleReleasePr(cwd);
+    } finally {
+      process.env.PATH = prevPath;
+    }
+
+    const lock = fs.readFileSync(path.join(cwd, "Cargo.lock"), "utf8");
+    expect(lock).toBe("new-lock\n");
+  });
+
+  it("throws actionable error when Cargo.lock exists but cargo is unavailable", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "CHANGELOG.md", "# Changelog\n\n");
+    write(
+      cwd,
+      "Cargo.toml",
+      ["[package]", 'name = "demo"', 'version = "1.0.0"', ""].join("\n"),
+    );
+    write(cwd, "Cargo.lock", "lock\n");
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "review-mode": "direct",
+        "release-type": "rust",
+        "changelog-file": "CHANGELOG.md",
+      }),
+    );
+    write(cwd, "src/lib.rs", "pub fn demo() {}\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v1.0.0");
+    write(cwd, "src/lib.rs", "pub fn demo2() {}\n");
+    git(cwd, "add", "src/lib.rs");
+    git(cwd, "commit", "-m", "feat: demo");
+
+    const fakeBin = path.join(cwd, ".fake-bin");
+    writeExecutable(
+      cwd,
+      ".fake-bin/cargo",
+      [
+        "#!/usr/bin/env bash",
+        "set -euo pipefail",
+        "echo 'cargo not available' >&2",
+        "exit 127",
+        "",
+      ].join("\n"),
+    );
+    const prevPath = process.env.PATH ?? "";
+    process.env.PATH = `${fakeBin}:${prevPath}`;
+    try {
+      expect(() => prepareSimpleReleasePr(cwd)).toThrow(
+        /Failed to refresh Cargo\.lock/i,
+      );
+    } finally {
+      process.env.PATH = prevPath;
+    }
   });
 
   it("propagates rust dependency updates into non-target workspace crates", () => {

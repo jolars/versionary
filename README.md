@@ -125,6 +125,8 @@ Current rust auto-update behavior (phase scope):
 - updates crate versions in each targeted crate `[package].version`
 - updates internal workspace dependency versions when the dependency name
   matches another targeted crate name
+- refreshes `Cargo.lock` via `cargo generate-lockfile` when `Cargo.lock` exists
+  in repo root
 - applies dependency version rewrites in:
   - `[dependencies]`, `[dev-dependencies]`, `[build-dependencies]`
   - `[target.*.dependencies]`, `[target.*.dev-dependencies]`,
@@ -136,6 +138,8 @@ Current rust non-goals/limits:
 - does not update `workspace.dependencies`
 - does not add missing `version = ...` fields to dependency inline tables
 - does not perform Cargo publish/release to crates.io
+
+If `Cargo.lock` exists, `cargo` must be available in PATH during PR preparation.
 
 ### Monorepo release names and tag naming
 

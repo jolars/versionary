@@ -98,6 +98,28 @@ function ensureCleanWorktree(
   }
 }
 
+function ensureCargoLockUpToDate(cwd: string): string[] {
+  const lockfilePath = path.join(cwd, "Cargo.lock");
+  if (!fs.existsSync(lockfilePath)) {
+    return [];
+  }
+
+  const before = fs.readFileSync(lockfilePath, "utf8");
+  try {
+    execFileSync("cargo", ["generate-lockfile"], {
+      cwd,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `Failed to refresh Cargo.lock via "cargo generate-lockfile". Ensure cargo is installed and available in PATH. Details: ${message}`,
+    );
+  }
+  const after = fs.readFileSync(lockfilePath, "utf8");
+  return after !== before ? ["Cargo.lock"] : [];
+}
+
 function normalizeReleaseNameForTag(releaseName: string): string {
   return releaseName
     .trim()
@@ -289,6 +311,7 @@ export function prepareSimpleReleasePr(
     loaded.config,
     plan,
   );
+  const updatedRustLockFiles = ensureCargoLockUpToDate(cwd);
   const section = renderSimpleChangelog(plan);
   prependChangelog(cwd, plan.changelogFile, section);
   const releaseTargets = buildReleaseTargets(cwd, plan, loaded.config);
@@ -304,6 +327,7 @@ export function prepareSimpleReleasePr(
     ...new Set([
       ...updatedVersionFiles,
       ...updatedArtifactFiles,
+      ...updatedRustLockFiles,
       plan.changelogFile,
     ]),
   ];
