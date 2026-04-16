@@ -9,6 +9,12 @@ import { parseConventionalCommitMessage } from "../src/infra/git/commits.js";
 describe("release commit detection", () => {
   it("matches release commit pattern", () => {
     expect(isReleaseCommitMessage("chore(release): v1.2.3")).toBe(true);
+    expect(isReleaseCommitMessage("chore(release): v1.2.3 (#12)")).toBe(true);
+    expect(
+      isReleaseCommitMessage(
+        "chore(release): v1.2.3, parser-v0.4.0, code-v2.0.0 (#99)",
+      ),
+    ).toBe(true);
   });
 
   it("rejects non-release messages", () => {

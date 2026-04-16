@@ -482,7 +482,7 @@ export function pushReleaseBranch(cwd: string, branch: string): void {
 }
 
 export function isReleaseCommitMessage(subject: string): boolean {
-  return /^chore\(release\):\s+(?:v\d+\.\d+\.\d+|\S+-v\d+\.\d+\.\d+)(?:,\s+(?:v\d+\.\d+\.\d+|\S+-v\d+\.\d+\.\d+))*$/u.test(
+  return /^chore\(release\):\s+(?:v\d+\.\d+\.\d+|\S+-v\d+\.\d+\.\d+)(?:,\s+(?:v\d+\.\d+\.\d+|\S+-v\d+\.\d+\.\d+))*(?:\s+\(#\d+\))?$/u.test(
     subject,
   );
 }
