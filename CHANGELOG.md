@@ -1,3 +1,22 @@
+# Changelog
+
+## [0.6.0](https://github.com/jolars/versionary/compare/v0.5.0...v0.6.0) (2026-04-16)
+
+### Breaking changes
+- change manifest to use kebab-case ([`12c92a5`](https://github.com/jolars/versionary/commit/12c92a50b963af56a27b8bee9cdf52db65291763))
+- resolve canonical names for packages ([`58c05cf`](https://github.com/jolars/versionary/commit/58c05cf2cdb650871f4754baf390de46b3744502))
+
+### Features
+- change manifest to use kebab-case ([`12c92a5`](https://github.com/jolars/versionary/commit/12c92a50b963af56a27b8bee9cdf52db65291763))
+- **action:** change `github-token` to `token` ([`689429d`](https://github.com/jolars/versionary/commit/689429d8e0c9d23ba94b8922b5194af60417e007))
+- **action:** use github token for API calls and git pushes ([`043ffc7`](https://github.com/jolars/versionary/commit/043ffc774e93097e2a9603a48ba069032158cad5))
+- **pr:** handle monorepos in PR title ([`234a5a9`](https://github.com/jolars/versionary/commit/234a5a919a73c0f7d7f28ea0dd9ffcbba0cfc252))
+- resolve canonical names for packages ([`58c05cf`](https://github.com/jolars/versionary/commit/58c05cf2cdb650871f4754baf390de46b3744502))
+- **pr:** make main label be package name ([`01644da`](https://github.com/jolars/versionary/commit/01644da0c29f94e71fff6179b42dfc3775c82aa2))
+
+### Bug Fixes
+- **strategies:** handle rust cargo dep ([`ce3171f`](https://github.com/jolars/versionary/commit/ce3171f370cb3ff7e633526dbeee48602f30cf1a))
+
 ## [0.5.0](https://github.com/jolars/versionary/compare/v0.4.0...v0.5.0) (2026-04-15)
 
 ### Features
