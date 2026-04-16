@@ -224,10 +224,15 @@ export function renderSimpleReviewRequestBody(
   plan: SimplePlan | null = null,
   cwd = process.cwd(),
 ): string {
+  const rootPackageLabel = path.basename(cwd);
+  const formatPackageLabel = (packagePath: string): string =>
+    packagePath === "." ? rootPackageLabel : packagePath;
+
   if (plan?.packages && plan.packages.length > 1) {
     const sections = plan.packages
       .filter((pkg) => pkg.nextVersion)
       .map((pkg) => {
+        const packageLabel = formatPackageLabel(pkg.path);
         const notes = renderSimpleReleaseNotes(
           {
             currentVersion: pkg.currentVersion,
@@ -244,7 +249,7 @@ export function renderSimpleReviewRequestBody(
           const [, , compareUrl, date] = linkedHeader;
           return notes.replace(
             /^##\s+\[[^\]]+\]\([^)]+\)\s+\([^)]+\)/u,
-            `## [${pkg.path}: ${pkg.nextVersion ?? ""}](${compareUrl}) (${date})`,
+            `## [${packageLabel}: ${pkg.nextVersion ?? ""}](${compareUrl}) (${date})`,
           );
         }
 
@@ -253,7 +258,7 @@ export function renderSimpleReviewRequestBody(
           const [, , date] = plainHeader;
           return notes.replace(
             /^##\s+[^\s]+\s+\([^)]+\)/u,
-            `## ${pkg.path}: ${pkg.nextVersion ?? ""} (${date})`,
+            `## ${packageLabel}: ${pkg.nextVersion ?? ""} (${date})`,
           );
         }
         return notes;
