@@ -54,7 +54,7 @@ runs:
       working-directory: ${{ inputs.working-directory }}
       env:
         GITHUB_TOKEN: ${{ inputs.token != '' && inputs.token || inputs.github-token }}
-      run: >
+      run: |
         set -euo pipefail
 
         if [ -z "${GITHUB_TOKEN}" ]; then
@@ -72,8 +72,8 @@ runs:
         fi
 
         # Ensure git push uses the same token as API calls, so downstream
-        workflows # can trigger on Versionary-authored branch updates. if git
-        remote get-url origin >/dev/null 2>&1; then
+        # workflows can trigger on Versionary-authored branch updates.
+        if git remote get-url origin >/dev/null 2>&1; then
           git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@${GITHUB_SERVER_URL#https://}/${GITHUB_REPOSITORY}.git"
         fi
 
