@@ -49,7 +49,7 @@ export function resolvePackageStrategyContext(
     const config = withVersionFile(
       {
         ...baseConfig,
-        packages: undefined,
+        packages: packagePath === "." ? baseConfig.packages : undefined,
       },
       versionFile,
     );
@@ -74,7 +74,7 @@ export function resolvePackageStrategyContext(
   const config = withVersionFile(
     {
       ...baseConfig,
-      packages: undefined,
+      packages: packagePath === "." ? baseConfig.packages : undefined,
     },
     packageVersionFile,
   );
