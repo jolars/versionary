@@ -5,9 +5,12 @@ branding:
   icon: git-branch
   color: gray-dark
 inputs:
-  github-token:
+  token:
     description: GitHub token used by Versionary SCM integration
-    required: true
+    required: false
+  github-token:
+    description: Deprecated alias for token
+    required: false
   versionary-version:
     description: Versionary npm version or dist-tag
     required: false
@@ -50,9 +53,14 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       env:
-        GITHUB_TOKEN: ${{ inputs.github-token }}
+        GITHUB_TOKEN: ${{ inputs.token != '' && inputs.token || inputs.github-token }}
       run: >
         set -euo pipefail
+
+        if [ -z "${GITHUB_TOKEN}" ]; then
+          echo "Input required and not supplied: token (or deprecated github-token)." >&2
+          exit 1
+        fi
 
 
         if ! git config user.name >/dev/null; then
