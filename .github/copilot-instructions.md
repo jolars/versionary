@@ -49,6 +49,8 @@ release metadata management.
 - Run a single test by name: `pnpm vitest run -t "ignores chore commits"`
 - Lint/format: use Biome (`biome.jsonc` is authoritative for formatting
   settings); match Biome formatting in edits so pre-commit checks stay clean.
+  In final handoffs, remind users to run Biome checks for both linting and
+  formatting.
 
 CLI commands in this repo currently run from source through `tsx` scripts:
 
