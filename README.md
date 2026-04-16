@@ -123,6 +123,8 @@ Rust strategy examples:
 Current rust auto-update behavior (phase scope):
 
 - updates crate versions in each targeted crate `[package].version`
+- supports targeted crates using `version.workspace = true` by updating
+  `[workspace.package].version` in the owning workspace manifest
 - updates internal workspace dependency versions when the dependency name
   matches another targeted crate name
 - refreshes `Cargo.lock` via `cargo generate-lockfile` when `Cargo.lock` exists

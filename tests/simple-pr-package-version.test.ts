@@ -749,4 +749,91 @@ describe("release PR package version update", () => {
     );
     expect(internalManifest).toContain('version = "0.0.1"');
   });
+
+  it("supports package targets that inherit rust version from workspace.package", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "CHANGELOG.md", "# Changelog\n\n");
+    write(
+      cwd,
+      "Cargo.toml",
+      [
+        "[workspace]",
+        'members = ["crates/*"]',
+        "",
+        "[workspace.package]",
+        'version = "0.8.0"',
+        "",
+      ].join("\n"),
+    );
+    write(
+      cwd,
+      "crates/core/Cargo.toml",
+      ["[package]", 'name = "crate-core"', "version.workspace = true", ""].join(
+        "\n",
+      ),
+    );
+    write(
+      cwd,
+      "crates/util/Cargo.toml",
+      [
+        "[package]",
+        'name = "crate-util"',
+        "version.workspace = true",
+        "",
+        "[dependencies]",
+        'crate-core = { path = "../core", version = "0.8.0" }',
+        "",
+      ].join("\n"),
+    );
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "release-type": "rust",
+        "review-mode": "direct",
+        "changelog-file": "CHANGELOG.md",
+        packages: {
+          "crates/core": {
+            "release-type": "rust",
+          },
+        },
+      }),
+    );
+    write(cwd, "crates/core/src/lib.rs", "pub fn core() {}\n");
+    write(cwd, "crates/util/src/lib.rs", "pub fn util() {}\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v0.8.0");
+
+    write(cwd, "crates/core/src/lib.rs", "pub fn core_v2() {}\n");
+    git(cwd, "add", "crates/core/src/lib.rs");
+    git(cwd, "commit", "-m", "feat: update crate core");
+
+    const result = prepareSimpleReleasePr(cwd);
+    expect(result.plan.packages).toHaveLength(1);
+
+    const workspaceManifest = fs.readFileSync(
+      path.join(cwd, "Cargo.toml"),
+      "utf8",
+    );
+    const coreManifest = fs.readFileSync(
+      path.join(cwd, "crates/core/Cargo.toml"),
+      "utf8",
+    );
+    const utilManifest = fs.readFileSync(
+      path.join(cwd, "crates/util/Cargo.toml"),
+      "utf8",
+    );
+
+    expect(workspaceManifest).toContain('version = "0.9.0"');
+    expect(coreManifest).toContain("version.workspace = true");
+    expect(utilManifest).toContain(
+      'crate-core = { path = "../core", version = "0.9.0" }',
+    );
+  });
 });

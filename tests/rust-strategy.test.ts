@@ -66,6 +66,36 @@ describe("rustVersionStrategy", () => {
     expect(version).toBe("1.2.3");
   });
 
+  it("reads [workspace.package].version when crate uses version.workspace = true", () => {
+    const cwd = makeTempDir("workspace-inherited-read");
+    write(
+      cwd,
+      "Cargo.toml",
+      [
+        "[workspace]",
+        'members = ["crates/*"]',
+        "",
+        "[workspace.package]",
+        'version = "0.8.0"',
+        "",
+      ].join("\n"),
+    );
+    write(
+      cwd,
+      "crates/core/Cargo.toml",
+      ["[package]", 'name = "core-lib"', "version.workspace = true", ""].join(
+        "\n",
+      ),
+    );
+
+    const version = rustVersionStrategy.readVersion(cwd, {
+      version: 1,
+      "release-type": "rust",
+      "version-file": "crates/core/Cargo.toml",
+    });
+    expect(version).toBe("0.8.0");
+  });
+
   it("writes [package].version in Cargo.toml deterministically", () => {
     const cwd = makeTempDir("root-inline");
     write(
@@ -105,6 +135,60 @@ describe("rustVersionStrategy", () => {
     );
   });
 
+  it("writes [workspace.package].version for targeted workspace-inherited crates", () => {
+    const cwd = makeTempDir("workspace-inherited-write");
+    write(
+      cwd,
+      "Cargo.toml",
+      [
+        "[workspace]",
+        'members = ["crates/*"]',
+        "",
+        "[workspace.package]",
+        'version = "0.8.0"',
+        "",
+      ].join("\n"),
+    );
+    write(
+      cwd,
+      "crates/core/Cargo.toml",
+      ["[package]", 'name = "core-lib"', "version.workspace = true", ""].join(
+        "\n",
+      ),
+    );
+    write(
+      cwd,
+      "crates/util/Cargo.toml",
+      [
+        "[package]",
+        'name = "util-lib"',
+        "version.workspace = true",
+        "",
+        "[dependencies]",
+        'core-lib = { path = "../core", version = "0.8.0" }',
+        "",
+      ].join("\n"),
+    );
+
+    const updatedFiles = rustVersionStrategy.writeVersion(
+      cwd,
+      {
+        version: 1,
+        "release-type": "rust",
+        "version-file": "crates/core/Cargo.toml",
+      },
+      "0.9.0",
+    );
+
+    expect(updatedFiles).toEqual(["Cargo.toml"]);
+    const workspaceManifest = read(cwd, "Cargo.toml");
+    const utilManifest = read(cwd, "crates/util/Cargo.toml");
+    expect(workspaceManifest).toContain('version = "0.9.0"');
+    expect(utilManifest).toContain(
+      'core-lib = { path = "../core", version = "0.8.0" }',
+    );
+  });
+
   it("throws actionable error when [package].version is missing", () => {
     const cwd = makeTempDir();
     write(
@@ -126,6 +210,30 @@ describe("rustVersionStrategy", () => {
         "release-type": "rust",
       }),
     ).toThrow(/missing \[package\]\.version/i);
+  });
+
+  it("throws actionable error when version.workspace = true but [workspace.package].version is missing", () => {
+    const cwd = makeTempDir("workspace-inherited-missing");
+    write(
+      cwd,
+      "Cargo.toml",
+      ["[workspace]", 'members = ["crates/*"]', ""].join("\n"),
+    );
+    write(
+      cwd,
+      "crates/core/Cargo.toml",
+      ["[package]", 'name = "core-lib"', "version.workspace = true", ""].join(
+        "\n",
+      ),
+    );
+
+    expect(() =>
+      rustVersionStrategy.readVersion(cwd, {
+        version: 1,
+        "release-type": "rust",
+        "version-file": "crates/core/Cargo.toml",
+      }),
+    ).toThrow(/missing \[workspace\.package\]\.version/i);
   });
 
   it("throws actionable error when [package].version is invalid", () => {

@@ -284,6 +284,112 @@ function readCargoVersion(cargoTomlRaw: string, versionFile: string): string {
   return rawVersion.trim();
 }
 
+function isWorkspaceInheritedVersion(rawVersion: unknown): boolean {
+  if (!rawVersion || typeof rawVersion !== "object") {
+    return false;
+  }
+  const versionRecord = rawVersion as Record<string, unknown>;
+  return versionRecord.workspace === true;
+}
+
+function readWorkspacePackageVersion(
+  cargoTomlRaw: string,
+  versionFile: string,
+): string {
+  const { workspaceTable } = parseCargoManifest(versionFile, cargoTomlRaw);
+  if (!workspaceTable || typeof workspaceTable !== "object") {
+    throw new Error(
+      `${versionFile} is missing [workspace.package].version required by members using version.workspace = true.`,
+    );
+  }
+  const workspacePackage =
+    workspaceTable.package && typeof workspaceTable.package === "object"
+      ? (workspaceTable.package as Record<string, unknown>)
+      : null;
+  const rawVersion = workspacePackage?.version;
+  if (typeof rawVersion !== "string" || rawVersion.trim().length === 0) {
+    throw new Error(
+      `${versionFile} is missing [workspace.package].version required by members using version.workspace = true.`,
+    );
+  }
+
+  return rawVersion.trim();
+}
+
+function findWorkspaceManifestForMember(
+  cwd: string,
+  memberManifest: string,
+): string {
+  const cwdAbs = path.resolve(cwd);
+  let currentDir = path.resolve(cwd, path.dirname(memberManifest));
+
+  while (true) {
+    const relativeDir = path.relative(cwdAbs, currentDir);
+    if (relativeDir.startsWith("..")) {
+      break;
+    }
+
+    const candidatePath = path.join(currentDir, "Cargo.toml");
+    if (fs.existsSync(candidatePath)) {
+      const relativeManifest = normalizeSlashPath(
+        path.relative(cwdAbs, candidatePath),
+      );
+      const cargoTomlRaw = fs.readFileSync(candidatePath, "utf8");
+      const parsed = parseCargoManifest(relativeManifest, cargoTomlRaw);
+      if (parsed.workspaceTable) {
+        return relativeManifest;
+      }
+    }
+
+    if (currentDir === cwdAbs) {
+      break;
+    }
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) {
+      break;
+    }
+    currentDir = parentDir;
+  }
+
+  throw new Error(
+    `${memberManifest} uses version.workspace = true, but no workspace Cargo.toml with [workspace.package].version was found between that crate and repository root.`,
+  );
+}
+
+function readResolvedCargoVersion(
+  cwd: string,
+  manifest: string,
+  cargoTomlRaw: string,
+): string {
+  const { packageTable } = parseCargoManifest(manifest, cargoTomlRaw);
+  if (!packageTable || typeof packageTable !== "object") {
+    throw new Error(
+      `${manifest} is missing [package].version. Add [package] with a SemVer version.`,
+    );
+  }
+  const rawVersion = (packageTable as { version?: unknown }).version;
+  if (rawVersion === undefined) {
+    throw new Error(
+      `${manifest} is missing [package].version. Add [package] with a SemVer version.`,
+    );
+  }
+  if (typeof rawVersion === "string" && rawVersion.trim().length > 0) {
+    return rawVersion.trim();
+  }
+  if (!isWorkspaceInheritedVersion(rawVersion)) {
+    throw new Error(
+      `${manifest} has invalid [package].version. Expected a non-empty SemVer string or version.workspace = true.`,
+    );
+  }
+
+  const workspaceManifest = findWorkspaceManifestForMember(cwd, manifest);
+  const workspaceRaw = fs.readFileSync(
+    path.join(cwd, workspaceManifest),
+    "utf8",
+  );
+  return readWorkspacePackageVersion(workspaceRaw, workspaceManifest);
+}
+
 function readCargoPackageName(
   cargoTomlRaw: string,
   versionFile: string,
@@ -367,6 +473,77 @@ function writeCargoVersion(
   }
 
   return updated;
+}
+
+function writeWorkspacePackageVersion(
+  cargoTomlRaw: string,
+  versionFile: string,
+  version: string,
+): string {
+  const lineEnding = cargoTomlRaw.includes("\r\n") ? "\r\n" : "\n";
+  const hasFinalLineEnding =
+    cargoTomlRaw.endsWith("\n") || cargoTomlRaw.endsWith("\r\n");
+  const lines = cargoTomlRaw.split(/\r?\n/u);
+  let inWorkspacePackageSection = false;
+  let foundWorkspacePackageSection = false;
+  let replacedVersion = false;
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index] ?? "";
+    const sectionMatch = line.match(/^\s*\[([^\]]+)\]\s*(?:#.*)?$/u);
+    if (sectionMatch) {
+      const section = sectionMatch[1]?.trim();
+      inWorkspacePackageSection = section === "workspace.package";
+      if (inWorkspacePackageSection) {
+        foundWorkspacePackageSection = true;
+      }
+      continue;
+    }
+
+    if (!inWorkspacePackageSection) {
+      continue;
+    }
+
+    const versionMatch = line.match(
+      /^(\s*version\s*=\s*)(["'])([^"']*)(\2)(\s*(?:#.*)?)?$/u,
+    );
+    if (!versionMatch) {
+      continue;
+    }
+
+    const [, prefix = "", quote = '"', , , suffix = ""] = versionMatch;
+    lines[index] = `${prefix}${quote}${version}${quote}${suffix}`;
+    replacedVersion = true;
+    break;
+  }
+
+  if (!foundWorkspacePackageSection || !replacedVersion) {
+    throw new Error(
+      `${versionFile} is missing [workspace.package].version required by members using version.workspace = true.`,
+    );
+  }
+
+  let updated = lines.join(lineEnding);
+  if (hasFinalLineEnding && !updated.endsWith(lineEnding)) {
+    updated += lineEnding;
+  }
+  if (!hasFinalLineEnding && updated.endsWith(lineEnding)) {
+    updated = updated.slice(0, -lineEnding.length);
+  }
+
+  return updated;
+}
+
+function usesWorkspaceInheritedVersion(
+  cargoTomlRaw: string,
+  versionFile: string,
+): boolean {
+  const { packageTable } = parseCargoManifest(versionFile, cargoTomlRaw);
+  if (!packageTable || typeof packageTable !== "object") {
+    return false;
+  }
+  const rawVersion = (packageTable as { version?: unknown }).version;
+  return isWorkspaceInheritedVersion(rawVersion);
 }
 
 function isDependencySection(section: string): boolean {
@@ -654,7 +831,7 @@ export const rustVersionStrategy: VersionStrategy = {
       path.join(cwd, selectedManifest),
       "utf8",
     );
-    return readCargoVersion(cargoTomlRaw, selectedManifest);
+    return readResolvedCargoVersion(cwd, selectedManifest, cargoTomlRaw);
   },
   writeVersion(
     cwd: string,
@@ -669,6 +846,7 @@ export const rustVersionStrategy: VersionStrategy = {
     );
     const updatedFiles: string[] = [];
     const internalCrates = new Set<string>();
+    const workspaceManifestsToUpdate = new Set<string>();
 
     for (const manifest of manifests) {
       const versionPath = path.join(cwd, manifest);
@@ -680,6 +858,7 @@ export const rustVersionStrategy: VersionStrategy = {
         continue;
       }
       internalCrates.add(readCargoPackageName(cargoTomlRaw, manifest));
+      readResolvedCargoVersion(cwd, manifest, cargoTomlRaw);
     }
 
     for (const manifest of manifests) {
@@ -691,14 +870,44 @@ export const rustVersionStrategy: VersionStrategy = {
       if (!isCrateManifest(manifest, cargoTomlRaw)) {
         continue;
       }
-      readCargoVersion(cargoTomlRaw, manifest);
-      const updatedCargoToml = writeInternalDependencyVersions(
-        writeCargoVersion(cargoTomlRaw, manifest, version),
+      let updatedCargoToml = cargoTomlRaw;
+      if (usesWorkspaceInheritedVersion(cargoTomlRaw, manifest)) {
+        workspaceManifestsToUpdate.add(
+          findWorkspaceManifestForMember(cwd, manifest),
+        );
+      } else {
+        updatedCargoToml = writeCargoVersion(
+          updatedCargoToml,
+          manifest,
+          version,
+        );
+      }
+      updatedCargoToml = writeInternalDependencyVersions(
+        updatedCargoToml,
         internalCrates,
         version,
       );
-      fs.writeFileSync(versionPath, updatedCargoToml, "utf8");
-      updatedFiles.push(manifest);
+      if (updatedCargoToml !== cargoTomlRaw) {
+        fs.writeFileSync(versionPath, updatedCargoToml, "utf8");
+        updatedFiles.push(manifest);
+      }
+    }
+
+    for (const workspaceManifest of workspaceManifestsToUpdate) {
+      const workspacePath = path.join(cwd, workspaceManifest);
+      if (!fs.existsSync(workspacePath)) {
+        continue;
+      }
+      const workspaceRaw = fs.readFileSync(workspacePath, "utf8");
+      const updatedWorkspaceToml = writeInternalDependencyVersions(
+        writeWorkspacePackageVersion(workspaceRaw, workspaceManifest, version),
+        internalCrates,
+        version,
+      );
+      if (updatedWorkspaceToml !== workspaceRaw) {
+        fs.writeFileSync(workspacePath, updatedWorkspaceToml, "utf8");
+        updatedFiles.push(workspaceManifest);
+      }
     }
 
     if (updatedFiles.length === 0) {
