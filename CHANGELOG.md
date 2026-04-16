@@ -1,4 +1,11 @@
-# Changelog
+## [0.7.0](https://github.com/jolars/versionary/compare/v0.6.0...v0.7.0) (2026-04-16)
+
+### Features
+- **config:** replace `jsonpath` with `field-path` ([`90316fc`](https://github.com/jolars/versionary/commit/90316fc7eb3cdff3c391576ff74843da6b68eaa1))
+- **rust:** re-generate cargo lock files ([`222ae3f`](https://github.com/jolars/versionary/commit/222ae3fd4098342e4836f4ac9f68af416ea8ce13))
+
+### Bug Fixes
+- correctly find correct commit ([`fd64b2d`](https://github.com/jolars/versionary/commit/fd64b2d68b1d469dac0ff6d6508670c94b76b3a5))
 
 ## [0.6.0](https://github.com/jolars/versionary/compare/v0.5.0...v0.6.0) (2026-04-16)
 
