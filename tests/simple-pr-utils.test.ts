@@ -7,12 +7,20 @@ import {
 import { parseConventionalCommitMessage } from "../src/infra/git/commits.js";
 
 describe("release commit detection", () => {
-  it("matches release commit pattern", () => {
+  it("matches release commit pattern and merge suffixes", () => {
     expect(isReleaseCommitMessage("chore(release): v1.2.3")).toBe(true);
     expect(isReleaseCommitMessage("chore(release): v1.2.3 (#12)")).toBe(true);
     expect(
       isReleaseCommitMessage(
         "chore(release): v1.2.3, parser-v0.4.0, code-v2.0.0 (#99)",
+      ),
+    ).toBe(true);
+  });
+
+  it("matches explicit Versionary trailer regardless of subject", () => {
+    expect(
+      isReleaseCommitMessage(
+        "Merge pull request #12 from jolars/versionary/release\n\nVersionary-Release: true",
       ),
     ).toBe(true);
   });

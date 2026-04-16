@@ -37,6 +37,7 @@ const SAFE_DIRTY_FILES = new Set([
   "bun.lockb",
   "npm-shrinkwrap.json",
 ]);
+const VERSIONARY_RELEASE_TRAILER = "Versionary-Release: true";
 
 function listTrackedDirtyFiles(cwd: string): string[] {
   const status = execFileSync(
@@ -335,10 +336,14 @@ export function prepareSimpleReleasePr(
     cwd,
     stdio: ["ignore", "pipe", "ignore"],
   });
-  execFileSync("git", ["commit", "-m", title], {
-    cwd,
-    stdio: ["ignore", "pipe", "ignore"],
-  });
+  execFileSync(
+    "git",
+    ["commit", "-m", title, "-m", VERSIONARY_RELEASE_TRAILER],
+    {
+      cwd,
+      stdio: ["ignore", "pipe", "ignore"],
+    },
+  );
   writeBaselineSha(cwd, undefined, releaseTargets);
   execFileSync("git", ["add", getBaselineStatePath(cwd)], {
     cwd,
@@ -481,7 +486,11 @@ export function pushReleaseBranch(cwd: string, branch: string): void {
   });
 }
 
-export function isReleaseCommitMessage(subject: string): boolean {
+export function isReleaseCommitMessage(commitMessage: string): boolean {
+  if (/^Versionary-Release:\s*true$/imu.test(commitMessage)) {
+    return true;
+  }
+  const subject = commitMessage.split("\n")[0]?.trim() ?? "";
   return /^chore\(release\):\s+(?:v\d+\.\d+\.\d+|\S+-v\d+\.\d+\.\d+)(?:,\s+(?:v\d+\.\d+\.\d+|\S+-v\d+\.\d+\.\d+))*(?:\s+\(#\d+\))?$/u.test(
     subject,
   );

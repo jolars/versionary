@@ -10,8 +10,8 @@ import { isReleaseCommitMessage } from "./pr.js";
 import { executeIdempotentReleaseTarget } from "./recovery.js";
 import { readReleaseTargets } from "./state.js";
 
-function getHeadCommitSubject(cwd: string): string {
-  return execFileSync("git", ["log", "-1", "--pretty=%s"], {
+function getHeadCommitMessage(cwd: string): string {
+  return execFileSync("git", ["log", "-1", "--pretty=%B"], {
     cwd,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "ignore"],
@@ -85,8 +85,8 @@ export async function runSimpleReleaseDetailed(
   cwd = process.cwd(),
   options: RunSimpleReleaseOptions = {},
 ): Promise<SimpleRunReleaseResult> {
-  const subject = getHeadCommitSubject(cwd);
-  if (!isReleaseCommitMessage(subject)) {
+  const commitMessage = getHeadCommitMessage(cwd);
+  if (!isReleaseCommitMessage(commitMessage)) {
     return {
       action: "release-skipped",
       reason: "No release commit context detected; skipping release stage.",

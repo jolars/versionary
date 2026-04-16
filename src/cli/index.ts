@@ -57,12 +57,12 @@ async function main(): Promise<number> {
   const flags = parseFlags(args);
   const logger = flags.json ? undefined : console;
   if (!command || command === "run") {
-    const subject = execFileSync("git", ["log", "-1", "--pretty=%s"], {
+    const commitMessage = execFileSync("git", ["log", "-1", "--pretty=%B"], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();
 
-    if (isReleaseCommitMessage(subject)) {
+    if (isReleaseCommitMessage(commitMessage)) {
       if (flags.json) {
         const release = await runSimpleReleaseDetailed(process.cwd(), {
           logger,

@@ -100,6 +100,9 @@ describe("release PR package version update", () => {
 
     const result = prepareSimpleReleasePr(cwd);
     expect(result.version).toBe("1.1.0");
+    const releaseMessage = git(cwd, "log", "-1", "--pretty=%B");
+    expect(releaseMessage).toContain("chore(release): v1.1.0");
+    expect(releaseMessage).toContain("Versionary-Release: true");
 
     const pkg = JSON.parse(
       fs.readFileSync(path.join(cwd, "package.json"), "utf8"),
