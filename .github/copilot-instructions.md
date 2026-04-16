@@ -47,6 +47,8 @@ release metadata management.
 - Run full test suite: `pnpm test`
 - Run a single test file: `pnpm vitest run tests/simple-git-analyze.test.ts`
 - Run a single test by name: `pnpm vitest run -t "ignores chore commits"`
+- Lint/format: use Biome (`biome.jsonc` is authoritative for formatting
+  settings); match Biome formatting in edits so pre-commit checks stay clean.
 
 CLI commands in this repo currently run from source through `tsx` scripts:
 
