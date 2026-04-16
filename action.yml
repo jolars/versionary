@@ -14,7 +14,7 @@ inputs:
   versionary-version:
     description: Versionary npm version or dist-tag
     required: false
-    default: 0.5.0
+    default: 0.6.0
   working-directory:
     description: Working directory containing versionary.jsonc/json
     required: false
@@ -71,9 +71,9 @@ runs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
         fi
 
-        # Ensure git push uses the same token as API calls, so downstream workflows
-        # can trigger on Versionary-authored branch updates.
-        if git remote get-url origin >/dev/null 2>&1; then
+        # Ensure git push uses the same token as API calls, so downstream
+        workflows # can trigger on Versionary-authored branch updates. if git
+        remote get-url origin >/dev/null 2>&1; then
           git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@${GITHUB_SERVER_URL#https://}/${GITHUB_REPOSITORY}.git"
         fi
 
