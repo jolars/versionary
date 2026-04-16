@@ -126,6 +126,85 @@ describe("simple monorepo planning", () => {
     );
   });
 
+  it("uses per-package release tag as baseline when available", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "version.txt", "2.35.0\n");
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "release-type": "rust",
+        "monorepo-mode": "independent",
+        "version-file": "Cargo.toml",
+        packages: {
+          ".": {
+            "exclude-paths": ["editors"],
+          },
+          "editors/code": {
+            "release-type": "node",
+            "package-name": "panache-code",
+          },
+        },
+      }),
+    );
+    write(
+      cwd,
+      "Cargo.toml",
+      ["[package]", 'name = "root"', 'version = "2.35.0"', ""].join("\n"),
+    );
+    write(
+      cwd,
+      "editors/code/package.json",
+      `${JSON.stringify(
+        { name: "panache-code", version: "2.34.2", private: true },
+        null,
+        2,
+      )}\n`,
+    );
+    write(cwd, "editors/code/src/index.ts", "export const v = 1;\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v2.35.0");
+    write(
+      cwd,
+      ".versionary-manifest.json",
+      `${JSON.stringify(
+        {
+          "manifest-version": 1,
+          "baseline-sha": "deadbeef",
+          "release-targets": [
+            { path: ".", version: "2.35.0", tag: "v2.35.0" },
+            {
+              path: "editors/code",
+              version: "2.34.2",
+              tag: "panache-code-v2.34.2",
+            },
+          ],
+        },
+        null,
+        2,
+      )}\n`,
+    );
+
+    write(cwd, "editors/code/src/index.ts", "export const v = 2;\n");
+    git(cwd, "add", "editors/code/src/index.ts");
+    git(cwd, "commit", "-m", "fix(editors): trigger patch bump");
+    git(cwd, "tag", "panache-code-v2.34.2");
+
+    const plan = createSimplePlan(cwd);
+    const editorsCode = plan.packages?.find(
+      (pkg) => pkg.path === "editors/code",
+    );
+    expect(editorsCode?.releaseType).toBeNull();
+    expect(editorsCode?.nextVersion).toBeNull();
+    expect(editorsCode?.commits).toHaveLength(0);
+  });
+
   it("falls back to latest tag when bootstrap-sha is stale", () => {
     const cwd = makeTempDir();
     git(cwd, "init");

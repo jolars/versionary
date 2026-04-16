@@ -1,6 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
-import { readBaselineSha } from "../../app/release/state.js";
+import {
+  readBaselineSha,
+  readReleaseTargets,
+} from "../../app/release/state.js";
 import { loadConfig } from "../../config/load-config.js";
 import {
   analyzeParsedCommits,
@@ -52,6 +55,9 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
     loaded.config["release-branch"] ?? "versionary/release";
   const baselineSha =
     readBaselineSha(cwd) ?? loaded.config["bootstrap-sha"] ?? null;
+  const releaseTargetByPath = new Map(
+    readReleaseTargets(cwd).map((target) => [target.path, target]),
+  );
   const allowStableMajor = loaded.config["allow-stable-major"] ?? false;
   const configuredPackages = Object.entries(loaded.config.packages ?? {}).map(
     ([pkgPath, cfg]) => ({
@@ -102,7 +108,7 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
       );
       const parsedCommits = getParsedCommitsForPath(
         cwd,
-        baselineSha,
+        releaseTargetByPath.get(pkg.path)?.tag ?? baselineSha,
         pkg.path,
         pkg["exclude-paths"] ?? [],
       );
