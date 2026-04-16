@@ -1,29 +1,25 @@
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { loadConfig } from "../../config/load-config.js";
+import { loadConfig } from "../config/load-config.js";
+import type { ParsedCommit } from "../git/commits.js";
+import { getScmClient } from "../scm/client.js";
+import { resolvePackageStrategyContext } from "../strategy/package-context.js";
+import { resolveVersionStrategy } from "../strategy/resolve.js";
+import type {
+  StrategyVersionWriteContext,
+  VersionStrategy,
+} from "../strategy/types.js";
+import type { VersionaryPackage } from "../types/config.js";
+import type { VersionaryPluginContext } from "../types/plugins.js";
+import { applyConfiguredArtifactRules } from "./artifact-rules.js";
 import {
   prependChangelog,
   renderPackageChangelogSection,
   renderSimpleChangelog,
   renderSimpleReleaseNotes,
-} from "../../domain/release/changelog.js";
-import {
-  createSimplePlan,
-  type SimplePlan,
-} from "../../domain/release/plan.js";
-import { resolvePackageStrategyContext } from "../../domain/strategy/package-context.js";
-import { resolveVersionStrategy } from "../../domain/strategy/resolve.js";
-import type {
-  StrategyVersionWriteContext,
-  VersionStrategy,
-} from "../../domain/strategy/types.js";
-import type { ParsedCommit } from "../../infra/git/commits.js";
-import { findPluginsByCapability } from "../../plugins/capabilities.js";
-import { loadRuntimePlugins } from "../../plugins/runtime.js";
-import type { VersionaryPackage } from "../../types/config.js";
-import type { VersionaryPluginContext } from "../../types/plugins.js";
-import { applyConfiguredArtifactRules } from "./artifact-rules.js";
+} from "./changelog.js";
+import { createSimplePlan, type SimplePlan } from "./plan.js";
 import {
   getBaselineStatePath,
   type ReleaseTargetState,
@@ -545,22 +541,8 @@ export async function openOrUpdateSimpleReviewRequest(
     return "Release flow mode is direct; skipping review request creation.";
   }
 
-  const plugins = loadRuntimePlugins();
-  const scmPlugins = findPluginsByCapability(plugins, "scm.reviewRequest");
-  if (scmPlugins.length === 0) {
-    throw new Error(
-      "review-mode is pr but no scm.reviewRequest plugin is available.",
-    );
-  }
-
-  const plugin = scmPlugins[0];
-  if (!plugin?.createOrUpdateReviewRequest) {
-    throw new Error(
-      `Plugin "${plugin?.name ?? "unknown"}" does not implement createOrUpdateReviewRequest.`,
-    );
-  }
-
-  const result = await plugin.createOrUpdateReviewRequest(
+  const scmClient = getScmClient();
+  const result = await scmClient.createOrUpdateReviewRequest(
     {
       baseBranch: process.env.VERSIONARY_BASE_BRANCH ?? "main",
       headBranch: branch,

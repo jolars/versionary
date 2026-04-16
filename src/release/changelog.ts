@@ -3,8 +3,8 @@ import path from "node:path";
 import {
   inferReleaseTypeFromParsedCommit,
   type ParsedCommit,
-} from "../../infra/git/commits.js";
-import { resolveRepositoryWebBaseUrl } from "../../infra/git/repo-url.js";
+} from "../git/commits.js";
+import { resolveRepositoryWebBaseUrl } from "../git/repo-url.js";
 import type { SimplePlan } from "./plan.js";
 
 function formatDate(): string {

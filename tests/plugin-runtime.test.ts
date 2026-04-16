@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { findPluginsByCapability } from "../src/plugins/capabilities.js";
-import { loadRuntimePlugins } from "../src/plugins/runtime.js";
+import { findPluginsByCapability } from "../src/scm/capabilities.js";
+import { createGitHubPlugin } from "../src/scm/github-plugin.js";
 
 describe("plugin runtime", () => {
-  it("loads at least one SCM review plugin", () => {
-    const plugins = loadRuntimePlugins();
-    const scmPlugins = findPluginsByCapability(plugins, "scm.reviewRequest");
-    expect(scmPlugins.length).toBeGreaterThan(0);
+  it("exposes SCM review capability on GitHub client", () => {
+    const plugin = createGitHubPlugin();
+    const scmPlugins = findPluginsByCapability([plugin], "scm.reviewRequest");
+    expect(scmPlugins.length).toBe(1);
   });
 
-  it("only loads built-in plugins", () => {
-    const plugins = loadRuntimePlugins();
-    expect(plugins.map((plugin) => plugin.name)).toEqual(["github"]);
+  it("uses github plugin name", () => {
+    const plugin = createGitHubPlugin();
+    expect(plugin.name).toBe("github");
   });
 });

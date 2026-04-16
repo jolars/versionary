@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveTargetChangelogFile } from "../src/app/release/release.js";
+import { resolveTargetChangelogFile } from "../src/release/release.js";
 import type { VersionaryConfig } from "../src/types/config.js";
 
 describe("release notes changelog source", () => {

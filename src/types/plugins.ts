@@ -1,45 +1,30 @@
+import type {
+  ScmClientContext,
+  ScmProvider,
+  ScmReleaseMetadataInput,
+  ScmReleaseMetadataResult,
+  ScmReviewRequestInput,
+  ScmReviewRequestResult,
+} from "../scm/types.js";
+
 export type VersionaryPluginCapability =
   | "scm.reviewRequest"
   | "scm.releaseMetadata";
 
-export interface VersionaryScmReviewRequestInput {
-  baseBranch: string;
-  headBranch: string;
-  title: string;
-  body: string;
-  labels?: string[];
-}
+export type VersionaryScmReviewRequestInput = ScmReviewRequestInput;
 
-export interface VersionaryScmReviewRequestResult {
-  id: string;
-  number?: number;
-  url: string;
-  state: "open" | "closed" | "merged";
-}
+export type VersionaryScmReviewRequestResult = ScmReviewRequestResult;
 
-export interface VersionaryScmReleaseMetadataInput {
-  tag: string;
-  version: string;
-  notes: string;
-}
+export type VersionaryScmReleaseMetadataInput = ScmReleaseMetadataInput;
 
-export interface VersionaryScmReleaseMetadataResult {
-  url: string;
-  status?: "created" | "exists";
-}
+export type VersionaryScmReleaseMetadataResult = ScmReleaseMetadataResult;
 
-export interface VersionaryPluginContext {
-  cwd: string;
-  logger?: {
-    info: (message: string) => void;
-    warn: (message: string) => void;
-    error: (message: string) => void;
-  };
-}
+export type VersionaryPluginContext = ScmClientContext;
 
 export interface VersionaryPluginRuntime {
   name: string;
   capabilities: VersionaryPluginCapability[];
+  provider?: ScmProvider;
   createOrUpdateReviewRequest?: (
     input: VersionaryScmReviewRequestInput,
     context: VersionaryPluginContext,

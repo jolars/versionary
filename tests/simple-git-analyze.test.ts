@@ -7,7 +7,7 @@ import {
   isReleasableCommit,
   isReleasableParsedCommit,
   parseConventionalCommitMessage,
-} from "../src/infra/git/commits.js";
+} from "../src/git/commits.js";
 
 describe("simple commit analysis", () => {
   it("returns highest bump type", () => {

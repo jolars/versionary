@@ -1,12 +1,13 @@
 import { Octokit } from "@octokit/rest";
+import type { VersionaryPluginRuntime } from "../types/plugins.js";
 import type {
-  VersionaryPluginContext,
-  VersionaryPluginRuntime,
-  VersionaryScmReleaseMetadataInput,
-  VersionaryScmReleaseMetadataResult,
-  VersionaryScmReviewRequestInput,
-  VersionaryScmReviewRequestResult,
-} from "../types/plugins.js";
+  ScmClient,
+  ScmClientContext,
+  ScmReleaseMetadataInput,
+  ScmReleaseMetadataResult,
+  ScmReviewRequestInput,
+  ScmReviewRequestResult,
+} from "./types.js";
 
 interface ParsedRepo {
   owner: string;
@@ -135,14 +136,15 @@ async function ensureLabels(
   }
 }
 
-export function createGitHubPlugin(): VersionaryPluginRuntime {
+export function createGitHubPlugin(): VersionaryPluginRuntime & ScmClient {
   return {
     name: "github",
     capabilities: ["scm.reviewRequest", "scm.releaseMetadata"],
+    provider: "github",
     async createOrUpdateReviewRequest(
-      input: VersionaryScmReviewRequestInput,
-      _context: VersionaryPluginContext,
-    ): Promise<VersionaryScmReviewRequestResult> {
+      input: ScmReviewRequestInput,
+      _context: ScmClientContext,
+    ): Promise<ScmReviewRequestResult> {
       const repo = getRepoFromEnv();
       const octokit = new Octokit({ auth: getGitHubToken() });
       const listHead = resolveHeadForList(repo, input.headBranch);
@@ -237,9 +239,9 @@ export function createGitHubPlugin(): VersionaryPluginRuntime {
       };
     },
     async createReleaseMetadata(
-      input: VersionaryScmReleaseMetadataInput,
-      _context: VersionaryPluginContext,
-    ): Promise<VersionaryScmReleaseMetadataResult> {
+      input: ScmReleaseMetadataInput,
+      _context: ScmClientContext,
+    ): Promise<ScmReleaseMetadataResult> {
       const repo = getRepoFromEnv();
       const octokit = new Octokit({ auth: getGitHubToken() });
       try {

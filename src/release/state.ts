@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { loadConfig } from "../../config/load-config.js";
+import { loadConfig } from "../config/load-config.js";
 
 const MANIFEST_VERSION_KEY = "manifest-version";
 const BASELINE_SHA_KEY = "baseline-sha";

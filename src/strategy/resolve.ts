@@ -1,4 +1,4 @@
-import type { VersionaryConfig } from "../../types/config.js";
+import type { VersionaryConfig } from "../types/config.js";
 import { nodeVersionStrategy } from "./node.js";
 import { rVersionStrategy } from "./r.js";
 import { rustVersionStrategy } from "./rust.js";

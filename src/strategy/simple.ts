@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { VersionaryConfig } from "../../types/config.js";
+import type { VersionaryConfig } from "../types/config.js";
 import type { VersionStrategy } from "./types.js";
 
 export const simpleVersionStrategy: VersionStrategy = {

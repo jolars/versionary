@@ -4,7 +4,7 @@ import {
   compareVersions,
   isValidVersion,
   parseVersion,
-} from "../src/domain/release/semver.js";
+} from "../src/release/semver.js";
 
 describe("simple semver", () => {
   it("parses x.y.z and optional pre-release/build metadata", () => {

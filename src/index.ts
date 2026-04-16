@@ -1,11 +1,21 @@
 export { loadConfig } from "./config/load-config.js";
-export { resolveVersionStrategy } from "./domain/strategy/resolve.js";
-export { createGitHubPlugin } from "./infra/scm/github/plugin.js";
+export { verifyProject } from "./release/verify-project.js";
 export {
   findPluginsByCapability,
   pluginHasCapability,
-} from "./plugins/capabilities.js";
-export { loadRuntimePlugins } from "./plugins/runtime.js";
+} from "./scm/capabilities.js";
+export { getScmClient } from "./scm/client.js";
+export { createGitHubPlugin } from "./scm/github-plugin.js";
+export type {
+  ScmClient,
+  ScmClientContext,
+  ScmProvider,
+  ScmReleaseMetadataInput,
+  ScmReleaseMetadataResult,
+  ScmReviewRequestInput,
+  ScmReviewRequestResult,
+} from "./scm/types.js";
+export { resolveVersionStrategy } from "./strategy/resolve.js";
 export type {
   VersionaryArtifactRule,
   VersionaryConfig,
@@ -20,4 +30,3 @@ export type {
   VersionaryScmReviewRequestInput,
   VersionaryScmReviewRequestResult,
 } from "./types/plugins.js";
-export { verifyProject } from "./verify/verify-project.js";

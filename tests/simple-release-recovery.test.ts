@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { executeIdempotentReleaseTarget } from "../src/app/release/recovery.js";
+import { executeIdempotentReleaseTarget } from "../src/release/recovery.js";
 
 const tempDirs: string[] = [];
 

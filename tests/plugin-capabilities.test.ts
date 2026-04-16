@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   findPluginsByCapability,
   pluginHasCapability,
-} from "../src/plugins/capabilities.js";
+} from "../src/scm/capabilities.js";
 import type { VersionaryPluginRuntime } from "../src/types/plugins.js";
 
 describe("plugin capability helpers", () => {

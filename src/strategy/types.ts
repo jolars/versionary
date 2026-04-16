@@ -1,4 +1,4 @@
-import type { VersionaryConfig } from "../../types/config.js";
+import type { VersionaryConfig } from "../types/config.js";
 
 export interface StrategyPackagePlanContext {
   packagePath: string;

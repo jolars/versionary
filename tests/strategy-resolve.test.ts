@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { nodeVersionStrategy } from "../src/domain/strategy/node.js";
-import { rVersionStrategy } from "../src/domain/strategy/r.js";
+import { nodeVersionStrategy } from "../src/strategy/node.js";
+import { rVersionStrategy } from "../src/strategy/r.js";
 import {
   listKnownReleaseTypes,
   resolveVersionStrategy,
-} from "../src/domain/strategy/resolve.js";
-import { rustVersionStrategy } from "../src/domain/strategy/rust.js";
-import { simpleVersionStrategy } from "../src/domain/strategy/simple.js";
+} from "../src/strategy/resolve.js";
+import { rustVersionStrategy } from "../src/strategy/rust.js";
+import { simpleVersionStrategy } from "../src/strategy/simple.js";
 import type { VersionaryConfig } from "../src/types/config.js";
 
 describe("resolveVersionStrategy", () => {

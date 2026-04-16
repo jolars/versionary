@@ -52,7 +52,7 @@ Current implementation focuses on:
 - strategy-based version updates (`simple`, `node`, `rust`, `r`)
 - release planning and changelog generation
 - review-mode vs direct-mode release flow
-- built-in GitHub SCM plugin capabilities
+- a static internal SCM client (`github` provider today)
 
 Planned/harder areas include deeper monorepo ergonomics, broader SCM coverage,
 and stronger failure recovery around release steps.
@@ -61,8 +61,8 @@ and stronger failure recovery around release steps.
 
 Versionary is set up so new language strategies can be added internally without
 changing release orchestration. A new strategy should implement the
-`VersionStrategy` contract in `src/domain/strategy/types.ts` and be wired in
-`src/domain/strategy/resolve.ts`.
+`VersionStrategy` contract in `src/strategy/types.ts` and be wired in
+`src/strategy/resolve.ts`.
 
 Checklist for new strategies (for example `python`):
 
@@ -96,16 +96,19 @@ Current ecosystem policy defaults:
   - Rust supports `version.workspace = true` via `[workspace.package].version`
   - other strategies should document equivalent inheritance behavior explicitly
 
-## Architecture layout (current migration)
+## Architecture layout (canonical)
 
-The repository is moving to explicit layered modules:
+Current runtime code uses a flat `src/` layout with clear module boundaries:
 
-- `src/app/`: command-level application services and orchestration boundaries
-- `src/domain/`: release and strategy domain logic/contracts
-- `src/infra/`: platform integrations (SCM, git/runtime adapters)
-
-Legacy `src/simple/` has been removed. Remaining compatibility paths are
-`src/strategies` and `src/scm` while migration is finalized.
+- `src/cli/`: command router (`run`, `verify`, `plan`, `changelog`, `pr`, `release`)
+- `src/release/`: release orchestration (plan/changelog/PR/release/state/recovery)
+- `src/strategy/`: strategy contracts, resolver, and built-in implementations
+  (`simple`, `node`, `rust`, `r`)
+- `src/scm/`: SCM client contracts and provider implementation(s)
+- `src/config/`: config loading and schema validation
+- `src/git/`: git commit/range and repository URL helpers
+- `src/verify/`: repository/config verification
+- `src/types/`: shared config/plugin-facing types
 
 Configuration is loaded from `versionary.jsonc` by default (or
 `versionary.json`).
@@ -234,8 +237,8 @@ Commands:
 - `pnpm pr`
 - `pnpm release`
 
-`pnpm pr` prepares release commit + branch and opens/updates the review request
-via SCM plugin capability. `pnpm run` is the recommended CI entrypoint and
+`pnpm pr` prepares release commit + branch and opens/updates a review request
+through the SCM client. `pnpm run` is the recommended CI entrypoint and
 auto-dispatches between PR/update and release publish.
 
 For first-run bootstrapping, set `bootstrap-sha` (similar to release-please).
@@ -256,15 +259,21 @@ Versionary fails fast when recovery is unsafe (for example, local and remote
 tags with the same name point to different SHAs). In these cases, the error
 message includes remediation guidance so CI logs are actionable.
 
-## Built-in plugins
+## SCM API model
 
-Versionary ships with built-in SCM plugin support:
+Versionary currently uses a static internal SCM client model:
 
-- `github` (default): review request + release metadata
+- `src/scm/types.ts` defines the `ScmClient` contract
+- `src/scm/client.ts` returns the active provider client
+- current provider is `github` via `src/scm/github-plugin.ts`
+
+There is no runtime discovery/loading of external SCM providers in the release
+flow. Adding another provider is an internal extension: implement `ScmClient`
+and wire provider selection in `src/scm/client.ts`.
 
 ### GitHub integration: env, permissions, and flow
 
-Required environment for the built-in GitHub plugin:
+Required environment for the GitHub SCM provider:
 
 - `GITHUB_REPOSITORY` (format: `owner/repo`)
 - one token env var: `VERSIONARY_PR_TOKEN` or `GH_TOKEN` or `GITHUB_TOKEN`

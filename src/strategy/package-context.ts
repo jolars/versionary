@@ -1,8 +1,5 @@
 import path from "node:path";
-import type {
-  VersionaryConfig,
-  VersionaryPackage,
-} from "../../types/config.js";
+import type { VersionaryConfig, VersionaryPackage } from "../types/config.js";
 import { resolveVersionStrategy } from "./resolve.js";
 import type { VersionStrategy } from "./types.js";
 

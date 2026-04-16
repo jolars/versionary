@@ -1,12 +1,11 @@
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { loadConfig } from "../../config/load-config.js";
-import { resolveVersionStrategy } from "../../domain/strategy/resolve.js";
-import { findPluginsByCapability } from "../../plugins/capabilities.js";
-import { loadRuntimePlugins } from "../../plugins/runtime.js";
-import type { VersionaryConfig } from "../../types/config.js";
-import type { VersionaryPluginContext } from "../../types/plugins.js";
+import { loadConfig } from "../config/load-config.js";
+import { getScmClient } from "../scm/client.js";
+import { resolveVersionStrategy } from "../strategy/resolve.js";
+import type { VersionaryConfig } from "../types/config.js";
+import type { VersionaryPluginContext } from "../types/plugins.js";
 import { isReleaseCommitMessage } from "./pr.js";
 import { executeIdempotentReleaseTarget } from "./recovery.js";
 import { readReleaseTargets } from "./state.js";
@@ -153,19 +152,7 @@ export async function runSimpleReleaseDetailed(
     };
   }
 
-  const plugins = loadRuntimePlugins();
-  const scmPlugins = findPluginsByCapability(plugins, "scm.releaseMetadata");
-  if (scmPlugins.length === 0) {
-    throw new Error("No scm.releaseMetadata plugin is available.");
-  }
-
-  const plugin = scmPlugins[0];
-  if (!plugin?.createReleaseMetadata) {
-    throw new Error(
-      `Plugin "${plugin?.name ?? "unknown"}" does not implement createReleaseMetadata.`,
-    );
-  }
-  const createReleaseMetadata = plugin.createReleaseMetadata;
+  const scmClient = getScmClient();
 
   const releases: {
     tag: string;
@@ -188,7 +175,7 @@ export async function runSimpleReleaseDetailed(
       },
       {
         createReleaseMetadata: (input) =>
-          createReleaseMetadata(input, {
+          scmClient.createReleaseMetadata(input, {
             cwd,
             logger: options.logger,
           }),

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { verifyProject } from "../src/verify/verify-project.js";
+import { verifyProject } from "../src/release/verify-project.js";
 
 const tempDirs: string[] = [];
 

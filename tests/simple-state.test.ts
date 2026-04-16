@@ -6,7 +6,7 @@ import {
   readBaselineSha,
   readReleaseTargets,
   writeBaselineSha,
-} from "../src/app/release/state.js";
+} from "../src/release/state.js";
 
 const tempDirs: string[] = [];
 

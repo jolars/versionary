@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { loadConfig } from "../config/load-config.js";
-import { resolvePackageStrategyContext } from "../domain/strategy/package-context.js";
-import { resolveVersionStrategy } from "../domain/strategy/resolve.js";
+import { resolvePackageStrategyContext } from "../strategy/package-context.js";
+import { resolveVersionStrategy } from "../strategy/resolve.js";
 
 export interface VerifyResult {
   ok: boolean;

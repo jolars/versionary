@@ -2,8 +2,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { applyConfiguredArtifactRules } from "../src/app/release/artifact-rules.js";
-import type { SimplePlan } from "../src/domain/release/plan.js";
+import { applyConfiguredArtifactRules } from "../src/release/artifact-rules.js";
+import type { SimplePlan } from "../src/release/plan.js";
 import type { VersionaryConfig } from "../src/types/config.js";
 
 const tempDirs: string[] = [];

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import type { VersionStrategy } from "../../src/domain/strategy/types.js";
+import type { VersionStrategy } from "../../src/strategy/types.js";
 import type { VersionaryConfig } from "../../src/types/config.js";
 
 interface StrategyContractFixture {

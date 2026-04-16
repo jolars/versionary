@@ -5,7 +5,7 @@ import {
   applyRustWorkspaceDependencyUpdates,
   detectRustDependencyImpact,
   rustVersionStrategy,
-} from "../src/domain/strategy/rust.js";
+} from "../src/strategy/rust.js";
 
 const tempDirs: string[] = [];
 let sandboxCounter = 0;

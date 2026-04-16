@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { splitSafeDirtyFiles } from "../src/app/release/pr.js";
+import { splitSafeDirtyFiles } from "../src/release/pr.js";
 
 function parseLikeGitStatusPorcelainLines(lines: string[]): string[] {
   return lines

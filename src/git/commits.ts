@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
-import type { ReleaseType } from "../../domain/release/semver.js";
+import type { ReleaseType } from "../release/semver.js";
 
 export interface CommitInfo {
   hash: string;

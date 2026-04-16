@@ -1,17 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
-import {
-  readBaselineSha,
-  readReleaseTargets,
-} from "../../app/release/state.js";
-import { loadConfig } from "../../config/load-config.js";
+import { loadConfig } from "../config/load-config.js";
 import {
   analyzeParsedCommits,
   applyRevertSuppression,
   getParsedCommitsForPath,
   getParsedCommitsSinceLastTag,
   type ParsedCommit,
-} from "../../infra/git/commits.js";
+} from "../git/commits.js";
 import { resolvePackageStrategyContext } from "../strategy/package-context.js";
 import { resolveVersionStrategy } from "../strategy/resolve.js";
 import type {
@@ -19,6 +15,7 @@ import type {
   VersionStrategy,
 } from "../strategy/types.js";
 import { bumpVersion, type ReleaseType } from "./semver.js";
+import { readBaselineSha, readReleaseTargets } from "./state.js";
 
 export interface SimplePlan {
   mode: "simple";

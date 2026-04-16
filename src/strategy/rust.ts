@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import TOML from "@iarna/toml";
-import type { VersionaryConfig } from "../../types/config.js";
+import type { VersionaryConfig } from "../types/config.js";
 import type {
   StrategyPackagePlanContext,
   StrategyVersionWriteContext,

@@ -3,8 +3,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { prepareSimpleReleasePr } from "../src/app/release/pr.js";
-import { readReleaseTargets } from "../src/app/release/state.js";
+import { prepareSimpleReleasePr } from "../src/release/pr.js";
+import { readReleaseTargets } from "../src/release/state.js";
 
 const tempDirs: string[] = [];
 

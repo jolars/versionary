@@ -2,12 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import TOML from "@iarna/toml";
 import YAML from "yaml";
-import type { SimplePlan } from "../../domain/release/plan.js";
 import type {
   VersionaryArtifactRule,
   VersionaryConfig,
   VersionaryPackage,
-} from "../../types/config.js";
+} from "../types/config.js";
+import type { SimplePlan } from "./plan.js";
 
 type FieldPathToken = string | number;
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { renderSimpleChangelog } from "../src/domain/release/changelog.js";
-import type { SimplePlan } from "../src/domain/release/plan.js";
-import { parseConventionalCommitMessage } from "../src/infra/git/commits.js";
+import { parseConventionalCommitMessage } from "../src/git/commits.js";
+import { renderSimpleChangelog } from "../src/release/changelog.js";
+import type { SimplePlan } from "../src/release/plan.js";
 
 function makePlan(): SimplePlan {
   return {

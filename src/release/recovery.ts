@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import type { VersionaryScmReleaseMetadataResult } from "../../types/plugins.js";
+import type { VersionaryScmReleaseMetadataResult } from "../types/plugins.js";
 
 export type TagStepResult = "created" | "exists";
 

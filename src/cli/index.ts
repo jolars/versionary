@@ -3,19 +3,19 @@
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { renderSimpleChangelog } from "../release/changelog.js";
+import { createSimplePlan } from "../release/plan.js";
 import {
   isReleaseCommitMessage,
   openOrUpdateSimpleReviewRequest,
   prepareSimpleReleasePr,
   pushReleaseBranch,
-} from "../app/release/pr.js";
+} from "../release/pr.js";
 import {
   runSimpleRelease,
   runSimpleReleaseDetailed,
-} from "../app/release/release.js";
-import { verifyProject } from "../app/release/verify.js";
-import { renderSimpleChangelog } from "../domain/release/changelog.js";
-import { createSimplePlan } from "../domain/release/plan.js";
+} from "../release/release.js";
+import { verifyProject } from "../release/verify-project.js";
 
 function printVerifyResult(): number {
   const result = verifyProject();

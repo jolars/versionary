@@ -1,10 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { afterEach, expect } from "vitest";
-import { nodeVersionStrategy } from "../src/domain/strategy/node.js";
-import { rVersionStrategy } from "../src/domain/strategy/r.js";
-import { rustVersionStrategy } from "../src/domain/strategy/rust.js";
-import { simpleVersionStrategy } from "../src/domain/strategy/simple.js";
+import { nodeVersionStrategy } from "../src/strategy/node.js";
+import { rVersionStrategy } from "../src/strategy/r.js";
+import { rustVersionStrategy } from "../src/strategy/rust.js";
+import { simpleVersionStrategy } from "../src/strategy/simple.js";
 import {
   cleanupStrategyContractTempDirs,
   defineVersionStrategyContractSuite,

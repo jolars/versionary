@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { parseConventionalCommitMessage } from "../src/git/commits.js";
 import {
   isReleaseCommitMessage,
   renderSimpleReviewRequestBody,
   splitSafeDirtyFiles,
-} from "../src/app/release/pr.js";
-import { parseConventionalCommitMessage } from "../src/infra/git/commits.js";
+} from "../src/release/pr.js";
 
 describe("release commit detection", () => {
   it("matches release commit pattern and merge suffixes", () => {

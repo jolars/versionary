@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { createSimplePlan } from "../src/domain/release/plan.js";
+import { createSimplePlan } from "../src/release/plan.js";
 
 const tempDirs: string[] = [];
 
