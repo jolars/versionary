@@ -267,6 +267,7 @@ export function createGitHubPlugin(): VersionaryPluginRuntime & ScmClient {
           tag_name: input.tag,
           name: input.tag,
           body: input.notes,
+          draft: input.draft ?? false,
         });
         data = response.data;
       } catch (error: unknown) {

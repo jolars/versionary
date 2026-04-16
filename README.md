@@ -140,6 +140,8 @@ For a quick trial, use:
   auto-transition to `1.0.0` on a breaking release
 - review mode (`review-mode`): `pr` (PR/MR style) or `direct` (no review
   request)
+- `release-draft` (default `false`) publishes GitHub releases as drafts when
+  enabled
 - optional monorepo planning with `monorepo-mode` and `packages`:
   - `independent` computes package bumps per path
   - `fixed` computes one shared bump across configured package paths

@@ -7,6 +7,7 @@ export interface ReleaseTargetInput {
   tag: string;
   version: string;
   notes: string;
+  draft?: boolean;
 }
 
 export interface ReleaseExecutionContext {

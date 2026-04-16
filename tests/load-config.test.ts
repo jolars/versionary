@@ -69,6 +69,7 @@ describe("config loading", () => {
         "include-commit-authors": true,
         "release-type": "node",
         "changelog-format": "markdown-changelog",
+        "release-draft": true,
       }),
       "utf8",
     );
@@ -80,6 +81,7 @@ describe("config loading", () => {
     expect(loaded.config["include-commit-authors"]).toBe(true);
     expect(loaded.config["release-type"]).toBe("node");
     expect(loaded.config["changelog-format"]).toBe("markdown-changelog");
+    expect(loaded.config["release-draft"]).toBe(true);
   });
 
   it("loads manifest-style packages object", () => {

@@ -342,6 +342,42 @@ describe("github plugin hardening matrix", () => {
     });
 
     expect(mockApi.repos.createRelease).toHaveBeenCalledTimes(1);
+    expect(mockApi.repos.createRelease).toHaveBeenCalledWith(
+      expect.objectContaining({
+        draft: false,
+      }),
+    );
+    expect(result).toEqual({
+      status: "created",
+      url: "https://github.com/owner/repo/releases/tag/v1.2.3",
+    });
+  });
+
+  it("creates draft release metadata when requested", async () => {
+    process.env.GITHUB_REPOSITORY = "owner/repo";
+    process.env.GITHUB_TOKEN = "token";
+    mockApi.repos.getReleaseByTag.mockRejectedValueOnce({
+      status: 404,
+      message: "not found",
+    });
+    const plugin = createGitHubPlugin();
+
+    const result = await plugin.createReleaseMetadata?.(
+      {
+        ...releaseInput,
+        draft: true,
+      },
+      {
+        cwd: process.cwd(),
+      },
+    );
+
+    expect(mockApi.repos.createRelease).toHaveBeenCalledTimes(1);
+    expect(mockApi.repos.createRelease).toHaveBeenCalledWith(
+      expect.objectContaining({
+        draft: true,
+      }),
+    );
     expect(result).toEqual({
       status: "created",
       url: "https://github.com/owner/repo/releases/tag/v1.2.3",

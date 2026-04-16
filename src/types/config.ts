@@ -24,6 +24,7 @@ export interface VersionaryConfig {
   "version-file"?: string;
   "changelog-file"?: string;
   "changelog-format"?: VersionaryChangelogFormat;
+  "release-draft"?: boolean;
   "release-branch"?: string;
   "baseline-file"?: string;
   "bootstrap-sha"?: string;

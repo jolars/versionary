@@ -28,6 +28,7 @@ export interface ScmReleaseMetadataInput {
   tag: string;
   version: string;
   notes: string;
+  draft?: boolean;
 }
 
 export interface ScmReleaseMetadataResult {

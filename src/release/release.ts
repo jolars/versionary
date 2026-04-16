@@ -178,6 +178,7 @@ export async function runSimpleReleaseDetailed(
         tag: target.tag,
         version: target.version,
         notes: readReleaseNotes(cwd, target.version, targetChangelogFile),
+        draft: loaded.config["release-draft"] ?? false,
       },
       {
         createReleaseMetadata: (input) =>
