@@ -9,8 +9,10 @@ function makePlan(): SimplePlan {
     releaseType: "minor",
     currentVersion: "0.1.0",
     nextVersion: "0.2.0",
+    packageName: "versionary",
     versionFile: "version.txt",
     changelogFile: "CHANGELOG.md",
+    changelogFormat: "markdown-changelog",
     releaseBranchPrefix: "versionary/release",
     baselineSha: null,
     commits: [

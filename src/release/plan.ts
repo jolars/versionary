@@ -14,6 +14,10 @@ import type {
   StrategyPackagePlanContext,
   VersionStrategy,
 } from "../strategy/types.js";
+import type {
+  VersionaryChangelogFormat,
+  VersionaryConfig,
+} from "../types/config.js";
 import { bumpVersion, type ReleaseType } from "./semver.js";
 import { readBaselineSha, readReleaseTargets } from "./state.js";
 
@@ -22,8 +26,10 @@ export interface SimplePlan {
   releaseType: ReleaseType;
   currentVersion: string;
   nextVersion: string | null;
+  packageName: string;
   versionFile: string;
   changelogFile: string;
+  changelogFormat: VersionaryChangelogFormat;
   releaseBranchPrefix: string;
   baselineSha: string | null;
   commits: ParsedCommit[];
@@ -42,11 +48,34 @@ function getMode(
   return configMode ?? "independent";
 }
 
+export function getChangelogDefaults(config: {
+  "release-type"?: VersionaryConfig["release-type"];
+  "changelog-file"?: VersionaryConfig["changelog-file"];
+  "changelog-format"?: VersionaryConfig["changelog-format"];
+}): {
+  changelogFile: string;
+  changelogFormat: VersionaryChangelogFormat;
+} {
+  const changelogFormat =
+    config["changelog-format"] ??
+    (config["release-type"] === "r" ? "r-news" : "markdown-changelog");
+  const changelogFile =
+    config["changelog-file"] ??
+    (changelogFormat === "r-news" ? "NEWS.md" : "CHANGELOG.md");
+  return { changelogFile, changelogFormat };
+}
+
 export function createSimplePlan(cwd = process.cwd()): SimplePlan {
   const loaded = loadConfig(cwd);
   const strategy = resolveVersionStrategy(loaded.config);
   const versionFile = strategy.getVersionFile(loaded.config);
-  const changelogFile = loaded.config["changelog-file"] ?? "CHANGELOG.md";
+  const { changelogFile, changelogFormat } = getChangelogDefaults(
+    loaded.config,
+  );
+  const packageName =
+    loaded.config["release-type"] === "r"
+      ? (strategy.readPackageName?.(cwd, loaded.config) ?? path.basename(cwd))
+      : path.basename(cwd);
   const releaseBranchPrefix =
     loaded.config["release-branch"] ?? "versionary/release";
   const baselineSha =
@@ -83,8 +112,10 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
       releaseType,
       currentVersion,
       nextVersion,
+      packageName,
       versionFile,
       changelogFile,
+      changelogFormat,
       releaseBranchPrefix,
       baselineSha,
       commits,
@@ -207,8 +238,10 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
       releaseType: fixedType,
       currentVersion: fixedBaseVersion,
       nextVersion: fixedNextVersion,
+      packageName,
       versionFile,
       changelogFile,
+      changelogFormat,
       releaseBranchPrefix,
       baselineSha,
       commits: adjusted.flatMap((pkgPlan) => pkgPlan.commits),
@@ -232,8 +265,10 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
     releaseType: overallType,
     currentVersion: overallBaseVersion,
     nextVersion: overallNextVersion,
+    packageName,
     versionFile,
     changelogFile,
+    changelogFormat,
     releaseBranchPrefix,
     baselineSha,
     commits: adjustedPackages.flatMap((pkgPlan) => pkgPlan.commits),

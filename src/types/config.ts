@@ -1,4 +1,5 @@
 export type ConfigFileFormat = "jsonc" | "json" | "toml" | "js";
+export type VersionaryChangelogFormat = "markdown-changelog" | "r-news";
 
 export interface VersionaryArtifactRule {
   type: "json" | "toml" | "yaml" | "regex";
@@ -12,6 +13,7 @@ export interface VersionaryPackage {
   "release-type"?: string;
   "package-name"?: string;
   "changelog-file"?: string;
+  "changelog-format"?: VersionaryChangelogFormat;
   "exclude-paths"?: string[];
   "extra-files"?: VersionaryArtifactRule[];
 }
@@ -21,6 +23,7 @@ export interface VersionaryConfig {
   "review-mode"?: "direct" | "pr" | "review";
   "version-file"?: string;
   "changelog-file"?: string;
+  "changelog-format"?: VersionaryChangelogFormat;
   "release-branch"?: string;
   "baseline-file"?: string;
   "bootstrap-sha"?: string;

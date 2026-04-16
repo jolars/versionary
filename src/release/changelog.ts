@@ -5,6 +5,7 @@ import {
   type ParsedCommit,
 } from "../git/commits.js";
 import { resolveRepositoryWebBaseUrl } from "../git/repo-url.js";
+import type { VersionaryChangelogFormat } from "../types/config.js";
 import type { SimplePlan } from "./plan.js";
 
 function formatDate(): string {
@@ -150,6 +151,14 @@ export function renderSimpleChangelog(plan: SimplePlan): string {
   if (!plan.nextVersion) {
     return "";
   }
+  if (plan.changelogFormat === "r-news") {
+    return renderRNewsReleaseNotes({
+      packageName: plan.packageName,
+      nextVersion: plan.nextVersion,
+      commits: plan.commits,
+      cwd: process.cwd(),
+    });
+  }
   return renderSimpleReleaseNotes({
     currentVersion: plan.currentVersion,
     nextVersion: plan.nextVersion,
@@ -190,15 +199,49 @@ export function prependChangelog(
   cwd: string,
   changelogFile: string,
   section: string,
+  format: VersionaryChangelogFormat = "markdown-changelog",
 ): void {
   const changelogPath = path.join(cwd, changelogFile);
   const existing = fs.existsSync(changelogPath)
     ? fs.readFileSync(changelogPath, "utf8")
     : "";
+  if (format === "r-news") {
+    const separator = existing.length > 0 ? "\n\n" : "";
+    const next = `${section}${separator}${existing}`.trimEnd() + "\n";
+    fs.writeFileSync(changelogPath, next, "utf8");
+    return;
+  }
   const heading = existing.startsWith("# Changelog") ? "" : "# Changelog\n\n";
   const separator = existing.length > 0 ? "\n" : "";
   const next =
     `${heading}${section}${separator}${existing.replace(/^# Changelog\s*/u, "")}`.trimEnd() +
     "\n";
   fs.writeFileSync(changelogPath, next, "utf8");
+}
+
+export function renderRNewsReleaseNotes(input: {
+  packageName: string;
+  nextVersion: string;
+  commits: ParsedCommit[];
+  cwd?: string;
+}): string {
+  const repoUrl = resolveRepositoryWebBaseUrl(input.cwd ?? process.cwd());
+  const grouped = groupCommitLines(input.commits, repoUrl);
+  const normalizedVersion = input.nextVersion.replace(/\.\d+$/u, "");
+  const sections: string[] = [];
+  if (grouped.breaking.length > 0) {
+    sections.push("## Breaking changes", "", ...grouped.breaking, "");
+  }
+  if (grouped.features.length > 0) {
+    sections.push("## Features", "", ...grouped.features, "");
+  }
+  if (grouped.fixes.length > 0) {
+    sections.push("## Bug fixes", "", ...grouped.fixes, "");
+  }
+  if (grouped.reverts.length > 0) {
+    sections.push("## Reverts", "", ...grouped.reverts, "");
+  }
+  return [`# ${input.packageName} ${normalizedVersion}`, "", ...sections]
+    .join("\n")
+    .trimEnd();
 }

@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
-import fs from "node:fs";
-import path from "node:path";
-import { renderSimpleChangelog } from "../release/changelog.js";
+import {
+  prependChangelog,
+  renderSimpleChangelog,
+} from "../release/changelog.js";
 import { createSimplePlan } from "../release/plan.js";
 import {
   isReleaseCommitMessage,
@@ -247,16 +248,11 @@ async function main(): Promise<number> {
       return 0;
     }
 
-    const changelogPath = path.join(process.cwd(), plan.changelogFile);
-    const existing = fs.existsSync(changelogPath)
-      ? fs.readFileSync(changelogPath, "utf8")
-      : "";
-    const heading = "# Changelog\n\n";
-    const body = existing.replace(/^# Changelog\s*/u, "");
-    fs.writeFileSync(
-      changelogPath,
-      `${`${heading}${section}\n${body}`.trimEnd()}\n`,
-      "utf8",
+    prependChangelog(
+      process.cwd(),
+      plan.changelogFile,
+      section,
+      plan.changelogFormat,
     );
     console.log(`Updated ${plan.changelogFile}`);
     return 0;

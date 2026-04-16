@@ -384,7 +384,7 @@ export function prepareSimpleReleasePr(
     loaded.config,
   );
   const section = renderSimpleChangelog(plan);
-  prependChangelog(cwd, plan.changelogFile, section);
+  prependChangelog(cwd, plan.changelogFile, section, plan.changelogFormat);
   const updatedChangelogFiles = [plan.changelogFile];
   for (const packagePlan of plan.packages ?? []) {
     if (!packagePlan.nextVersion || packagePlan.path === ".") {
@@ -410,6 +410,7 @@ export function prepareSimpleReleasePr(
       cwd,
       path.posix.join(packagePlan.path, packageChangelogFile),
       packageSection,
+      "markdown-changelog",
     );
     updatedChangelogFiles.push(
       path.posix.join(packagePlan.path, packageChangelogFile),

@@ -6,6 +6,7 @@ import { getScmClient } from "../scm/client.js";
 import { resolveVersionStrategy } from "../strategy/resolve.js";
 import type { VersionaryConfig } from "../types/config.js";
 import type { VersionaryPluginContext } from "../types/plugins.js";
+import { getChangelogDefaults } from "./plan.js";
 import { isReleaseCommitMessage } from "./pr.js";
 import { executeIdempotentReleaseTarget } from "./recovery.js";
 import { readReleaseTargets } from "./state.js";
@@ -30,9 +31,14 @@ function readReleaseNotes(
 
   const content = fs.readFileSync(changelogPath, "utf8");
   const lines = content.split("\n");
+  const shortVersion = version.replace(/\.\d+$/u, "");
   const start = lines.findIndex(
     (line) =>
-      line.startsWith(`## ${version} -`) || line.startsWith(`## [${version}](`),
+      line.startsWith(`## ${version} -`) ||
+      line.startsWith(`## [${version}](`) ||
+      line.startsWith(`# ${shortVersion} -`) ||
+      line.startsWith(`# [${shortVersion}](`) ||
+      new RegExp(`^#\\s+.+\\s+${shortVersion}\\s*$`, "u").test(line),
   );
   if (start < 0) {
     return `Automated release for v${version}`;
@@ -122,7 +128,7 @@ export async function runSimpleReleaseDetailed(
 
   const loaded = loadConfig(cwd);
   const strategy = resolveVersionStrategy(loaded.config);
-  const changelogFile = loaded.config["changelog-file"] ?? "CHANGELOG.md";
+  const { changelogFile } = getChangelogDefaults(loaded.config);
   const version = strategy.readVersion(cwd, loaded.config);
   const defaultTag = `v${version}`;
 

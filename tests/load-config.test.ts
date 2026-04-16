@@ -68,6 +68,7 @@ describe("config loading", () => {
         "allow-stable-major": true,
         "include-commit-authors": true,
         "release-type": "node",
+        "changelog-format": "markdown-changelog",
       }),
       "utf8",
     );
@@ -78,6 +79,7 @@ describe("config loading", () => {
     expect(loaded.config["allow-stable-major"]).toBe(true);
     expect(loaded.config["include-commit-authors"]).toBe(true);
     expect(loaded.config["release-type"]).toBe("node");
+    expect(loaded.config["changelog-format"]).toBe("markdown-changelog");
   });
 
   it("loads manifest-style packages object", () => {
@@ -94,6 +96,7 @@ describe("config loading", () => {
             "release-type": "rust",
             "package-name": "panache-zed",
             "changelog-file": "CHANGELOG.md",
+            "changelog-format": "markdown-changelog",
             "extra-files": [
               {
                 type: "toml",
@@ -116,6 +119,7 @@ describe("config loading", () => {
       "release-type": "rust",
       "package-name": "panache-zed",
       "changelog-file": "CHANGELOG.md",
+      "changelog-format": "markdown-changelog",
       "extra-files": [
         {
           type: "toml",

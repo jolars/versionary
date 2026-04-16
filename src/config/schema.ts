@@ -55,6 +55,7 @@ const packageSchema = z
     "release-type": z.string().optional(),
     "package-name": z.string().optional(),
     "changelog-file": z.string().optional(),
+    "changelog-format": z.enum(["markdown-changelog", "r-news"]).optional(),
     "exclude-paths": z.array(z.string()).optional(),
     "extra-files": z.array(artifactRuleSchema).optional(),
   })
@@ -67,6 +68,7 @@ export const configSchema = z
     "review-mode": z.enum(["direct", "pr", "review"]).optional(),
     "version-file": z.string().optional(),
     "changelog-file": z.string().optional(),
+    "changelog-format": z.enum(["markdown-changelog", "r-news"]).optional(),
     "release-branch": z.string().optional(),
     "baseline-file": z.string().optional(),
     "bootstrap-sha": z.string().optional(),

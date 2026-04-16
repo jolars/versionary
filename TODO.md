@@ -43,22 +43,12 @@ workflows.
 - [x] Handle complex inter-package dependency scenarios (e.g. A depends on B,
       both updated in same release). Like Cargo workspaces.
 
-## Plugin and extension model
-
-- [ ] Define stable internal release-step lifecycle hooks (plan, mutate files,
-      review request, release metadata).
-- [x] Lock external plugin loading as out of scope; keep internal-only modular
-      extension points.
-- [x] Add built-in artifact update rules for json/toml/yaml/regex with strong
-      validation.
-- [ ] Add comprehensive plugin-capability tests and failure-mode tests.
-
 ## Strategy expansion readiness
 
 - [x] Add a documented "new strategy" checklist (required contract + wiring +
       tests + docs).
-- [x] Add reusable cross-strategy contract tests for read/write/missing/malformed
-      behavior.
+- [x] Add reusable cross-strategy contract tests for
+      read/write/missing/malformed behavior.
 - [x] Document ecosystem policy defaults (lockfiles, changelog source,
       workspace/inheritance rules) to guide Python and future strategies.
 - [ ] Add first Python strategy (`release-type: "python"`) with pyproject and
@@ -69,8 +59,8 @@ workflows.
 - [ ] Stabilize GitHub integration end-to-end (PR update, labels, release
       metadata, auth edge cases).
 - [ ] Add abstraction tests so SCM behavior is platform-neutral at the core.
-- [ ] Prototype GitLab SCM plugin capability parity.
-- [ ] Prototype Codeberg/Gitea-compatible SCM plugin capability parity.
+- [ ] Prototype GitLab SCM capability parity.
+- [ ] Prototype Codeberg/Gitea-compatible SCM capability parity.
 - [ ] Add issue-commenting capability for issues related to releases (e.g.
       "Issue solved in [v2.1.2](link)").
 

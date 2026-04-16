@@ -7,7 +7,8 @@ Versionary is intended to combine strengths from `semantic-release` and
 
 - keep both direct release execution and release-PR-gated workflows
 - stay software/ecosystem agnostic (Node, Rust, docs, etc.)
-- keep SCM integration pluggable/capability-based (GitHub first, others later)
+- keep SCM integration internal and provider-oriented (GitHub first, others
+  later)
 - focus on versioning/changelog/tagging/release metadata, not package registry
   publishing
 - preserve a small, stable core with clear extension points
@@ -68,21 +69,18 @@ a strategy model:
 
 - `src/cli/index.ts`: command router for `run`, `verify`, `plan`, `changelog`,
   `pr`, `release`
-- `src/app/release/`: application-layer release modules (`pr`, `release`,
-  `verify`, `state`)
-- `src/domain/strategy/`: strategy contracts + implementations (`simple`,
-  `node`) and resolver
-- `src/domain/release/`: release-domain modules (plan/changelog/semver)
-- `src/infra/git/`: git commit/range analysis and repository URL resolution
-- `src/infra/scm/`: SCM integration boundary (`github` plugin + runtime loader)
+- `src/release/`: release modules (`plan`, `changelog`, `semver`, `pr`,
+  `release`, `verify-project`, `state`, `recovery`, `artifact-rules`)
+- `src/strategy/`: strategy contracts + implementations (`simple`, `node`,
+  `rust`, `r`) and resolver
+- `src/git/`: git commit/range analysis and repository URL resolution
+- `src/scm/`: SCM integration boundary (`types`, static client resolver,
+  provider implementations like `github-plugin`)
 - `src/config/`: config discovery/parsing/validation
   - `load-config.ts` loads `versionary.jsonc` (preferred) or `versionary.json`
   - `schema.ts` validates config via `zod`
-- `src/strategies/` and `src/scm/`: compatibility-layer exports during migration
-  to the app/domain/infra layout (`src/simple/` has been removed)
-- `src/plugins/`: plugin capability helpers + compatibility runtime export
-- `src/verify/verify-project.ts`: validates config loading, version file
-  presence, and configured package paths
+- `src/action/`: GitHub Action entrypoint wiring to CLI behavior
+- `src/types/`: shared config/SCM types
 
 ## Key conventions in this repository
 
@@ -115,7 +113,8 @@ a strategy model:
 - `run` is the primary CI entrypoint: it auto-dispatches to PR/update flow or
   release publish flow based on commit context.
 - `review-mode` controls review-request behavior (`direct` skips PR creation,
-  `pr` uses SCM plugin; legacy `review` alias is accepted).
+  `pr` uses the configured internal SCM provider; legacy `review` alias is
+  accepted).
 - Treat package publishing as out of scope for Versionary itself; external CI
   workflows should publish artifacts based on release/tag events.
 - Packaging is CLI-first:
