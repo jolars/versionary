@@ -390,6 +390,28 @@ function parseDependencyName(line: string): string | null {
   return match?.[1] ?? match?.[2] ?? match?.[3] ?? null;
 }
 
+function rewriteCargoVersionRequirement(
+  currentRequirement: string,
+  nextVersion: string,
+): string {
+  const simpleRequirementMatch = currentRequirement.match(
+    /^(\s*)(\^|~|>=|<=|>|<|=)?(\s*)([0-9A-Za-z.+-]+)(\s*)$/u,
+  );
+  if (!simpleRequirementMatch) {
+    return nextVersion;
+  }
+
+  const [
+    ,
+    leadingWhitespace = "",
+    operator = "",
+    operatorWhitespace = "",
+    ,
+    trailingWhitespace = "",
+  ] = simpleRequirementMatch;
+  return `${leadingWhitespace}${operator}${operatorWhitespace}${nextVersion}${trailingWhitespace}`;
+}
+
 function writeInternalDependencyVersionInLine(
   line: string,
   dependencyName: string,
@@ -404,28 +426,48 @@ function writeInternalDependencyVersionInLine(
     /^(\s*(?:"[^"]+"|'[^']+'|[A-Za-z0-9_-]+)\s*=\s*)(["'])([^"']*)(\2)(\s*(?:#.*)?)?$/u,
   );
   if (stringVersionMatch) {
-    const [, prefix = "", quote = '"', , , suffix = ""] = stringVersionMatch;
-    return `${prefix}${quote}${nextVersion}${quote}${suffix}`;
+    const [, prefix = "", quote = '"', current = "", , suffix = ""] =
+      stringVersionMatch;
+    const rewrittenRequirement = rewriteCargoVersionRequirement(
+      current,
+      nextVersion,
+    );
+    return `${prefix}${quote}${rewrittenRequirement}${quote}${suffix}`;
   }
 
   const inlineTableMatch = line.match(
     /^(\s*(?:"[^"]+"|'[^']+'|[A-Za-z0-9_-]+)\s*=\s*\{)(.*)(\}\s*(?:#.*)?)$/u,
   );
-  if (!inlineTableMatch) {
-    return line;
+  if (inlineTableMatch) {
+    const [, prefix = "", tableBody = "", suffix = ""] = inlineTableMatch;
+    const updatedTableBody = tableBody.replace(
+      /(\bversion\s*=\s*)(["'])([^"']*)(\2)/u,
+      (_match, versionPrefix, quote, currentVersion) =>
+        `${versionPrefix}${quote}${rewriteCargoVersionRequirement(
+          String(currentVersion),
+          nextVersion,
+        )}${quote}`,
+    );
+
+    if (updatedTableBody === tableBody) {
+      return line;
+    }
+
+    return `${prefix}${updatedTableBody}${suffix}`;
   }
 
-  const [, prefix = "", tableBody = "", suffix = ""] = inlineTableMatch;
-  const updatedTableBody = tableBody.replace(
+  const updatedTableLine = line.replace(
     /(\bversion\s*=\s*)(["'])([^"']*)(\2)/u,
-    `$1$2${nextVersion}$4`,
+    (_match, versionPrefix, quote, currentVersion) =>
+      `${versionPrefix}${quote}${rewriteCargoVersionRequirement(
+        String(currentVersion),
+        nextVersion,
+      )}${quote}`,
   );
-
-  if (updatedTableBody === tableBody) {
+  if (updatedTableLine === line) {
     return line;
   }
-
-  return `${prefix}${updatedTableBody}${suffix}`;
+  return updatedTableLine;
 }
 
 function writeInternalDependencyVersions(

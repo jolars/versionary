@@ -360,6 +360,80 @@ describe("rustVersionStrategy", () => {
     expect(utilManifest).toContain('core-lib = "0.3.0"');
   });
 
+  it("preserves requirement operators when updating internal dependency versions", () => {
+    const cwd = makeTempDir("workspace-operator-preserve");
+    write(
+      cwd,
+      "Cargo.toml",
+      ["[workspace]", 'members = ["crates/*"]', ""].join("\n"),
+    );
+    write(
+      cwd,
+      "crates/core/Cargo.toml",
+      ["[package]", 'name = "core-lib"', 'version = "0.2.0"', ""].join("\n"),
+    );
+    write(
+      cwd,
+      "crates/util/Cargo.toml",
+      [
+        "[package]",
+        'name = "util-lib"',
+        'version = "0.1.0"',
+        "",
+        "[dependencies]",
+        'core-lib = "^0.2.0"',
+        "",
+      ].join("\n"),
+    );
+
+    const updatedFiles = applyRustWorkspaceDependencyUpdates(cwd, {
+      "crates/core/Cargo.toml": "0.3.0",
+    });
+
+    expect(updatedFiles).toEqual(["crates/util/Cargo.toml"]);
+    const utilManifest = read(cwd, "crates/util/Cargo.toml");
+    expect(utilManifest).toContain('core-lib = "^0.3.0"');
+  });
+
+  it("updates multiline inline-table dependency versions", () => {
+    const cwd = makeTempDir("workspace-multiline-inline-table");
+    write(
+      cwd,
+      "Cargo.toml",
+      ["[workspace]", 'members = ["crates/*"]', ""].join("\n"),
+    );
+    write(
+      cwd,
+      "crates/core/Cargo.toml",
+      ["[package]", 'name = "core-lib"', 'version = "0.2.0"', ""].join("\n"),
+    );
+    write(
+      cwd,
+      "crates/util/Cargo.toml",
+      [
+        "[package]",
+        'name = "util-lib"',
+        'version = "0.1.0"',
+        "",
+        "[dependencies]",
+        'core-lib = { path = "../core", version = "0.2.0", features = [',
+        '  "std",',
+        "] }",
+        "",
+      ].join("\n"),
+    );
+
+    const updatedFiles = applyRustWorkspaceDependencyUpdates(cwd, {
+      "crates/core/Cargo.toml": "0.3.0",
+    });
+
+    expect(updatedFiles).toEqual(["crates/util/Cargo.toml"]);
+    const utilManifest = read(cwd, "crates/util/Cargo.toml");
+    expect(utilManifest).toContain(
+      'core-lib = { path = "../core", version = "0.3.0", features = [',
+    );
+  });
+
   it("detects dependency impact for candidate manifests", () => {
     const cwd = useFixture("workspace-panache-like");
 
