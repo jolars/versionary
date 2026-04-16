@@ -1,4 +1,10 @@
-# Changelog
+## [0.11.0](https://github.com/jolars/versionary/compare/v0.10.0...v0.11.0) (2026-04-16)
+
+### Features
+- report reverts separately in changelog ([`c417b2f`](https://github.com/jolars/versionary/commit/c417b2f88fdf49c20a6e321e7d9f9856ca28e5a1))
+
+### Bug Fixes
+- correctly publish changelog notes for non-root packages ([`d419317`](https://github.com/jolars/versionary/commit/d4193179a34034a1d25f571cb1825c197987f337))
 
 ## [0.10.0](https://github.com/jolars/versionary/compare/v0.9.0...v0.10.0) (2026-04-16)
 
