@@ -6,7 +6,13 @@ import { resolveVersionStrategy } from "../domain/strategy/resolve.js";
 
 export interface VerifyResult {
   ok: boolean;
-  checks: Array<{ name: string; ok: boolean; details: string }>;
+  checks: Array<{
+    name: string;
+    ok: boolean;
+    details: string;
+    category: "config" | "paths" | "version-files";
+    remediation?: string;
+  }>;
 }
 
 export function verifyProject(cwd = process.cwd()): VerifyResult {
@@ -17,6 +23,7 @@ export function verifyProject(cwd = process.cwd()): VerifyResult {
     name: "config-load",
     ok: true,
     details: `Loaded ${path.basename(config.path)} (${config.format})`,
+    category: "config",
   });
 
   const strategy = resolveVersionStrategy(config.config);
@@ -26,6 +33,10 @@ export function verifyProject(cwd = process.cwd()): VerifyResult {
     name: `version-file:${versionFile}`,
     ok: exists,
     details: exists ? "Version file exists" : `Missing ${versionFile}`,
+    category: "version-files",
+    remediation: exists
+      ? undefined
+      : `Create ${versionFile} or set "version-file" to the correct path for your release strategy.`,
   });
 
   if (config.config.packages) {
@@ -38,6 +49,10 @@ export function verifyProject(cwd = process.cwd()): VerifyResult {
         name: `package-path:${pkgPathRaw}`,
         ok: exists,
         details: exists ? "Path exists" : `Missing path: ${pkgPathRaw}`,
+        category: "paths",
+        remediation: exists
+          ? undefined
+          : `Create ${pkgPathRaw} or remove/rename this entry under "packages" in versionary config.`,
       });
 
       if (exists) {
@@ -56,6 +71,10 @@ export function verifyProject(cwd = process.cwd()): VerifyResult {
           details: packageVersionExists
             ? "Version file exists"
             : `Missing ${packageVersionFile}`,
+          category: "version-files",
+          remediation: packageVersionExists
+            ? undefined
+            : `Create ${packageVersionFile} or adjust package release settings ("release-type"/"version-file") for ${pkgPathRaw}.`,
         });
       }
     }

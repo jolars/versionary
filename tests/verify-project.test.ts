@@ -37,6 +37,7 @@ describe("verifyProject", () => {
 
     const result = verifyProject(dir);
     expect(result.ok).toBe(true);
+    expect(result.checks.every((check) => check.category)).toBe(true);
   });
 
   it("fails when package path is missing", () => {
@@ -56,6 +57,10 @@ describe("verifyProject", () => {
     expect(
       result.checks.some((c) => c.name.includes("does-not-exist") && !c.ok),
     ).toBe(true);
+    const failedPathCheck = result.checks.find(
+      (c) => c.name === "package-path:does-not-exist" && !c.ok,
+    );
+    expect(failedPathCheck?.remediation).toContain("remove/rename");
   });
 
   it("fails when version file is missing", () => {
@@ -73,6 +78,10 @@ describe("verifyProject", () => {
     expect(
       result.checks.some((c) => c.name.includes("version-file") && !c.ok),
     ).toBe(true);
+    const failedVersionCheck = result.checks.find(
+      (c) => c.name === "version-file:version.txt" && !c.ok,
+    );
+    expect(failedVersionCheck?.remediation).toContain("Create version.txt");
   });
 
   it("expects package.json for release-type node", () => {

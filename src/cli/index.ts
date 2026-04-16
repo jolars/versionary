@@ -19,12 +19,36 @@ import { createSimplePlan } from "../domain/release/plan.js";
 
 function printVerifyResult(): number {
   const result = verifyProject();
+  const categories: Array<{
+    key: "config" | "paths" | "version-files";
+    title: string;
+  }> = [
+    { key: "config", title: "Config" },
+    { key: "paths", title: "Paths" },
+    { key: "version-files", title: "Version files" },
+  ];
 
-  for (const check of result.checks) {
-    const status = check.ok ? "OK" : "FAIL";
-    console.log(`[${status}] ${check.name} - ${check.details}`);
+  for (const category of categories) {
+    const checks = result.checks.filter(
+      (check) => check.category === category.key,
+    );
+    if (checks.length === 0) {
+      continue;
+    }
+    console.log(`${category.title}:`);
+    for (const check of checks) {
+      const status = check.ok ? "OK" : "FAIL";
+      console.log(`  [${status}] ${check.name} - ${check.details}`);
+      if (!check.ok && check.remediation) {
+        console.log(`         Fix: ${check.remediation}`);
+      }
+    }
+    console.log("");
   }
 
+  console.log(
+    result.ok ? "Summary: all checks passed." : "Summary: checks failed.",
+  );
   return result.ok ? 0 : 1;
 }
 
