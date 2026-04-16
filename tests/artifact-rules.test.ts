@@ -97,6 +97,38 @@ describe("artifact rules", () => {
     expect(read(cwd, "pkg/README.md")).toContain("v1.2.3");
   });
 
+  it("preserves unrelated TOML formatting when updating top-level version", () => {
+    const cwd = makeTempDir();
+    write(
+      cwd,
+      "pkg/extension.toml",
+      [
+        'authors = ["Johan Larsson <johan@jolars.co>"]',
+        'languages = ["Markdown", "Quarto", "RMarkdown"]',
+        'version = "1.2.2"',
+        "",
+      ].join("\n"),
+    );
+    const config: VersionaryConfig = {
+      version: 1,
+      packages: {
+        pkg: {
+          "extra-files": [
+            { type: "toml", path: "extension.toml", jsonpath: "$.version" },
+          ],
+        },
+      },
+    };
+
+    applyConfiguredArtifactRules(cwd, config, basePlan());
+    const updated = read(cwd, "pkg/extension.toml");
+    expect(updated).toContain('authors = ["Johan Larsson <johan@jolars.co>"]');
+    expect(updated).toContain(
+      'languages = ["Markdown", "Quarto", "RMarkdown"]',
+    );
+    expect(updated).toContain('version = "1.2.3"');
+  });
+
   it("throws actionable errors on invalid paths and matches", () => {
     const cwd = makeTempDir();
     write(cwd, "pkg/file.txt", "v1.2.2 v1.2.2");

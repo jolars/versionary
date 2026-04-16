@@ -154,6 +154,36 @@ function applyRegexRule(
   return `${content.slice(0, start)}${replacement}${content.slice(start + full.length)}`;
 }
 
+function applyTomlRulePreservingFormatting(
+  content: string,
+  jsonpath: string,
+  version: string,
+): string {
+  const simplePath = jsonpath.match(/^\$\.([A-Za-z0-9_-]+)$/u);
+  if (!simplePath) {
+    const parsed = TOML.parse(content) as unknown;
+    setVersionAtJsonPath(parsed, jsonpath, version);
+    return `${TOML.stringify(parsed as TOML.JsonMap)}\n`;
+  }
+
+  const key = simplePath[1]!;
+  const linePattern = new RegExp(
+    `^(\\s*${key}\\s*=\\s*)(["'])([^"']*)(\\2)(\\s*(?:#.*)?)$`,
+    "mu",
+  );
+  const match = content.match(linePattern);
+  if (!match) {
+    throw new Error(
+      `jsonpath "${jsonpath}" does not resolve to an existing field.`,
+    );
+  }
+  const [, prefix = "", quote = '"', , , suffix = ""] = match;
+  return content.replace(
+    linePattern,
+    `${prefix}${quote}${version}${quote}${suffix}`,
+  );
+}
+
 function applyArtifactRuleToContent(
   content: string,
   rule: VersionaryArtifactRule,
@@ -168,9 +198,7 @@ function applyArtifactRuleToContent(
     return `${JSON.stringify(parsed, null, 2)}\n`;
   }
   if (rule.type === "toml") {
-    const parsed = TOML.parse(content) as unknown;
-    setVersionAtJsonPath(parsed, rule.jsonpath!, version);
-    return `${TOML.stringify(parsed as TOML.JsonMap)}\n`;
+    return applyTomlRulePreservingFormatting(content, rule.jsonpath!, version);
   }
   const parsed = YAML.parse(content) as unknown;
   setVersionAtJsonPath(parsed, rule.jsonpath!, version);
