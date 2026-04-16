@@ -16,6 +16,12 @@ When making design decisions, prioritize trunk-based-development compatibility,
 monorepo ergonomics, and explicit failure handling over adding broad dependency
 surface area.
 
+## Development Status
+
+The project is in early, alpha-stage development. Breaking changes are generally
+just fine at this stage. Once we get to 1.0.0, we will start caring about
+backwards compatibility.
+
 ## Conventional Commits and Semantic Versioning
 
 versionary is heavily built around
