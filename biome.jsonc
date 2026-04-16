@@ -1,4 +1,19 @@
 {
+  "$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
+  "files": {
+    "includes": [
+      "**",
+      "!.devenv",
+      "!.direnv",
+      "!dist",
+      "!node_modules",
+      "!panache",
+      "!release-please",
+      "!release-please-action",
+      "!semantic-release",
+      "!.pre-commit-config.yaml"
+    ]
+  },
   "formatter": {
     "indentStyle": "space"
   }
