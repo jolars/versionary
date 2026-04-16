@@ -23,116 +23,20 @@ outputs:
   action:
     description: Versionary action taken (noop, pr-prepared, release-published,
       release-skipped)
-    value: ${{ steps.run.outputs.action }}
   message:
     description: Human-readable result message
-    value: ${{ steps.run.outputs.message }}
   release_created:
     description: Whether this run published at least one release
-    value: ${{ steps.run.outputs.release_created }}
   tag_name:
     description: Primary release tag (first tag when multiple targets release)
-    value: ${{ steps.run.outputs.tag_name }}
   tag_names:
     description: JSON array of published release tags
-    value: ${{ steps.run.outputs.tag_names }}
   review_url:
     description: Review request URL when a release PR was prepared
-    value: ${{ steps.run.outputs.review_url }}
   branch:
     description: Release branch name when a release PR was prepared
-    value: ${{ steps.run.outputs.branch }}
   title:
     description: Release PR title when a release PR was prepared
-    value: ${{ steps.run.outputs.title }}
 runs:
-  using: composite
-  steps:
-    - id: run
-      name: Run Versionary
-      shell: bash
-      working-directory: ${{ inputs.working-directory }}
-      env:
-        GITHUB_TOKEN: ${{ inputs.token != '' && inputs.token || inputs.github-token }}
-      run: |
-        set -euo pipefail
-
-        if [ -z "${GITHUB_TOKEN}" ]; then
-          echo "Input required and not supplied: token (or deprecated github-token)." >&2
-          exit 1
-        fi
-
-
-        if ! git config user.name >/dev/null; then
-          git config user.name "github-actions[bot]"
-        fi
-
-        if ! git config user.email >/dev/null; then
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        fi
-
-        # Ensure git push uses the same token as API calls, so downstream
-        # workflows can trigger on Versionary-authored branch updates.
-        if git remote get-url origin >/dev/null 2>&1; then
-          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@${GITHUB_SERVER_URL#https://}/${GITHUB_REPOSITORY}.git"
-        fi
-
-
-        JSON_OUTPUT="$(npx --yes versionary@${{ inputs.versionary-version }} run
-        --json)"
-
-        echo "$JSON_OUTPUT"
-
-
-        JSON_OUTPUT="$JSON_OUTPUT" node - <<'NODE'
-
-        const fs = require("node:fs");
-
-
-        const outputPath = process.env.GITHUB_OUTPUT;
-
-        const raw = process.env.JSON_OUTPUT;
-
-
-        if (!outputPath) {
-          throw new Error("GITHUB_OUTPUT is not set.");
-        }
-
-        if (!raw) {
-          throw new Error("Versionary returned empty JSON output.");
-        }
-
-
-        let payload;
-
-        try {
-          payload = JSON.parse(raw);
-        } catch (error) {
-          throw new Error(
-            `Failed parsing Versionary JSON output: ${error instanceof Error ? error.message : String(error)}`,
-          );
-        }
-
-
-        const tagNames = Array.isArray(payload.tagNames)
-          ? payload.tagNames.filter((value) => typeof value === "string")
-          : [];
-        const firstTag = tagNames[0] ?? "";
-
-        const releaseCreated =
-          payload.releaseCreated === true || tagNames.length > 0 ? "true" : "false";
-        const lines = [
-          `action=${payload.action ?? ""}`,
-          `message=${payload.message ?? ""}`,
-          `release_created=${releaseCreated}`,
-          `tag_name=${firstTag}`,
-          `tag_names=${JSON.stringify(tagNames)}`,
-          `review_url=${payload.reviewUrl ?? ""}`,
-          `branch=${payload.branch ?? ""}`,
-          `title=${payload.title ?? ""}`,
-        ];
-
-
-        fs.appendFileSync(outputPath, `${lines.join("\n")}\n`, "utf8");
-
-        NODE
+  using: node24
+  main: dist/action/index.js
