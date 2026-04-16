@@ -5,6 +5,7 @@ import { loadConfig } from "../../config/load-config.js";
 import { resolveVersionStrategy } from "../../domain/strategy/resolve.js";
 import { findPluginsByCapability } from "../../plugins/capabilities.js";
 import { loadRuntimePlugins } from "../../plugins/runtime.js";
+import type { VersionaryConfig } from "../../types/config.js";
 import type { VersionaryPluginContext } from "../../types/plugins.js";
 import { isReleaseCommitMessage } from "./pr.js";
 import { executeIdempotentReleaseTarget } from "./recovery.js";
@@ -51,6 +52,24 @@ function readReleaseNotes(
     .join("\n")
     .trim();
   return notes.length > 0 ? notes : `Automated release for v${version}`;
+}
+
+export function resolveTargetChangelogFile(
+  config: VersionaryConfig,
+  rootChangelogFile: string,
+  targetPath: string,
+): string {
+  if (targetPath === ".") {
+    return rootChangelogFile;
+  }
+
+  const packageChangelogFile =
+    config.packages?.[targetPath]?.["changelog-file"];
+  if (!packageChangelogFile) {
+    return rootChangelogFile;
+  }
+
+  return path.posix.join(targetPath, packageChangelogFile);
 }
 
 export async function runSimpleRelease(cwd = process.cwd()): Promise<string> {
@@ -155,12 +174,17 @@ export async function runSimpleReleaseDetailed(
     metadataStatus: "created" | "exists";
   }[] = [];
   for (const target of targets) {
+    const targetChangelogFile = resolveTargetChangelogFile(
+      loaded.config,
+      changelogFile,
+      target.path,
+    );
     const outcome = await executeIdempotentReleaseTarget(
       cwd,
       {
         tag: target.tag,
         version: target.version,
-        notes: readReleaseNotes(cwd, target.version, changelogFile),
+        notes: readReleaseNotes(cwd, target.version, targetChangelogFile),
       },
       {
         createReleaseMetadata: (input) =>
