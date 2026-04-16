@@ -261,29 +261,6 @@ function collectRustTargetManifests(
   );
 }
 
-function readCargoVersion(cargoTomlRaw: string, versionFile: string): string {
-  const { packageTable } = parseCargoManifest(versionFile, cargoTomlRaw);
-  if (!packageTable || typeof packageTable !== "object") {
-    throw new Error(
-      `${versionFile} is missing [package].version. Add [package] with a SemVer version.`,
-    );
-  }
-
-  const rawVersion = (packageTable as { version?: unknown }).version;
-  if (rawVersion === undefined) {
-    throw new Error(
-      `${versionFile} is missing [package].version. Add [package] with a SemVer version.`,
-    );
-  }
-  if (typeof rawVersion !== "string" || rawVersion.trim().length === 0) {
-    throw new Error(
-      `${versionFile} has invalid [package].version. Expected a non-empty SemVer string.`,
-    );
-  }
-
-  return rawVersion.trim();
-}
-
 function isWorkspaceInheritedVersion(rawVersion: unknown): boolean {
   if (!rawVersion || typeof rawVersion !== "object") {
     return false;
