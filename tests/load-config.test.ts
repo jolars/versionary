@@ -155,4 +155,31 @@ describe("config loading", () => {
       /regex artifact rules do not support/i,
     );
   });
+
+  it("rejects unknown top-level and package keys", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        unknown: true,
+      }),
+      "utf8",
+    );
+    expect(() => loadConfig(dir)).toThrow(/unrecognized key/i);
+
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        packages: {
+          ".": {
+            unknown: true,
+          },
+        },
+      }),
+      "utf8",
+    );
+    expect(() => loadConfig(dir)).toThrow(/unrecognized key/i);
+  });
 });
