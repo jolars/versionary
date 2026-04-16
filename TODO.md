@@ -70,10 +70,3 @@ workflows.
 - [x] Add dry-run guarantees for `pr` and `release` paths with deterministic
       output.
 - [ ] Ensure all commands have crisp help text and examples.
-
-## Short-term priority (suggested)
-
-1. [x] SCM failure recovery and idempotency.
-2. [x] GitHub integration hardening and docs/examples.
-3. [x] Monorepo cargo-workspace and mixed-language fixtures.
-4. [x] CLI machine-readable output + dry-run guarantees.
