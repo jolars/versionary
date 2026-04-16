@@ -39,4 +39,4 @@ outputs:
     description: Release PR title when a release PR was prepared
 runs:
   using: node24
-  main: dist/action/index.js
+  main: action/index.js
