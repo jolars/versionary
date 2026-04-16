@@ -111,6 +111,7 @@ export async function runSimpleReleaseDetailed(
       `Plugin "${plugin?.name ?? "unknown"}" does not implement createReleaseMetadata.`,
     );
   }
+  const createReleaseMetadata = plugin.createReleaseMetadata;
 
   const releaseTargets = readReleaseTargets(cwd);
   const targets =
@@ -140,7 +141,7 @@ export async function runSimpleReleaseDetailed(
       },
       {
         createReleaseMetadata: (input) =>
-          plugin.createReleaseMetadata?.(input, {
+          createReleaseMetadata(input, {
             cwd,
             logger: options.logger,
           }),

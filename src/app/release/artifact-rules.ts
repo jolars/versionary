@@ -45,7 +45,13 @@ function parseFieldPath(fieldPath: string): FieldPathToken[] {
       }
       const keyMatch = rest.match(/^"([^"]+)"\]/u);
       if (keyMatch) {
-        tokens.push(keyMatch[1]!);
+        const key = keyMatch[1];
+        if (!key) {
+          throw new Error(
+            `Invalid field-path "${fieldPath}" near index ${index}.`,
+          );
+        }
+        tokens.push(key);
         index += 4 + keyMatch[1]?.length;
         continue;
       }
@@ -71,7 +77,12 @@ function setVersionAtJsonPath(
   let cursor: unknown = document;
 
   for (let index = 0; index < tokens.length - 1; index += 1) {
-    const token = tokens[index]!;
+    const token = tokens[index];
+    if (token === undefined) {
+      throw new Error(
+        `field-path "${fieldPath}" does not resolve to an existing field.`,
+      );
+    }
     if (typeof token === "number") {
       if (!Array.isArray(cursor) || token >= cursor.length) {
         throw new Error(
@@ -89,7 +100,12 @@ function setVersionAtJsonPath(
     cursor = cursor[token];
   }
 
-  const leaf = tokens.at(-1)!;
+  const leaf = tokens.at(-1);
+  if (leaf === undefined) {
+    throw new Error(
+      `field-path "${fieldPath}" does not resolve to an existing field.`,
+    );
+  }
   if (typeof leaf === "number") {
     if (!Array.isArray(cursor) || leaf >= cursor.length) {
       throw new Error(
@@ -133,7 +149,12 @@ function resolveFieldPath(rule: VersionaryArtifactRule): string {
 function parseRegexPattern(pattern: string): RegExp {
   const slashPattern = pattern.match(/^\/((?:\\\/|[^/])+)\/([a-z]*)$/u);
   if (slashPattern) {
-    return new RegExp(slashPattern[1]!, slashPattern[2]!);
+    const source = slashPattern[1];
+    const flags = slashPattern[2];
+    if (!source || flags === undefined) {
+      throw new Error(`Invalid regex pattern "${pattern}".`);
+    }
+    return new RegExp(source, flags);
   }
   return new RegExp(pattern, "m");
 }
@@ -154,7 +175,10 @@ function applyRegexRule(
       `Regex pattern must match exactly one occurrence; matched ${matches.length}.`,
     );
   }
-  const match = matches[0]!;
+  const match = matches[0];
+  if (!match) {
+    throw new Error("Regex match result missing.");
+  }
   const start = match.index;
   if (start === undefined) {
     throw new Error("Regex match did not include an index.");
@@ -178,7 +202,12 @@ function applyTomlRulePreservingFormatting(
     return `${TOML.stringify(parsed as TOML.JsonMap)}\n`;
   }
 
-  const key = simplePath[1]!;
+  const key = simplePath[1];
+  if (!key) {
+    throw new Error(
+      `field-path "${fieldPath}" does not resolve to an existing field.`,
+    );
+  }
   const linePattern = new RegExp(
     `^(\\s*${key}\\s*=\\s*)(["'])([^"']*)(\\2)(\\s*(?:#.*)?)$`,
     "mu",
@@ -202,7 +231,10 @@ function applyArtifactRuleToContent(
   version: string,
 ): string {
   if (rule.type === "regex") {
-    return applyRegexRule(content, rule.pattern!, version);
+    if (!rule.pattern) {
+      throw new Error('regex artifact rules require "pattern".');
+    }
+    return applyRegexRule(content, rule.pattern, version);
   }
   if (rule.type === "json") {
     const parsed = JSON.parse(content) as unknown;
