@@ -1,7 +1,7 @@
 {
-  "manifestVersion": 1,
-  "baselineSha": "3d17213df5888c7f6ab020f2398249c136e0e036",
-  "releaseTargets": [
+  "manifest-version": 1,
+  "baseline-sha": "3d17213df5888c7f6ab020f2398249c136e0e036",
+  "release-targets": [
     {
       "path": ".",
       "version": "0.5.0",

@@ -44,12 +44,12 @@ describe("simple baseline state", () => {
     const manifestPath = path.join(dir, ".versionary-manifest.json");
     expect(fs.existsSync(manifestPath)).toBe(true);
     const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as {
-      manifestVersion?: number;
+      "manifest-version"?: number;
     };
-    expect(manifest.manifestVersion).toBe(1);
+    expect(manifest["manifest-version"]).toBe(1);
   });
 
-  it("throws on unsupported manifestVersion", () => {
+  it("throws on unsupported manifest-version", () => {
     const dir = makeTempDir();
     fs.writeFileSync(
       path.join(dir, "versionary.json"),
@@ -58,9 +58,9 @@ describe("simple baseline state", () => {
     );
     fs.writeFileSync(
       path.join(dir, ".versionary-manifest.json"),
-      JSON.stringify({ manifestVersion: 2, baselineSha: "abc123" }),
+      JSON.stringify({ "manifest-version": 2, "baseline-sha": "abc123" }),
       "utf8",
     );
-    expect(() => readBaselineSha(dir)).toThrow(/Unsupported manifestVersion/i);
+    expect(() => readBaselineSha(dir)).toThrow(/Unsupported manifest-version/i);
   });
 });

@@ -4,13 +4,13 @@
   "title": "Versionary release manifest",
   "type": "object",
   "properties": {
-    "manifestVersion": {
+    "manifest-version": {
       "const": 1
     },
-    "baselineSha": {
+    "baseline-sha": {
       "type": "string"
     },
-    "releaseTargets": {
+    "release-targets": {
       "type": "array",
       "items": {
         "type": "object",
