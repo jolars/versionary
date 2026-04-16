@@ -1,3 +1,10 @@
+# Changelog
+
+## [0.11.1](https://github.com/jolars/versionary/compare/v0.11.0...v0.11.1) (2026-04-16)
+
+### Bug Fixes
+- recover from stale or invalid commit hashes ([`13f8496`](https://github.com/jolars/versionary/commit/13f8496c8c2603935d38c7d81ecb12dfcd9f9a76))
+
 ## [0.11.0](https://github.com/jolars/versionary/compare/v0.10.0...v0.11.0) (2026-04-16)
 
 ### Features
