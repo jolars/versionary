@@ -3,10 +3,14 @@ import fs from "node:fs";
 import path from "node:path";
 import { loadConfig } from "../../config/load-config.js";
 
+const MANIFEST_VERSION_KEY = "manifest-version";
+const BASELINE_SHA_KEY = "baseline-sha";
+const RELEASE_TARGETS_KEY = "release-targets";
+
 interface SimpleStateFile {
-  "manifest-version"?: number;
-  "baseline-sha"?: string;
-  "release-targets"?: ReleaseTargetState[];
+  [MANIFEST_VERSION_KEY]?: number;
+  [BASELINE_SHA_KEY]?: string;
+  [RELEASE_TARGETS_KEY]?: ReleaseTargetState[];
 }
 
 export interface ReleaseTargetState {
@@ -24,31 +28,31 @@ function parseStateFile(raw: string, filePath: string): SimpleStateFile {
   }
   const manifest = parsed as Record<string, unknown>;
   if (
-    manifest["manifest-version"] !== undefined &&
-    manifest["manifest-version"] !== 1
+    manifest[MANIFEST_VERSION_KEY] !== undefined &&
+    manifest[MANIFEST_VERSION_KEY] !== 1
   ) {
     throw new Error(
-      `Unsupported manifest-version in ${filePath}: ${String(manifest["manifest-version"])}.`,
+      `Unsupported ${MANIFEST_VERSION_KEY} in ${filePath}: ${String(manifest[MANIFEST_VERSION_KEY])}.`,
     );
   }
   if (
-    manifest["baseline-sha"] !== undefined &&
-    typeof manifest["baseline-sha"] !== "string"
+    manifest[BASELINE_SHA_KEY] !== undefined &&
+    typeof manifest[BASELINE_SHA_KEY] !== "string"
   ) {
     throw new Error(
-      `Invalid release manifest at ${filePath}: baseline-sha must be a string.`,
+      `Invalid release manifest at ${filePath}: ${BASELINE_SHA_KEY} must be a string.`,
     );
   }
   if (
-    manifest["release-targets"] !== undefined &&
-    !Array.isArray(manifest["release-targets"])
+    manifest[RELEASE_TARGETS_KEY] !== undefined &&
+    !Array.isArray(manifest[RELEASE_TARGETS_KEY])
   ) {
     throw new Error(
-      `Invalid release manifest at ${filePath}: release-targets must be an array.`,
+      `Invalid release manifest at ${filePath}: ${RELEASE_TARGETS_KEY} must be an array.`,
     );
   }
-  if (Array.isArray(manifest["release-targets"])) {
-    for (const target of manifest["release-targets"]) {
+  if (Array.isArray(manifest[RELEASE_TARGETS_KEY])) {
+    for (const target of manifest[RELEASE_TARGETS_KEY]) {
       if (!target || typeof target !== "object" || Array.isArray(target)) {
         throw new Error(
           `Invalid release manifest at ${filePath}: each release target must be an object.`,
@@ -61,7 +65,7 @@ function parseStateFile(raw: string, filePath: string): SimpleStateFile {
         typeof record.tag !== "string"
       ) {
         throw new Error(
-          `Invalid release manifest at ${filePath}: release-targets must contain string path, version, and tag.`,
+          `Invalid release manifest at ${filePath}: ${RELEASE_TARGETS_KEY} must contain string path, version, and tag.`,
         );
       }
     }
@@ -96,7 +100,7 @@ export function readBaselineSha(cwd = process.cwd()): string | null {
   }
 
   const parsed = parseStateFile(fs.readFileSync(filePath, "utf8"), filePath);
-  return parsed["baseline-sha"] ?? null;
+  return parsed[BASELINE_SHA_KEY] ?? null;
 }
 
 export function readReleaseTargets(cwd = process.cwd()): ReleaseTargetState[] {
@@ -106,7 +110,7 @@ export function readReleaseTargets(cwd = process.cwd()): ReleaseTargetState[] {
   }
 
   const parsed = parseStateFile(fs.readFileSync(filePath, "utf8"), filePath);
-  return parsed["release-targets"] ?? [];
+  return parsed[RELEASE_TARGETS_KEY] ?? [];
 }
 
 export function writeBaselineSha(
@@ -114,7 +118,7 @@ export function writeBaselineSha(
   sha?: string,
   releaseTargets: ReleaseTargetState[] = [],
 ): void {
-  const baselineSha =
+  const baselineShaValue =
     sha ??
     execFileSync("git", ["rev-parse", "HEAD"], {
       cwd,
@@ -123,9 +127,9 @@ export function writeBaselineSha(
     }).trim();
   const filePath = getBaselineStatePath(cwd);
   const next: SimpleStateFile = {
-    "manifest-version": 1,
-    "baseline-sha": baselineSha,
-    "release-targets": releaseTargets,
+    [MANIFEST_VERSION_KEY]: 1,
+    [BASELINE_SHA_KEY]: baselineShaValue,
+    [RELEASE_TARGETS_KEY]: releaseTargets,
   };
   fs.writeFileSync(filePath, `${JSON.stringify(next, null, 2)}\n`, "utf8");
 }
