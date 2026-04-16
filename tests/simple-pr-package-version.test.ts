@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { prependChangelog } from "../src/release/changelog.js";
 import { prepareSimpleReleasePr } from "../src/release/pr.js";
 import { readReleaseTargets } from "../src/release/state.js";
 
@@ -46,6 +47,21 @@ afterEach(() => {
 });
 
 describe("release PR package version update", () => {
+  it("preserves # Changelog heading when prepending markdown sections", () => {
+    const cwd = makeTempDir();
+    write(cwd, "CHANGELOG.md", "# Changelog\n\n");
+
+    prependChangelog(
+      cwd,
+      "CHANGELOG.md",
+      "## 1.0.1 (2026-04-16)\n\n### Bug Fixes\n- fix bug",
+      "markdown-changelog",
+    );
+
+    const output = fs.readFileSync(path.join(cwd, "CHANGELOG.md"), "utf8");
+    expect(output.startsWith("# Changelog\n\n")).toBe(true);
+  });
+
   it("updates root package.json version for node release-type", () => {
     const cwd = makeTempDir();
     git(cwd, "init");

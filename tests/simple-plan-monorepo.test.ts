@@ -397,4 +397,84 @@ describe("simple monorepo planning", () => {
     expect(b?.releaseType).toBe("patch");
     expect(b?.nextVersion).toBe("0.5.1");
   });
+
+  it("does not mark cross-strategy packages for dependency propagation", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "CHANGELOG.md", "# Changelog\n\n");
+    write(
+      cwd,
+      "Cargo.toml",
+      [
+        "[package]",
+        'name = "workspace-root"',
+        'version = "2.35.0"',
+        "",
+        "[workspace]",
+        'members = ["crates/*"]',
+        "",
+      ].join("\n"),
+    );
+    write(
+      cwd,
+      "crates/core/Cargo.toml",
+      ["[package]", 'name = "panache-core"', 'version = "2.35.0"', ""].join(
+        "\n",
+      ),
+    );
+    write(
+      cwd,
+      "editors/zed/Cargo.toml",
+      ["[package]", 'name = "zed_panache"', 'version = "2.35.0"', ""].join(
+        "\n",
+      ),
+    );
+    write(cwd, "editors/zed/extension.toml", 'version = "2.35.0"\n');
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "release-type": "rust",
+        "review-mode": "direct",
+        "changelog-file": "CHANGELOG.md",
+        "monorepo-mode": "independent",
+        packages: {
+          ".": {
+            "exclude-paths": ["editors"],
+          },
+          "crates/core": {
+            "release-type": "rust",
+          },
+          "editors/zed": {
+            "release-type": "rust",
+            "package-name": "panache-zed",
+            "extra-files": [
+              {
+                type: "toml",
+                path: "extension.toml",
+                jsonpath: "$.version",
+              },
+            ],
+          },
+        },
+      }),
+    );
+    write(cwd, "crates/core/src/lib.rs", "pub fn core() {}\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v2.35.0");
+
+    write(cwd, "crates/core/src/lib.rs", "pub fn core_v2() {}\n");
+    git(cwd, "add", "crates/core/src/lib.rs");
+    git(cwd, "commit", "-m", "feat: update core");
+
+    const plan = createSimplePlan(cwd);
+    const zed = plan.packages?.find((pkg) => pkg.path === "editors/zed");
+    expect(zed?.releaseType).toBeNull();
+    expect(zed?.nextVersion).toBeNull();
+  });
 });
