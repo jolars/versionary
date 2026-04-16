@@ -117,12 +117,6 @@
           }
         }
       }
-    },
-    "plugins": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
     }
   }
 }

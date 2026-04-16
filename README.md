@@ -22,7 +22,7 @@ Versionary is being built to:
 
 - support both direct releases and release-PR-gated releases
 - work across repository types (Node, Rust, docs/LaTeX, etc.)
-- stay SCM-agnostic at the core, with integrations via plugin capabilities
+- stay SCM-agnostic at the core with built-in integration adapters
   (GitHub first; GitLab/Codeberg later)
 - keep a small, stable core with explicit extension points
 - handle trunk-based development and monorepo workflows cleanly
@@ -40,6 +40,7 @@ Out of scope (intentional):
 
 - publishing artifacts to language registries
 - replacing package-specific publish tooling
+- external/user-provided plugin loading
 
 Use your CI/CD platform for registry publishing, triggered from a created
 release/tag.

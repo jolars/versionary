@@ -47,8 +47,8 @@ workflows.
 
 - [ ] Define stable internal release-step lifecycle hooks (plan, mutate files,
       review request, release metadata).
-- [ ] Decide whether external plugin loading remains internal-only or becomes
-      public API.
+- [x] Lock external plugin loading as out of scope; keep internal-only modular
+      extension points.
 - [x] Add built-in artifact update rules for json/toml/yaml/regex with strong
       validation.
 - [ ] Add comprehensive plugin-capability tests and failure-mode tests.

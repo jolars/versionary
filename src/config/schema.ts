@@ -76,7 +76,6 @@ export const configSchema = z
     "include-commit-authors": z.boolean().optional(),
     "release-type": z.string().optional(),
     packages: z.record(z.string().min(1), packageSchema).optional(),
-    plugins: z.array(z.string().min(1)).optional(),
   })
   .strict();
 

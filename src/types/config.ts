@@ -30,7 +30,6 @@ export interface VersionaryConfig {
   "include-commit-authors"?: boolean;
   "release-type"?: string;
   packages?: Record<string, VersionaryPackage>;
-  plugins?: string[];
 }
 
 export interface LoadedConfig {

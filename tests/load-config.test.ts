@@ -255,4 +255,19 @@ describe("config loading", () => {
     );
     expect(loadConfig(dir).config["review-mode"]).toBe("review");
   });
+
+  it("rejects removed plugins config key with actionable guidance", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        plugins: ["github"],
+      }),
+      "utf8",
+    );
+    expect(() => loadConfig(dir)).toThrow(
+      /plugins.*no longer supported.*built-in integrations only/i,
+    );
+  });
 });

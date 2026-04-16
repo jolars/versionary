@@ -53,6 +53,11 @@ export function loadConfig(cwd = process.cwd()): LoadedConfig {
   if (!isRecord(parsed)) {
     throw new Error("Invalid config: expected an object at the root.");
   }
+  if (Object.hasOwn(parsed, "plugins")) {
+    throw new Error(
+      'The "plugins" config key is no longer supported. Versionary uses built-in integrations only.',
+    );
+  }
   const validated = configSchema.parse(parsed) as VersionaryConfig;
 
   return {
