@@ -49,13 +49,47 @@ release/tag.
 
 Current implementation focuses on:
 
-- strategy-based version updates (`simple`, `node`)
+- strategy-based version updates (`simple`, `node`, `rust`, `r`)
 - release planning and changelog generation
 - review-mode vs direct-mode release flow
 - built-in GitHub SCM plugin capabilities
 
 Planned/harder areas include deeper monorepo ergonomics, broader SCM coverage,
 and stronger failure recovery around release steps.
+
+## Adding a new release strategy
+
+Versionary is set up so new language strategies can be added internally without
+changing release orchestration. A new strategy should implement the
+`VersionStrategy` contract in `src/domain/strategy/types.ts` and be wired in
+`src/domain/strategy/resolve.ts`.
+
+Checklist for new strategies (for example `python`):
+
+- define strategy `name`
+- define `getVersionFile(config)` defaults and config override behavior
+- implement `readVersion(cwd, config)` with explicit malformed-file errors
+- implement `writeVersion(cwd, config, version)` returning deterministic updated
+  file paths
+- add release-name extraction support if package tags should derive from
+  language metadata (similar to Node/Rust/R)
+- add focused strategy tests for ecosystem-specific behavior and edge cases
+- add/extend strategy contract tests in `tests/strategy-contract.test.ts`
+- update schema/docs for new `release-type` behavior and defaults
+
+Current ecosystem policy defaults:
+
+- changelog source for publish:
+  - root target uses root `changelog-file`
+  - package target uses `packages.<path>.changelog-file` when configured, else
+    root `changelog-file`
+- lockfiles:
+  - Node strategy updates root `package-lock.json`/`npm-shrinkwrap.json` when
+    present
+  - Rust release PR prep refreshes all discovered `Cargo.lock` files
+- workspace/inheritance:
+  - Rust supports `version.workspace = true` via `[workspace.package].version`
+  - other strategies should document equivalent inheritance behavior explicitly
 
 ## Architecture layout (current migration)
 

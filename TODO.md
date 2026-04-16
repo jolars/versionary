@@ -53,6 +53,17 @@ workflows.
       validation.
 - [ ] Add comprehensive plugin-capability tests and failure-mode tests.
 
+## Strategy expansion readiness
+
+- [x] Add a documented "new strategy" checklist (required contract + wiring +
+      tests + docs).
+- [x] Add reusable cross-strategy contract tests for read/write/missing/malformed
+      behavior.
+- [x] Document ecosystem policy defaults (lockfiles, changelog source,
+      workspace/inheritance rules) to guide Python and future strategies.
+- [ ] Add first Python strategy (`release-type: "python"`) with pyproject and
+      fallback support.
+
 ## SCM integrations
 
 - [ ] Stabilize GitHub integration end-to-end (PR update, labels, release
