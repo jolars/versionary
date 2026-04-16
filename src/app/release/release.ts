@@ -67,6 +67,14 @@ export type SimpleRunReleaseResult =
       reason: string;
     }
   | {
+      action: "release-dry-run";
+      message: string;
+      targets: {
+        tag: string;
+        version: string;
+      }[];
+    }
+  | {
       action: "release-published";
       message: string;
       releases: {
@@ -79,6 +87,7 @@ export type SimpleRunReleaseResult =
 
 export interface RunSimpleReleaseOptions {
   logger?: VersionaryPluginContext["logger"];
+  "dry-run"?: boolean;
 }
 
 export async function runSimpleReleaseDetailed(
@@ -99,6 +108,32 @@ export async function runSimpleReleaseDetailed(
   const version = strategy.readVersion(cwd, loaded.config);
   const defaultTag = `v${version}`;
 
+  const releaseTargets = readReleaseTargets(cwd);
+  const targets =
+    releaseTargets.length > 0
+      ? releaseTargets
+      : [
+          {
+            path: ".",
+            version,
+            tag: defaultTag,
+          },
+        ];
+
+  if (options["dry-run"]) {
+    const targetList = targets.map(
+      (target) => `${target.tag} (${target.version})`,
+    );
+    return {
+      action: "release-dry-run",
+      targets: targets.map((target) => ({
+        tag: target.tag,
+        version: target.version,
+      })),
+      message: `Dry run: would publish releases ${targetList.join(", ")}`,
+    };
+  }
+
   const plugins = loadRuntimePlugins();
   const scmPlugins = findPluginsByCapability(plugins, "scm.releaseMetadata");
   if (scmPlugins.length === 0) {
@@ -112,18 +147,6 @@ export async function runSimpleReleaseDetailed(
     );
   }
   const createReleaseMetadata = plugin.createReleaseMetadata;
-
-  const releaseTargets = readReleaseTargets(cwd);
-  const targets =
-    releaseTargets.length > 0
-      ? releaseTargets
-      : [
-          {
-            path: ".",
-            version,
-            tag: defaultTag,
-          },
-        ];
 
   const releases: {
     tag: string;

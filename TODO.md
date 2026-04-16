@@ -67,7 +67,7 @@ workflows.
 
 - [ ] Improve `verify` output with grouped checks and suggested fixes.
 - [x] Add machine-readable output mode(s) for CI orchestration.
-- [ ] Add dry-run guarantees for `pr` and `release` paths with deterministic
+- [x] Add dry-run guarantees for `pr` and `release` paths with deterministic
       output.
 - [ ] Ensure all commands have crisp help text and examples.
 
@@ -83,4 +83,4 @@ workflows.
 1. [x] SCM failure recovery and idempotency.
 2. [x] GitHub integration hardening and docs/examples.
 3. [x] Monorepo cargo-workspace and mixed-language fixtures.
-4. [ ] CLI machine-readable output + dry-run guarantees.
+4. [x] CLI machine-readable output + dry-run guarantees.

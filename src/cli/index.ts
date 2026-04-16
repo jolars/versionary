@@ -30,21 +30,33 @@ function printVerifyResult(): number {
 
 interface CliFlags {
   json: boolean;
+  "dry-run": boolean;
 }
 
 interface RunJsonResult {
-  action: "noop" | "pr-prepared" | "release-skipped" | "release-published";
+  action:
+    | "noop"
+    | "pr-prepared"
+    | "pr-dry-run"
+    | "release-skipped"
+    | "release-dry-run"
+    | "release-published";
   message: string;
   releaseCreated: boolean;
   tagNames: string[];
   reviewUrl?: string;
   branch?: string;
   title?: string;
+  targets?: {
+    tag: string;
+    version: string;
+  }[];
 }
 
 function parseFlags(args: string[]): CliFlags {
   return {
     json: args.includes("--json"),
+    "dry-run": args.includes("--dry-run"),
   };
 }
 
@@ -63,9 +75,20 @@ async function main(): Promise<number> {
     }).trim();
 
     if (isReleaseCommitMessage(commitMessage)) {
+      if (flags["dry-run"] && !flags.json) {
+        const release = await runSimpleReleaseDetailed(process.cwd(), {
+          logger,
+          "dry-run": true,
+        });
+        if (release.action === "release-dry-run") {
+          console.log(release.message);
+          return 0;
+        }
+      }
       if (flags.json) {
         const release = await runSimpleReleaseDetailed(process.cwd(), {
           logger,
+          "dry-run": flags["dry-run"],
         });
         if (release.action === "release-skipped") {
           emitJson({
@@ -73,6 +96,16 @@ async function main(): Promise<number> {
             message: release.reason,
             releaseCreated: false,
             tagNames: [],
+          });
+          return 0;
+        }
+        if (release.action === "release-dry-run") {
+          emitJson({
+            action: "release-dry-run",
+            message: release.message,
+            releaseCreated: false,
+            tagNames: release.targets.map((target) => target.tag),
+            targets: release.targets,
           });
           return 0;
         }
@@ -102,6 +135,36 @@ async function main(): Promise<number> {
         return 0;
       }
       console.log(message);
+      return 0;
+    }
+
+    if (flags["dry-run"]) {
+      const dryRunMessage = `Dry run: would prepare release PR branch ${plan.releaseBranchPrefix} for ${plan.nextVersion}`;
+      if (flags.json) {
+        emitJson({
+          action: "pr-dry-run",
+          message: dryRunMessage,
+          releaseCreated: false,
+          tagNames: [],
+          branch: plan.releaseBranchPrefix,
+          targets: plan.packages
+            ?.filter((pkg) => pkg.nextVersion)
+            .map((pkg) => ({
+              tag:
+                pkg.path === "."
+                  ? `v${pkg.nextVersion ?? ""}`
+                  : `${pkg.path}-v${pkg.nextVersion ?? ""}`,
+              version: pkg.nextVersion ?? "",
+            })) ?? [
+            {
+              tag: `v${plan.nextVersion}`,
+              version: plan.nextVersion,
+            },
+          ],
+        });
+        return 0;
+      }
+      console.log(dryRunMessage);
       return 0;
     }
 
@@ -176,6 +239,17 @@ async function main(): Promise<number> {
   }
 
   if (command === "pr") {
+    if (flags["dry-run"]) {
+      const plan = createSimplePlan();
+      if (!plan.nextVersion) {
+        console.log("No releasable commits found. Nothing to do.");
+        return 0;
+      }
+      console.log(
+        `Dry run: would prepare release PR branch ${plan.releaseBranchPrefix} for ${plan.nextVersion}`,
+      );
+      return 0;
+    }
     const pr = prepareSimpleReleasePr(process.cwd(), { logger: console });
     pushReleaseBranch(process.cwd(), pr.branch);
     const reviewResult = await openOrUpdateSimpleReviewRequest(
@@ -194,6 +268,20 @@ async function main(): Promise<number> {
   }
 
   if (command === "release") {
+    if (flags["dry-run"]) {
+      const result = await runSimpleReleaseDetailed(process.cwd(), {
+        logger,
+        "dry-run": true,
+      });
+      if (result.action === "release-dry-run") {
+        console.log(result.message);
+      } else if (result.action === "release-skipped") {
+        console.log(result.reason);
+      } else {
+        console.log(result.message);
+      }
+      return 0;
+    }
     const message = await runSimpleRelease(process.cwd());
     console.log(message);
     return 0;
@@ -202,13 +290,15 @@ async function main(): Promise<number> {
   console.log("Usage: versionary <command>");
   console.log("Commands:");
   console.log(
-    "  run [--json]  Auto-dispatch release PR/update or release publish by context",
+    "  run [--json] [--dry-run]  Auto-dispatch release PR/update or release publish by context",
   );
   console.log("  verify  Validate config and basic repository shape");
   console.log("  plan    Print release plan (simple mode)");
   console.log("  changelog [--write]  Print or write changelog section");
-  console.log("  pr      Prepare release PR commit and branch");
-  console.log("  release Publish release metadata for release commit context");
+  console.log("  pr [--dry-run]      Prepare release PR commit and branch");
+  console.log(
+    "  release [--dry-run] Publish release metadata for release commit context",
+  );
   return 1;
 }
 

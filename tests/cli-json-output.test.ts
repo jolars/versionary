@@ -71,4 +71,73 @@ describe("cli run --json", () => {
     expect(parsed.tagNames).toEqual([]);
     expect(parsed.message).toContain("No releasable commits found");
   });
+
+  it("prints machine-readable dry-run PR result without side effects", () => {
+    const cwd = makeTempDir("versionary-cli-json-dry-pr-");
+    const testsDir = path.dirname(fileURLToPath(import.meta.url));
+    const repoRoot = path.resolve(testsDir, "..");
+    const tsx = path.join(repoRoot, "node_modules", ".bin", "tsx");
+    const cliEntry = path.join(repoRoot, "src", "cli", "index.ts");
+
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+    write(cwd, "versionary.jsonc", JSON.stringify({ version: 1 }));
+    write(cwd, "version.txt", "0.1.0\n");
+    write(cwd, "README.md", "# temp\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: init");
+    write(cwd, "src/index.ts", "export const x = 1;\n");
+    git(cwd, "add", "src/index.ts");
+    git(cwd, "commit", "-m", "feat: add value");
+
+    const output = execFileSync(tsx, [cliEntry, "run", "--json", "--dry-run"], {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+    const parsed = JSON.parse(output) as {
+      action: string;
+      branch?: string;
+      releaseCreated: boolean;
+    };
+    expect(parsed.action).toBe("pr-dry-run");
+    expect(parsed.branch).toBe("versionary/release");
+    expect(parsed.releaseCreated).toBe(false);
+
+    expect(git(cwd, "branch", "--list", "versionary/release")).toBe("");
+    expect(git(cwd, "status", "--short")).toBe("");
+  });
+
+  it("prints machine-readable dry-run release result without side effects", () => {
+    const cwd = makeTempDir("versionary-cli-json-dry-release-");
+    const testsDir = path.dirname(fileURLToPath(import.meta.url));
+    const repoRoot = path.resolve(testsDir, "..");
+    const tsx = path.join(repoRoot, "node_modules", ".bin", "tsx");
+    const cliEntry = path.join(repoRoot, "src", "cli", "index.ts");
+
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+    write(cwd, "versionary.jsonc", JSON.stringify({ version: 1 }));
+    write(cwd, "version.txt", "1.2.3\n");
+    write(cwd, "README.md", "# temp\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore(release): v1.2.3");
+
+    const output = execFileSync(tsx, [cliEntry, "run", "--json", "--dry-run"], {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+    const parsed = JSON.parse(output) as {
+      action: string;
+      tagNames: string[];
+      releaseCreated: boolean;
+    };
+    expect(parsed.action).toBe("release-dry-run");
+    expect(parsed.tagNames).toEqual(["v1.2.3"]);
+    expect(parsed.releaseCreated).toBe(false);
+    expect(git(cwd, "tag", "--list")).toBe("");
+  });
 });
