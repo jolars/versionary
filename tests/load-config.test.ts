@@ -232,4 +232,27 @@ describe("config loading", () => {
     );
     expect(() => loadConfig(dir)).toThrow(/unrecognized key/i);
   });
+
+  it("accepts review-mode pr and legacy review alias", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        "review-mode": "pr",
+      }),
+      "utf8",
+    );
+    expect(loadConfig(dir).config["review-mode"]).toBe("pr");
+
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        "review-mode": "review",
+      }),
+      "utf8",
+    );
+    expect(loadConfig(dir).config["review-mode"]).toBe("review");
+  });
 });

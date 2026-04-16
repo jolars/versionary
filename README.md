@@ -95,7 +95,7 @@ For a quick trial, use:
 - pre-1.0 policy defaults to conservative major handling: for `0.y.z`, breaking
   changes bump to `0.(y+1).0`; set `allow-stable-major: true` to allow explicit
   auto-transition to `1.0.0` on a breaking release
-- review mode (`review-mode`): `review` (PR/MR style) or `direct` (no review
+- review mode (`review-mode`): `pr` (PR/MR style) or `direct` (no review
   request)
 - optional monorepo planning with `monorepo-mode` and `packages`:
   - `independent` computes package bumps per path
@@ -239,7 +239,8 @@ Minimum GitHub token/repo permissions for Versionary-managed metadata:
 
 `review-mode` behavior:
 
-- `review`: `pnpm run run` prepares/updates the release branch and creates or
+- `pr` (preferred; `review` is a backward-compatible alias): `pnpm run run`
+  prepares/updates the release branch and creates or
   updates a release PR
 - `direct`: `pnpm run run` prepares/updates the release branch and skips review
   request creation

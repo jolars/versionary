@@ -2,7 +2,7 @@
   // Versionary config version
   "$schema": "https://raw.githubusercontent.com/jolars/versionary/main/schemas/config.json",
   "version": 1,
-  "review-mode": "review",
+  "review-mode": "pr",
   "release-type": "node",
   "bootstrap-sha": "f46f767",
   "monorepo-mode": "independent",

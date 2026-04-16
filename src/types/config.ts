@@ -18,7 +18,7 @@ export interface VersionaryPackage {
 
 export interface VersionaryConfig {
   version: 1;
-  "review-mode"?: "direct" | "review";
+  "review-mode"?: "direct" | "pr" | "review";
   "version-file"?: string;
   "changelog-file"?: string;
   "release-branch"?: string;

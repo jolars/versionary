@@ -64,7 +64,7 @@ export const configSchema = z
   .object({
     $schema: z.string().optional(),
     version: z.literal(1),
-    "review-mode": z.enum(["direct", "review"]).optional(),
+    "review-mode": z.enum(["direct", "pr", "review"]).optional(),
     "version-file": z.string().optional(),
     "changelog-file": z.string().optional(),
     "release-branch": z.string().optional(),

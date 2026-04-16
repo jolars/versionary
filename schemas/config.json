@@ -14,7 +14,7 @@
     },
     "review-mode": {
       "type": "string",
-      "enum": ["direct", "review"]
+      "enum": ["direct", "pr", "review"]
     },
     "version-file": {
       "type": "string"

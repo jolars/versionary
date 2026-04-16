@@ -114,7 +114,7 @@ a strategy model:
 - `run` is the primary CI entrypoint: it auto-dispatches to PR/update flow or
   release publish flow based on commit context.
 - `review-mode` controls review-request behavior (`direct` skips PR creation,
-  `review` uses SCM plugin).
+  `pr` uses SCM plugin; legacy `review` alias is accepted).
 - Treat package publishing as out of scope for Versionary itself; external CI
   workflows should publish artifacts based on release/tag events.
 - Packaging is CLI-first:
