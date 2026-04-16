@@ -105,7 +105,8 @@ a strategy model:
   - `feat` => `minor`
   - `fix|perf` => `patch`
   - `!` / `BREAKING CHANGE` footer => `major` (any type)
-  - `revert:` commits do not directly trigger releases
+  - `revert:` commits trigger patch releases by default (`revert!`/breaking
+    reverts trigger major)
   - commits reverted within the analyzed release window are suppressed from
     bump/changelog impact
 - `pr` command requires a clean tracked working tree (except lockfiles),

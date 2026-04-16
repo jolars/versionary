@@ -18,11 +18,11 @@ describe("simple commit analysis", () => {
     expect(release).toBe("minor");
   });
 
-  it("ignores revert commits", () => {
+  it("treats revert commits as patch releases", () => {
     const release = analyzeCommits([
       { hash: "a", subject: "revert: feat: add thing" },
     ]);
-    expect(release).toBeNull();
+    expect(release).toBe("patch");
   });
 
   it("ignores chore commits", () => {
@@ -48,7 +48,7 @@ describe("simple commit analysis", () => {
     expect(isReleasableCommit("refactor: internal cleanup")).toBe(false);
     expect(isReleasableCommit("ci: update workflow")).toBe(false);
     expect(isReleasableCommit("chore: bump deps")).toBe(false);
-    expect(isReleasableCommit("revert: feat: add thing")).toBe(false);
+    expect(isReleasableCommit("revert: feat: add thing")).toBe(true);
   });
 
   it("treats parsed breaking commit as releasable", () => {

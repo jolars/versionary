@@ -58,10 +58,12 @@ function groupCommitLines(
   breaking: string[];
   features: string[];
   fixes: string[];
+  reverts: string[];
 } {
   const breaking: string[] = [];
   const features: string[] = [];
   const fixes: string[] = [];
+  const reverts: string[] = [];
 
   for (const commit of commits) {
     const type = inferReleaseTypeFromParsedCommit(commit);
@@ -80,6 +82,11 @@ function groupCommitLines(
     const commitType = (commit.type ?? "").toLowerCase();
     const isBreaking = type === "major";
 
+    if (commit.isRevert) {
+      reverts.push(line);
+      continue;
+    }
+
     if (isBreaking) {
       breaking.push(line);
     }
@@ -96,7 +103,7 @@ function groupCommitLines(
     }
   }
 
-  return { breaking, features, fixes };
+  return { breaking, features, fixes, reverts };
 }
 
 export function renderSimpleReleaseNotes(
@@ -125,6 +132,9 @@ export function renderSimpleReleaseNotes(
   }
   if (grouped.fixes.length > 0) {
     sections.push("### Bug Fixes", ...grouped.fixes, "");
+  }
+  if (grouped.reverts.length > 0) {
+    sections.push("### Reverts", ...grouped.reverts, "");
   }
 
   const lines = [header, "", ...sections];
@@ -169,6 +179,9 @@ export function renderPackageChangelogSection(input: {
   }
   if (grouped.fixes.length > 0) {
     sections.push("### Bug Fixes", ...grouped.fixes, "");
+  }
+  if (grouped.reverts.length > 0) {
+    sections.push("### Reverts", ...grouped.reverts, "");
   }
   return [header, "", ...sections].join("\n");
 }

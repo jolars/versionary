@@ -510,12 +510,12 @@ export function getParsedCommitsForPath(
 export function inferReleaseTypeFromParsedCommit(
   commit: ParsedCommit,
 ): ReleaseType {
-  if (commit.isRevert) {
-    return null;
-  }
-
   if (commit.isBreaking) {
     return "major";
+  }
+
+  if (commit.isRevert) {
+    return "patch";
   }
 
   const type = commit.type?.toLowerCase() ?? "";
