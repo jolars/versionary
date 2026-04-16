@@ -40,13 +40,13 @@ function parseFieldPath(fieldPath: string): FieldPathToken[] {
       const numberMatch = rest.match(/^(\d+)\]/u);
       if (numberMatch) {
         tokens.push(Number(numberMatch[1]));
-        index += 2 + numberMatch[1]!.length;
+        index += 2 + numberMatch[1]?.length;
         continue;
       }
       const keyMatch = rest.match(/^"([^"]+)"\]/u);
       if (keyMatch) {
         tokens.push(keyMatch[1]!);
-        index += 4 + keyMatch[1]!.length;
+        index += 4 + keyMatch[1]?.length;
         continue;
       }
       throw new Error(`Invalid field-path "${fieldPath}" near index ${index}.`);

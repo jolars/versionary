@@ -140,7 +140,10 @@ export async function runSimpleReleaseDetailed(
       },
       {
         createReleaseMetadata: (input) =>
-          plugin.createReleaseMetadata!(input, { cwd, logger: options.logger }),
+          plugin.createReleaseMetadata?.(input, {
+            cwd,
+            logger: options.logger,
+          }),
         logger: options.logger,
       },
     );

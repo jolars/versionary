@@ -5,7 +5,7 @@ import type { VersionStrategy } from "./types.js";
 
 function readDescriptionVersion(content: string, versionFile: string): string {
   const match = content.match(/^Version:\s*(.+)\s*$/mu);
-  if (!match || !match[1]) {
+  if (!match?.[1]) {
     throw new Error(
       `${versionFile} is missing a valid "Version:" field required by release-type "r".`,
     );

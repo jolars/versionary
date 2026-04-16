@@ -56,16 +56,16 @@ describe("release PR package version update", () => {
     write(
       cwd,
       "package.json",
-      JSON.stringify(
+      `${JSON.stringify(
         { name: "demo", version: "1.0.0", private: true },
         null,
         2,
-      ) + "\n",
+      )}\n`,
     );
     write(
       cwd,
       "package-lock.json",
-      JSON.stringify(
+      `${JSON.stringify(
         {
           name: "demo",
           version: "1.0.0",
@@ -77,7 +77,7 @@ describe("release PR package version update", () => {
         },
         null,
         2,
-      ) + "\n",
+      )}\n`,
     );
     write(
       cwd,
@@ -130,11 +130,11 @@ describe("release PR package version update", () => {
     write(
       cwd,
       "package.json",
-      JSON.stringify(
+      `${JSON.stringify(
         { name: "demo", version: "1.0.0", private: true },
         null,
         2,
-      ) + "\n",
+      )}\n`,
     );
     write(
       cwd,
@@ -179,11 +179,11 @@ describe("release PR package version update", () => {
     write(
       cwd,
       "package.json",
-      JSON.stringify(
+      `${JSON.stringify(
         { name: "demo", version: "1.0.0", private: true },
         null,
         2,
-      ) + "\n",
+      )}\n`,
     );
     write(
       cwd,
@@ -494,12 +494,12 @@ describe("release PR package version update", () => {
     write(
       cwd,
       "a/package.json",
-      JSON.stringify({ name: "shared", version: "1.0.0" }) + "\n",
+      `${JSON.stringify({ name: "shared", version: "1.0.0" })}\n`,
     );
     write(
       cwd,
       "b/package.json",
-      JSON.stringify({ name: "shared", version: "1.0.0" }) + "\n",
+      `${JSON.stringify({ name: "shared", version: "1.0.0" })}\n`,
     );
     write(
       cwd,

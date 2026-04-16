@@ -168,7 +168,7 @@ async function main(): Promise<number> {
     const body = existing.replace(/^# Changelog\s*/u, "");
     fs.writeFileSync(
       changelogPath,
-      `${heading}${section}\n${body}`.trimEnd() + "\n",
+      `${`${heading}${section}\n${body}`.trimEnd()}\n`,
       "utf8",
     );
     console.log(`Updated ${plan.changelogFile}`);
