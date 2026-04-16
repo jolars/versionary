@@ -1,3 +1,10 @@
+# Changelog
+
+## [0.8.2](https://github.com/jolars/versionary/compare/v0.8.1...v0.8.2) (2026-04-16)
+
+### Bug Fixes
+- correctly infer tag for package in path ([`d0a9399`](https://github.com/jolars/versionary/commit/d0a9399fc19dec7a7a3f4dcf6e6f6084c22d064d))
+
 ## [0.8.1](https://github.com/jolars/versionary/compare/v0.8.0...v0.8.1) (2026-04-16)
 
 ### Bug Fixes
