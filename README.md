@@ -100,6 +100,7 @@ For a quick trial, use:
 - optional monorepo planning with `monorepo-mode` and `packages`:
   - `independent` computes package bumps per path
   - `fixed` computes one shared bump across configured package paths
+  - per-package `package-name` can override release identity (labels + tag base)
 
 Rust strategy examples:
 
@@ -135,6 +136,26 @@ Current rust non-goals/limits:
 - does not update `workspace.dependencies`
 - does not add missing `version = ...` fields to dependency inline tables
 - does not perform Cargo publish/release to crates.io
+
+### Monorepo release names and tag naming
+
+For independent monorepo targets, Versionary derives release tags as:
+
+- root package (`"."`): `v<version>`
+- non-root package: `<release-name>-v<version>`
+
+`release-name` precedence is:
+
+1. `packages.<path>.package-name` (explicit override)
+2. strategy-native package name from version file:
+   - Node: `package.json` `name`
+   - Rust: `Cargo.toml` `[package].name`
+   - R: `DESCRIPTION` `Package:`
+3. package path fallback
+
+When multiple packages resolve to the same `<release-name>` and version, the run
+fails fast with a duplicate-tag error and suggests setting unique
+`package-name` values.
 
 ## Commit parsing and release analysis
 

@@ -246,6 +246,10 @@ describe("release PR package version update", () => {
       "packages/a",
       "packages/b",
     ]);
+    expect(targets.map((target) => target.tag).sort()).toEqual([
+      "packages-a-v1.1.0",
+      "packages-b-v1.0.1",
+    ]);
   });
 
   it("updates package-specific version files for mixed release strategies", () => {
@@ -334,6 +338,7 @@ describe("release PR package version update", () => {
 
     const result = prepareSimpleReleasePr(cwd);
     expect(result.plan.packages).toHaveLength(4);
+    const targets = readReleaseTargets(cwd);
 
     const rootCargo = fs.readFileSync(path.join(cwd, "Cargo.toml"), "utf8");
     const parserCargo = fs.readFileSync(
@@ -360,6 +365,110 @@ describe("release PR package version update", () => {
     expect(codePackage.version).toBe("2.35.0");
     expect(zedCargo).toContain('version = "2.33.0"');
     expect(zedExtension).toContain('version = "2.33.0"');
+    expect(targets.map((target) => target.tag).sort()).toEqual([
+      "panache-code-v2.35.0",
+      "panache-parser-v0.4.0",
+      "v2.35.0",
+      "zed_panache-v2.33.0",
+    ]);
+  });
+
+  it("uses package-name override for non-root release target tags", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "CHANGELOG.md", "# Changelog\n\n");
+    write(
+      cwd,
+      "Cargo.toml",
+      ["[package]", 'name = "root"', 'version = "1.0.0"', ""].join("\n"),
+    );
+    write(
+      cwd,
+      "crates/parser/Cargo.toml",
+      ["[package]", 'name = "parser-core"', 'version = "0.1.0"', ""].join("\n"),
+    );
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "review-mode": "direct",
+        "release-type": "rust",
+        "version-file": "Cargo.toml",
+        "changelog-file": "CHANGELOG.md",
+        packages: {
+          ".": {},
+          "crates/parser": {
+            "release-type": "rust",
+            "package-name": "panache-parser",
+          },
+        },
+      }),
+    );
+    write(cwd, "crates/parser/src/lib.rs", "pub fn parser() {}\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v1.0.0");
+    write(cwd, "crates/parser/src/lib.rs", "pub fn parser_v2() {}\n");
+    git(cwd, "add", "crates/parser/src/lib.rs");
+    git(cwd, "commit", "-m", "feat: update parser");
+
+    prepareSimpleReleasePr(cwd);
+    const targets = readReleaseTargets(cwd);
+    expect(targets.map((target) => target.tag).sort()).toEqual([
+      "panache-parser-v0.2.0",
+      "v1.1.0",
+    ]);
+  });
+
+  it("throws when resolved release target tags collide", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "CHANGELOG.md", "# Changelog\n\n");
+    write(
+      cwd,
+      "a/package.json",
+      JSON.stringify({ name: "shared", version: "1.0.0" }) + "\n",
+    );
+    write(
+      cwd,
+      "b/package.json",
+      JSON.stringify({ name: "shared", version: "1.0.0" }) + "\n",
+    );
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "review-mode": "direct",
+        "monorepo-mode": "independent",
+        packages: {
+          a: { "release-type": "node" },
+          b: { "release-type": "node" },
+        },
+      }),
+    );
+    write(cwd, "a/src/index.ts", "export const a = 1;\n");
+    write(cwd, "b/src/index.ts", "export const b = 1;\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v1.0.0");
+    write(cwd, "a/src/index.ts", "export const a = 2;\n");
+    git(cwd, "add", "a/src/index.ts");
+    git(cwd, "commit", "-m", "feat: update a");
+    write(cwd, "b/src/index.ts", "export const b = 2;\n");
+    git(cwd, "add", "b/src/index.ts");
+    git(cwd, "commit", "-m", "feat: update b");
+
+    expect(() => prepareSimpleReleasePr(cwd)).toThrow(
+      /Duplicate release tag "shared-v1\.1\.0"/,
+    );
   });
 
   it("propagates rust dependency updates into non-target workspace crates", () => {

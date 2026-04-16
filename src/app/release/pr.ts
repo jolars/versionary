@@ -1,5 +1,7 @@
 import { execFileSync } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
+import TOML from "@iarna/toml";
 import { loadConfig } from "../../config/load-config.js";
 import {
   prependChangelog,
@@ -19,6 +21,7 @@ import {
 import type { ParsedCommit } from "../../infra/git/commits.js";
 import { findPluginsByCapability } from "../../plugins/capabilities.js";
 import { loadRuntimePlugins } from "../../plugins/runtime.js";
+import type { VersionaryPackage } from "../../types/config.js";
 import type { VersionaryPluginContext } from "../../types/plugins.js";
 import { applyConfiguredArtifactRules } from "./artifact-rules.js";
 import {
@@ -95,6 +98,128 @@ function ensureCleanWorktree(
   }
 }
 
+function normalizeReleaseNameForTag(releaseName: string): string {
+  return releaseName
+    .trim()
+    .replace(/^@/u, "")
+    .replaceAll("/", "-")
+    .replace(/\s+/gu, "-");
+}
+
+function readNodePackageName(versionPath: string): string | null {
+  const raw = JSON.parse(fs.readFileSync(versionPath, "utf8")) as {
+    name?: unknown;
+  };
+  const name = raw.name;
+  if (typeof name !== "string" || name.trim().length === 0) {
+    return null;
+  }
+  return name.trim();
+}
+
+function readRustPackageName(versionPath: string): string | null {
+  const parsed = TOML.parse(fs.readFileSync(versionPath, "utf8")) as {
+    package?: { name?: unknown };
+  };
+  const name = parsed.package?.name;
+  if (typeof name !== "string" || name.trim().length === 0) {
+    return null;
+  }
+  return name.trim();
+}
+
+function readRPackageName(versionPath: string): string | null {
+  const content = fs.readFileSync(versionPath, "utf8");
+  const match = content.match(/^Package:\s*(.+)\s*$/mu);
+  if (!match?.[1]) {
+    return null;
+  }
+  const name = match[1].trim();
+  return name.length > 0 ? name : null;
+}
+
+function resolveReleaseName(
+  cwd: string,
+  packagePath: string,
+  packageConfig: VersionaryPackage,
+  strategyName: string,
+  versionFile: string,
+): string {
+  const configuredName = packageConfig["package-name"]?.trim();
+  if (configuredName) {
+    return configuredName;
+  }
+
+  const versionPath = path.join(cwd, versionFile);
+  if (strategyName === "node") {
+    return readNodePackageName(versionPath) ?? packagePath;
+  }
+  if (strategyName === "rust") {
+    return readRustPackageName(versionPath) ?? packagePath;
+  }
+  if (strategyName === "r") {
+    return readRPackageName(versionPath) ?? packagePath;
+  }
+  return packagePath;
+}
+
+function buildReleaseTargets(
+  cwd: string,
+  plan: SimplePlan,
+  loadedConfig: ReturnType<typeof loadConfig>["config"],
+): ReleaseTargetState[] {
+  const releaseTargets: ReleaseTargetState[] = plan.packages
+    ? plan.packages
+        .filter((pkg) => pkg.nextVersion)
+        .map((pkg) => {
+          if (pkg.path === ".") {
+            return {
+              path: pkg.path,
+              version: pkg.nextVersion ?? "",
+              tag: `v${pkg.nextVersion ?? ""}`,
+            };
+          }
+          const packageConfig = loadedConfig.packages?.[pkg.path] ?? {};
+          const packageContext = resolvePackageStrategyContext(
+            loadedConfig,
+            pkg.path,
+            packageConfig,
+          );
+          const releaseName = resolveReleaseName(
+            cwd,
+            pkg.path,
+            packageConfig,
+            packageContext.strategy.name,
+            packageContext.versionFile,
+          );
+          const tagPrefix = normalizeReleaseNameForTag(releaseName);
+          return {
+            path: pkg.path,
+            version: pkg.nextVersion ?? "",
+            tag: `${tagPrefix}-v${pkg.nextVersion ?? ""}`,
+          };
+        })
+    : [
+        {
+          path: ".",
+          version: plan.nextVersion ?? "",
+          tag: `v${plan.nextVersion ?? ""}`,
+        },
+      ];
+
+  const seenTags = new Map<string, string>();
+  for (const target of releaseTargets) {
+    const existingPath = seenTags.get(target.tag);
+    if (existingPath) {
+      throw new Error(
+        `Duplicate release tag "${target.tag}" for packages "${existingPath}" and "${target.path}". Configure unique "package-name" values.`,
+      );
+    }
+    seenTags.set(target.tag, target.path);
+  }
+  return releaseTargets;
+}
+
 export function prepareSimpleReleasePr(
   cwd = process.cwd(),
   options: { logger?: VersionaryPluginContext["logger"] } = {},
@@ -156,6 +281,7 @@ export function prepareSimpleReleasePr(
   );
   const section = renderSimpleChangelog(plan);
   prependChangelog(cwd, plan.changelogFile, section);
+  const releaseTargets = buildReleaseTargets(cwd, plan, loaded.config);
 
   const branch = plan.releaseBranchPrefix;
   const title = `chore(release): v${plan.nextVersion}`;
@@ -179,24 +305,6 @@ export function prepareSimpleReleasePr(
     cwd,
     stdio: ["ignore", "pipe", "ignore"],
   });
-  const releaseTargets: ReleaseTargetState[] = plan.packages
-    ? plan.packages
-        .filter((pkg) => pkg.nextVersion)
-        .map((pkg) => ({
-          path: pkg.path,
-          version: pkg.nextVersion ?? "",
-          tag:
-            pkg.path === "."
-              ? `v${pkg.nextVersion ?? ""}`
-              : `${pkg.path.replaceAll("/", "-")}-v${pkg.nextVersion ?? ""}`,
-        }))
-    : [
-        {
-          path: ".",
-          version: plan.nextVersion,
-          tag: `v${plan.nextVersion}`,
-        },
-      ];
   writeBaselineSha(cwd, undefined, releaseTargets);
   execFileSync("git", ["add", getBaselineStatePath(cwd)], {
     cwd,
