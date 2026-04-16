@@ -93,6 +93,7 @@ describe("config loading", () => {
           "editors/zed": {
             "release-type": "rust",
             "package-name": "panache-zed",
+            "changelog-file": "CHANGELOG.md",
             "extra-files": [
               {
                 type: "toml",
@@ -114,6 +115,7 @@ describe("config loading", () => {
     expect(loaded.config.packages?.["editors/zed"]).toEqual({
       "release-type": "rust",
       "package-name": "panache-zed",
+      "changelog-file": "CHANGELOG.md",
       "extra-files": [
         {
           type: "toml",

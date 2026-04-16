@@ -54,6 +54,7 @@ const packageSchema = z
   .object({
     "release-type": z.string().optional(),
     "package-name": z.string().optional(),
+    "changelog-file": z.string().optional(),
     "exclude-paths": z.array(z.string()).optional(),
     "extra-files": z.array(artifactRuleSchema).optional(),
   })

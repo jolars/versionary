@@ -101,6 +101,8 @@ For a quick trial, use:
   - `independent` computes package bumps per path
   - `fixed` computes one shared bump across configured package paths
   - per-package `package-name` can override release identity (labels + tag base)
+  - per-package `changelog-file` writes package release notes to
+    `<package-path>/<changelog-file>`
 
 Rust strategy examples:
 

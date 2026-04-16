@@ -148,6 +148,31 @@ export function renderSimpleChangelog(plan: SimplePlan): string {
   });
 }
 
+export function renderPackageChangelogSection(input: {
+  currentVersion: string;
+  nextVersion: string;
+  commits: ParsedCommit[];
+  tagPrefix: string;
+  cwd?: string;
+}): string {
+  const repoUrl = resolveRepositoryWebBaseUrl(input.cwd ?? process.cwd());
+  const header = repoUrl
+    ? `## [${input.nextVersion}](${repoUrl}/compare/${input.tagPrefix}-v${input.currentVersion}...${input.tagPrefix}-v${input.nextVersion}) (${formatDate()})`
+    : `## ${input.nextVersion} (${formatDate()})`;
+  const grouped = groupCommitLines(input.commits, repoUrl);
+  const sections: string[] = [];
+  if (grouped.breaking.length > 0) {
+    sections.push("### Breaking changes", ...grouped.breaking, "");
+  }
+  if (grouped.features.length > 0) {
+    sections.push("### Features", ...grouped.features, "");
+  }
+  if (grouped.fixes.length > 0) {
+    sections.push("### Bug Fixes", ...grouped.fixes, "");
+  }
+  return [header, "", ...sections].join("\n");
+}
+
 export function prependChangelog(
   cwd: string,
   changelogFile: string,

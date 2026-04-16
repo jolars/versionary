@@ -5,6 +5,7 @@ import TOML from "@iarna/toml";
 import { loadConfig } from "../../config/load-config.js";
 import {
   prependChangelog,
+  renderPackageChangelogSection,
   renderSimpleChangelog,
   renderSimpleReleaseNotes,
 } from "../../domain/release/changelog.js";
@@ -243,6 +244,42 @@ function buildReleaseTargets(
   return releaseTargets;
 }
 
+interface PackageReleaseMetadata {
+  releaseName: string;
+  tagPrefix: string;
+}
+
+function buildPackageReleaseMetadata(
+  cwd: string,
+  plan: SimplePlan,
+  loadedConfig: ReturnType<typeof loadConfig>["config"],
+): Record<string, PackageReleaseMetadata> {
+  const metadataByPath: Record<string, PackageReleaseMetadata> = {};
+  for (const pkg of plan.packages ?? []) {
+    if (!pkg.nextVersion || pkg.path === ".") {
+      continue;
+    }
+    const packageConfig = loadedConfig.packages?.[pkg.path] ?? {};
+    const packageContext = resolvePackageStrategyContext(
+      loadedConfig,
+      pkg.path,
+      packageConfig,
+    );
+    const releaseName = resolveReleaseName(
+      cwd,
+      pkg.path,
+      packageConfig,
+      packageContext.strategy.name,
+      packageContext.versionFile,
+    );
+    metadataByPath[pkg.path] = {
+      releaseName,
+      tagPrefix: normalizeReleaseNameForTag(releaseName),
+    };
+  }
+  return metadataByPath;
+}
+
 function formatReleaseCommitTitle(
   releaseTargets: ReleaseTargetState[],
 ): string {
@@ -313,8 +350,43 @@ export function prepareSimpleReleasePr(
     plan,
   );
   const updatedRustLockFiles = ensureCargoLockUpToDate(cwd);
+  const packageReleaseMetadata = buildPackageReleaseMetadata(
+    cwd,
+    plan,
+    loaded.config,
+  );
   const section = renderSimpleChangelog(plan);
   prependChangelog(cwd, plan.changelogFile, section);
+  const updatedChangelogFiles = [plan.changelogFile];
+  for (const packagePlan of plan.packages ?? []) {
+    if (!packagePlan.nextVersion || packagePlan.path === ".") {
+      continue;
+    }
+    const packageConfig = loaded.config.packages?.[packagePlan.path] ?? {};
+    const packageChangelogFile = packageConfig["changelog-file"];
+    if (!packageChangelogFile) {
+      continue;
+    }
+    const packageMetadata = packageReleaseMetadata[packagePlan.path];
+    if (!packageMetadata) {
+      continue;
+    }
+    const packageSection = renderPackageChangelogSection({
+      currentVersion: packagePlan.currentVersion,
+      nextVersion: packagePlan.nextVersion,
+      commits: packagePlan.commits,
+      tagPrefix: packageMetadata.tagPrefix,
+      cwd,
+    });
+    prependChangelog(
+      cwd,
+      path.posix.join(packagePlan.path, packageChangelogFile),
+      packageSection,
+    );
+    updatedChangelogFiles.push(
+      path.posix.join(packagePlan.path, packageChangelogFile),
+    );
+  }
   const releaseTargets = buildReleaseTargets(cwd, plan, loaded.config);
 
   const branch = plan.releaseBranchPrefix;
@@ -329,7 +401,7 @@ export function prepareSimpleReleasePr(
       ...updatedVersionFiles,
       ...updatedArtifactFiles,
       ...updatedRustLockFiles,
-      plan.changelogFile,
+      ...updatedChangelogFiles,
     ]),
   ];
   execFileSync("git", ["add", ...filesToAdd], {

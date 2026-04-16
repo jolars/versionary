@@ -11,6 +11,7 @@ export interface VersionaryArtifactRule {
 export interface VersionaryPackage {
   "release-type"?: string;
   "package-name"?: string;
+  "changelog-file"?: string;
   "exclude-paths"?: string[];
   "extra-files"?: VersionaryArtifactRule[];
 }

@@ -425,7 +425,16 @@ describe("release PR package version update", () => {
     git(cwd, "add", "crates/parser/src/lib.rs");
     git(cwd, "commit", "-m", "feat: update parser");
 
-    prepareSimpleReleasePr(cwd);
+    const prevServer = process.env.GITHUB_SERVER_URL;
+    const prevRepo = process.env.GITHUB_REPOSITORY;
+    try {
+      process.env.GITHUB_SERVER_URL = "https://github.com";
+      process.env.GITHUB_REPOSITORY = "jolars/panache";
+      prepareSimpleReleasePr(cwd);
+    } finally {
+      process.env.GITHUB_SERVER_URL = prevServer;
+      process.env.GITHUB_REPOSITORY = prevRepo;
+    }
     const targets = readReleaseTargets(cwd);
     expect(targets.map((target) => target.tag).sort()).toEqual([
       "panache-parser-v0.2.0",
@@ -835,5 +844,61 @@ describe("release PR package version update", () => {
     expect(utilManifest).toContain(
       'crate-core = { path = "../core", version = "0.9.0" }',
     );
+  });
+
+  it("updates package changelogs when package changelog-file is configured", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "CHANGELOG.md", "# Changelog\n\n");
+    write(
+      cwd,
+      "editors/code/package.json",
+      `${JSON.stringify({ name: "panache-code", version: "2.34.0" }, null, 2)}\n`,
+    );
+    write(cwd, "editors/code/CHANGELOG.md", "# Changelog\n\n");
+    write(cwd, "editors/code/src/index.ts", "export const value = 1;\n");
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "review-mode": "direct",
+        "changelog-file": "CHANGELOG.md",
+        packages: {
+          "editors/code": {
+            "release-type": "node",
+            "package-name": "panache-code",
+            "changelog-file": "CHANGELOG.md",
+          },
+        },
+      }),
+    );
+
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "panache-code-v2.34.0");
+    write(cwd, "editors/code/src/index.ts", "export const value = 2;\n");
+    git(cwd, "add", "editors/code/src/index.ts");
+    git(cwd, "commit", "-m", "feat: add editor enhancement");
+
+    prepareSimpleReleasePr(cwd);
+
+    const rootChangelog = fs.readFileSync(
+      path.join(cwd, "CHANGELOG.md"),
+      "utf8",
+    );
+    const packageChangelog = fs.readFileSync(
+      path.join(cwd, "editors/code/CHANGELOG.md"),
+      "utf8",
+    );
+    expect(rootChangelog).toContain("## [2.35.0]");
+    expect(packageChangelog).toContain(
+      "/compare/panache-code-v2.34.0...panache-code-v2.35.0",
+    );
+    expect(packageChangelog).toContain("### Features");
+    expect(packageChangelog).toContain("- add editor enhancement");
   });
 });
