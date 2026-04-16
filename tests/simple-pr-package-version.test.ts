@@ -645,11 +645,102 @@ describe("release PR package version update", () => {
     process.env.PATH = `${fakeBin}:${prevPath}`;
     try {
       expect(() => prepareSimpleReleasePr(cwd)).toThrow(
-        /Failed to refresh Cargo\.lock/i,
+        /Failed to refresh .*Cargo\.lock/i,
       );
     } finally {
       process.env.PATH = prevPath;
     }
+  });
+
+  it("refreshes nested Cargo.lock files in package directories", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "CHANGELOG.md", "# Changelog\n\n");
+    write(
+      cwd,
+      "Cargo.toml",
+      [
+        "[workspace]",
+        'members = ["crates/*", "editors/*"]',
+        "",
+        "[workspace.package]",
+        'version = "1.0.0"',
+        "",
+      ].join("\n"),
+    );
+    write(
+      cwd,
+      "crates/panache-wasm/Cargo.toml",
+      ["[package]", 'name = "panache-wasm"', 'version = "1.0.0"', ""].join(
+        "\n",
+      ),
+    );
+    write(cwd, "crates/panache-wasm/Cargo.lock", "old-wasm-lock\n");
+    write(
+      cwd,
+      "editors/zed/Cargo.toml",
+      ["[package]", 'name = "zed_panache"', 'version = "1.0.0"', ""].join("\n"),
+    );
+    write(cwd, "editors/zed/Cargo.lock", "old-zed-lock\n");
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "review-mode": "direct",
+        "release-type": "rust",
+        "changelog-file": "CHANGELOG.md",
+        packages: {
+          "crates/panache-wasm": { "release-type": "rust" },
+          "editors/zed": { "release-type": "rust" },
+        },
+      }),
+    );
+    write(cwd, "crates/panache-wasm/src/lib.rs", "pub fn wasm() {}\n");
+    write(cwd, "editors/zed/src/lib.rs", "pub fn zed() {}\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v1.0.0");
+    write(cwd, "crates/panache-wasm/src/lib.rs", "pub fn wasm_v2() {}\n");
+    git(cwd, "add", "crates/panache-wasm/src/lib.rs");
+    git(cwd, "commit", "-m", "feat: update wasm crate");
+
+    const fakeBin = path.join(cwd, ".fake-bin");
+    writeExecutable(
+      cwd,
+      ".fake-bin/cargo",
+      [
+        "#!/usr/bin/env bash",
+        "set -euo pipefail",
+        'if [ "$1" = "generate-lockfile" ]; then',
+        '  printf "new-lock\\n" > "$PWD/Cargo.lock"',
+        "  exit 0",
+        "fi",
+        "exit 1",
+        "",
+      ].join("\n"),
+    );
+    const prevPath = process.env.PATH ?? "";
+    process.env.PATH = `${fakeBin}:${prevPath}`;
+    try {
+      prepareSimpleReleasePr(cwd);
+    } finally {
+      process.env.PATH = prevPath;
+    }
+
+    const wasmLock = fs.readFileSync(
+      path.join(cwd, "crates/panache-wasm/Cargo.lock"),
+      "utf8",
+    );
+    const zedLock = fs.readFileSync(
+      path.join(cwd, "editors/zed/Cargo.lock"),
+      "utf8",
+    );
+    expect(wasmLock).toBe("new-lock\n");
+    expect(zedLock).toBe("new-lock\n");
   });
 
   it("propagates rust dependency updates into non-target workspace crates", () => {

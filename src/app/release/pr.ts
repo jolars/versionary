@@ -100,26 +100,67 @@ function ensureCleanWorktree(
   }
 }
 
+function normalizeSlashPath(input: string): string {
+  return input.replaceAll("\\", "/");
+}
+
+function listCargoLockFiles(cwd: string): string[] {
+  const lockfiles: string[] = [];
+  const queue: string[] = [cwd];
+
+  while (queue.length > 0) {
+    const currentDir = queue.shift();
+    if (!currentDir) {
+      continue;
+    }
+    const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.name === ".git") {
+        continue;
+      }
+      const fullPath = path.join(currentDir, entry.name);
+      if (entry.isDirectory()) {
+        queue.push(fullPath);
+        continue;
+      }
+      if (!entry.isFile() || entry.name !== "Cargo.lock") {
+        continue;
+      }
+      lockfiles.push(normalizeSlashPath(path.relative(cwd, fullPath)));
+    }
+  }
+
+  return lockfiles.sort((a, b) => a.localeCompare(b));
+}
+
 function ensureCargoLockUpToDate(cwd: string): string[] {
-  const lockfilePath = path.join(cwd, "Cargo.lock");
-  if (!fs.existsSync(lockfilePath)) {
+  const lockfiles = listCargoLockFiles(cwd);
+  if (lockfiles.length === 0) {
     return [];
   }
 
-  const before = fs.readFileSync(lockfilePath, "utf8");
-  try {
-    execFileSync("cargo", ["generate-lockfile"], {
-      cwd,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(
-      `Failed to refresh Cargo.lock via "cargo generate-lockfile". Ensure cargo is installed and available in PATH. Details: ${message}`,
-    );
+  const updatedLockfiles: string[] = [];
+  for (const lockfile of lockfiles) {
+    const lockfilePath = path.join(cwd, lockfile);
+    const before = fs.readFileSync(lockfilePath, "utf8");
+    try {
+      execFileSync("cargo", ["generate-lockfile"], {
+        cwd: path.dirname(lockfilePath),
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `Failed to refresh ${lockfile} via "cargo generate-lockfile". Ensure cargo is installed and available in PATH. Details: ${message}`,
+      );
+    }
+    const after = fs.readFileSync(lockfilePath, "utf8");
+    if (after !== before) {
+      updatedLockfiles.push(lockfile);
+    }
   }
-  const after = fs.readFileSync(lockfilePath, "utf8");
-  return after !== before ? ["Cargo.lock"] : [];
+
+  return updatedLockfiles;
 }
 
 function normalizeReleaseNameForTag(releaseName: string): string {
