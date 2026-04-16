@@ -71,13 +71,6 @@ workflows.
       output.
 - [ ] Ensure all commands have crisp help text and examples.
 
-## Docs and examples
-
-- [ ] Add comparison matrix: Versionary vs semantic-release vs release-please.
-- [ ] Add cookbook examples for Node, Rust, and generic `version.txt` projects.
-- [ ] Add CI templates showing "release PR mode" and "direct release mode".
-- [ ] Document non-goals clearly (no registry publishing).
-
 ## Short-term priority (suggested)
 
 1. [x] SCM failure recovery and idempotency.
