@@ -1,3 +1,14 @@
+# Changelog
+
+## [0.8.0](https://github.com/jolars/versionary/compare/v0.7.0...v0.8.0) (2026-04-16)
+
+### Features
+- **action:** migrate to node ([`57397e6`](https://github.com/jolars/versionary/commit/57397e63eea2ac3e30ba2b235a7fd26115d96157))
+- harden detection of release commit ([`c461fa9`](https://github.com/jolars/versionary/commit/c461fa90439ab6ed6145e72a5854cc0249558d75))
+
+### Bug Fixes
+- **action:** fix unexpected token error ([`cbbe4f6`](https://github.com/jolars/versionary/commit/cbbe4f68b59be06a552395c15879d7dd4decb647))
+
 ## [0.7.0](https://github.com/jolars/versionary/compare/v0.6.0...v0.7.0) (2026-04-16)
 
 ### Features
