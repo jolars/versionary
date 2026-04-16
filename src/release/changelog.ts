@@ -211,11 +211,11 @@ export function prependChangelog(
     fs.writeFileSync(changelogPath, next, "utf8");
     return;
   }
-  const heading = existing.startsWith("# Changelog") ? "" : "# Changelog\n\n";
+  const heading = "# Changelog\n\n";
+  const bodyWithoutHeading = existing.replace(/^# Changelog\s*/u, "");
   const separator = existing.length > 0 ? "\n" : "";
   const next =
-    `${heading}${section}${separator}${existing.replace(/^# Changelog\s*/u, "")}`.trimEnd() +
-    "\n";
+    `${heading}${section}${separator}${bodyWithoutHeading}`.trimEnd() + "\n";
   fs.writeFileSync(changelogPath, next, "utf8");
 }
 
