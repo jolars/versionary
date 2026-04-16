@@ -220,6 +220,16 @@ function buildReleaseTargets(
   return releaseTargets;
 }
 
+function formatReleaseCommitTitle(
+  releaseTargets: ReleaseTargetState[],
+): string {
+  if (releaseTargets.length === 0) {
+    return "chore(release): v0.0.0";
+  }
+  const tags = releaseTargets.map((target) => target.tag);
+  return `chore(release): ${tags.join(", ")}`;
+}
+
 export function prepareSimpleReleasePr(
   cwd = process.cwd(),
   options: { logger?: VersionaryPluginContext["logger"] } = {},
@@ -284,7 +294,7 @@ export function prepareSimpleReleasePr(
   const releaseTargets = buildReleaseTargets(cwd, plan, loaded.config);
 
   const branch = plan.releaseBranchPrefix;
-  const title = `chore(release): v${plan.nextVersion}`;
+  const title = formatReleaseCommitTitle(releaseTargets);
 
   execFileSync("git", ["checkout", "-B", branch], {
     cwd,
@@ -448,5 +458,7 @@ export function pushReleaseBranch(cwd: string, branch: string): void {
 }
 
 export function isReleaseCommitMessage(subject: string): boolean {
-  return /^chore\(release\):\sv\d+\.\d+\.\d+/u.test(subject);
+  return /^chore\(release\):\s+(?:v\d+\.\d+\.\d+|\S+-v\d+\.\d+\.\d+)(?:,\s+(?:v\d+\.\d+\.\d+|\S+-v\d+\.\d+\.\d+))*$/u.test(
+    subject,
+  );
 }
