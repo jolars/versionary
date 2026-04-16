@@ -36,8 +36,26 @@ export function resolvePackageStrategyContext(
   const baseStrategy = resolveVersionStrategy(baseConfig);
   if (!packageReleaseType) {
     const versionFile =
-      baseConfig["version-file"] ?? baseStrategy.getVersionFile(baseConfig);
-    const config = withVersionFile(baseConfig, versionFile);
+      packagePath === "."
+        ? (baseConfig["version-file"] ??
+          baseStrategy.getVersionFile(baseConfig))
+        : baseStrategy.name === "simple"
+          ? (baseConfig["version-file"] ??
+            baseStrategy.getVersionFile(baseConfig))
+          : path.posix.join(
+              packagePath,
+              baseStrategy.getVersionFile({
+                ...baseConfig,
+                "version-file": undefined,
+              }),
+            );
+    const config = withVersionFile(
+      {
+        ...baseConfig,
+        packages: undefined,
+      },
+      versionFile,
+    );
     return {
       strategy: baseStrategy,
       config,

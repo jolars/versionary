@@ -433,6 +433,57 @@ describe("release PR package version update", () => {
     ]);
   });
 
+  it("uses package-local rust crate name when package release-type is inherited", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "CHANGELOG.md", "# Changelog\n\n");
+    write(
+      cwd,
+      "Cargo.toml",
+      ["[package]", 'name = "panache"', 'version = "2.34.0"', ""].join("\n"),
+    );
+    write(
+      cwd,
+      "crates/panache-parser/Cargo.toml",
+      ["[package]", 'name = "panache-parser"', 'version = "2.34.0"', ""].join(
+        "\n",
+      ),
+    );
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "review-mode": "direct",
+        "release-type": "rust",
+        "version-file": "Cargo.toml",
+        "changelog-file": "CHANGELOG.md",
+        "monorepo-mode": "independent",
+        packages: {
+          ".": {},
+          "crates/panache-parser": {},
+        },
+      }),
+    );
+    write(cwd, "crates/panache-parser/src/lib.rs", "pub fn parser() {}\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v2.34.0");
+    write(cwd, "crates/panache-parser/src/lib.rs", "pub fn parser_v2() {}\n");
+    git(cwd, "add", "crates/panache-parser/src/lib.rs");
+    git(cwd, "commit", "-m", "feat: update parser");
+
+    prepareSimpleReleasePr(cwd);
+    const targets = readReleaseTargets(cwd);
+    expect(targets.map((target) => target.tag).sort()).toEqual([
+      "panache-parser-v2.35.0",
+      "v2.35.0",
+    ]);
+  });
+
   it("throws when resolved release target tags collide", () => {
     const cwd = makeTempDir();
     git(cwd, "init");
