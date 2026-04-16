@@ -2,7 +2,11 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { readBaselineSha, writeBaselineSha } from "../src/app/release/state.js";
+import {
+  readBaselineSha,
+  readReleaseTargets,
+  writeBaselineSha,
+} from "../src/app/release/state.js";
 
 const tempDirs: string[] = [];
 
@@ -62,5 +66,48 @@ describe("simple baseline state", () => {
       "utf8",
     );
     expect(() => readBaselineSha(dir)).toThrow(/Unsupported manifest-version/i);
+  });
+
+  it("retains prior release-targets when writing partial updates", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({ version: 1 }),
+      "utf8",
+    );
+    writeBaselineSha(dir, "aaa111", [
+      { path: ".", version: "2.35.0", tag: "v2.35.0" },
+      {
+        path: "crates/panache-parser",
+        version: "0.3.1",
+        tag: "panache-parser-v0.3.1",
+      },
+      { path: "editors/zed", version: "2.34.1", tag: "panache-zed-v2.34.1" },
+    ]);
+
+    writeBaselineSha(dir, "bbb222", [
+      {
+        path: "editors/code",
+        version: "2.34.2",
+        tag: "panache-code-v2.34.2",
+      },
+    ]);
+
+    const targets = readReleaseTargets(dir);
+    expect(targets).toEqual([
+      { path: ".", version: "2.35.0", tag: "v2.35.0" },
+      {
+        path: "crates/panache-parser",
+        version: "0.3.1",
+        tag: "panache-parser-v0.3.1",
+      },
+      {
+        path: "editors/code",
+        version: "2.34.2",
+        tag: "panache-code-v2.34.2",
+      },
+      { path: "editors/zed", version: "2.34.1", tag: "panache-zed-v2.34.1" },
+    ]);
+    expect(readBaselineSha(dir)).toBe("bbb222");
   });
 });

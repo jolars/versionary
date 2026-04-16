@@ -116,7 +116,7 @@ export function readReleaseTargets(cwd = process.cwd()): ReleaseTargetState[] {
 export function writeBaselineSha(
   cwd = process.cwd(),
   sha?: string,
-  releaseTargets: ReleaseTargetState[] = [],
+  releaseTargets?: ReleaseTargetState[],
 ): void {
   const baselineShaValue =
     sha ??
@@ -126,10 +126,25 @@ export function writeBaselineSha(
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();
   const filePath = getBaselineStatePath(cwd);
+  const existing = fs.existsSync(filePath)
+    ? parseStateFile(fs.readFileSync(filePath, "utf8"), filePath)
+    : {};
+  const existingTargets = existing[RELEASE_TARGETS_KEY] ?? [];
+  const nextTargets =
+    releaseTargets === undefined
+      ? existingTargets
+      : [
+          ...new Map(
+            [...existingTargets, ...releaseTargets].map((target) => [
+              target.path,
+              target,
+            ]),
+          ).values(),
+        ].sort((a, b) => a.path.localeCompare(b.path));
   const next: SimpleStateFile = {
     [MANIFEST_VERSION_KEY]: 1,
     [BASELINE_SHA_KEY]: baselineShaValue,
-    [RELEASE_TARGETS_KEY]: releaseTargets,
+    [RELEASE_TARGETS_KEY]: nextTargets,
   };
   fs.writeFileSync(filePath, `${JSON.stringify(next, null, 2)}\n`, "utf8");
 }
