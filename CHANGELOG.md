@@ -1,4 +1,11 @@
-# Changelog
+## [0.9.0](https://github.com/jolars/versionary/compare/v0.8.2...v0.9.0) (2026-04-16)
+
+### Features
+- **strategies:** support per-path changelogs ([`86d1810`](https://github.com/jolars/versionary/commit/86d18101b34d8cdecbe193e2798e327280fc701c))
+- **strategies:** handle `version.workspace` for rust ([`cf82384`](https://github.com/jolars/versionary/commit/cf82384367edf76fd38cb09301d2ce80cf407102))
+
+### Bug Fixes
+- **domain:** refresh cargo lock files across workspace ([`001b0db`](https://github.com/jolars/versionary/commit/001b0dbcb8496ceea3ef01814a044c7b59781524))
 
 ## [0.8.2](https://github.com/jolars/versionary/compare/v0.8.1...v0.8.2) (2026-04-16)
 
