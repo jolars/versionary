@@ -1,7 +1,6 @@
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import TOML from "@iarna/toml";
 import { loadConfig } from "../../config/load-config.js";
 import {
   prependChangelog,
@@ -15,10 +14,10 @@ import {
 } from "../../domain/release/plan.js";
 import { resolvePackageStrategyContext } from "../../domain/strategy/package-context.js";
 import { resolveVersionStrategy } from "../../domain/strategy/resolve.js";
-import {
-  applyRustWorkspaceDependencyUpdates,
-  rustVersionStrategy,
-} from "../../domain/strategy/rust.js";
+import type {
+  StrategyVersionWriteContext,
+  VersionStrategy,
+} from "../../domain/strategy/types.js";
 import type { ParsedCommit } from "../../infra/git/commits.js";
 import { findPluginsByCapability } from "../../plugins/capabilities.js";
 import { loadRuntimePlugins } from "../../plugins/runtime.js";
@@ -171,61 +170,19 @@ function normalizeReleaseNameForTag(releaseName: string): string {
     .replace(/\s+/gu, "-");
 }
 
-function readNodePackageName(versionPath: string): string | null {
-  const raw = JSON.parse(fs.readFileSync(versionPath, "utf8")) as {
-    name?: unknown;
-  };
-  const name = raw.name;
-  if (typeof name !== "string" || name.trim().length === 0) {
-    return null;
-  }
-  return name.trim();
-}
-
-function readRustPackageName(versionPath: string): string | null {
-  const parsed = TOML.parse(fs.readFileSync(versionPath, "utf8")) as {
-    package?: { name?: unknown };
-  };
-  const name = parsed.package?.name;
-  if (typeof name !== "string" || name.trim().length === 0) {
-    return null;
-  }
-  return name.trim();
-}
-
-function readRPackageName(versionPath: string): string | null {
-  const content = fs.readFileSync(versionPath, "utf8");
-  const match = content.match(/^Package:\s*(.+)\s*$/mu);
-  if (!match?.[1]) {
-    return null;
-  }
-  const name = match[1].trim();
-  return name.length > 0 ? name : null;
-}
-
 function resolveReleaseName(
   cwd: string,
   packagePath: string,
   packageConfig: VersionaryPackage,
-  strategyName: string,
-  versionFile: string,
+  strategy: VersionStrategy,
+  strategyConfig: ReturnType<typeof loadConfig>["config"],
 ): string {
   const configuredName = packageConfig["package-name"]?.trim();
   if (configuredName) {
     return configuredName;
   }
 
-  const versionPath = path.join(cwd, versionFile);
-  if (strategyName === "node") {
-    return readNodePackageName(versionPath) ?? packagePath;
-  }
-  if (strategyName === "rust") {
-    return readRustPackageName(versionPath) ?? packagePath;
-  }
-  if (strategyName === "r") {
-    return readRPackageName(versionPath) ?? packagePath;
-  }
-  return packagePath;
+  return strategy.readPackageName?.(cwd, strategyConfig) ?? packagePath;
 }
 
 function buildReleaseTargets(
@@ -254,8 +211,8 @@ function buildReleaseTargets(
             cwd,
             pkg.path,
             packageConfig,
-            packageContext.strategy.name,
-            packageContext.versionFile,
+            packageContext.strategy,
+            packageContext.config,
           );
           const tagPrefix = normalizeReleaseNameForTag(releaseName);
           return {
@@ -310,8 +267,8 @@ function buildPackageReleaseMetadata(
       cwd,
       pkg.path,
       packageConfig,
-      packageContext.strategy.name,
-      packageContext.versionFile,
+      packageContext.strategy,
+      packageContext.config,
     );
     metadataByPath[pkg.path] = {
       releaseName,
@@ -357,7 +314,27 @@ export function prepareSimpleReleasePr(
   ensureCleanWorktree(cwd, options.logger);
 
   const updatedVersionFiles: string[] = [];
-  const rustManifestVersionTargets: Record<string, string> = {};
+  const writesByStrategy = new Map<
+    string,
+    {
+      strategy: VersionStrategy;
+      writes: StrategyVersionWriteContext[];
+    }
+  >();
+  const addStrategyWrite = (
+    strategy: VersionStrategy,
+    write: StrategyVersionWriteContext,
+  ): void => {
+    const existing = writesByStrategy.get(strategy.name);
+    if (existing) {
+      existing.writes.push(write);
+      return;
+    }
+    writesByStrategy.set(strategy.name, {
+      strategy,
+      writes: [write],
+    });
+  };
   if (plan.packages && plan.packages.length > 0) {
     for (const packagePlan of plan.packages) {
       if (!packagePlan.nextVersion) {
@@ -375,17 +352,28 @@ export function prepareSimpleReleasePr(
         packagePlan.nextVersion,
       );
       updatedVersionFiles.push(...packageUpdated);
-      if (packageContext.strategy.name === rustVersionStrategy.name) {
-        rustManifestVersionTargets[packageContext.versionFile] =
-          packagePlan.nextVersion;
-      }
+      addStrategyWrite(packageContext.strategy, {
+        packagePath: packagePlan.path,
+        versionFile: packageContext.versionFile,
+        version: packagePlan.nextVersion,
+      });
     }
-    updatedVersionFiles.push(
-      ...applyRustWorkspaceDependencyUpdates(cwd, rustManifestVersionTargets),
-    );
   } else {
     updatedVersionFiles.push(
       ...strategy.writeVersion(cwd, loaded.config, plan.nextVersion),
+    );
+    addStrategyWrite(strategy, {
+      packagePath: ".",
+      versionFile: strategy.getVersionFile(loaded.config),
+      version: plan.nextVersion,
+    });
+  }
+  for (const strategyGroup of writesByStrategy.values()) {
+    updatedVersionFiles.push(
+      ...(strategyGroup.strategy.finalizeVersionWrites?.(
+        cwd,
+        strategyGroup.writes,
+      ) ?? []),
     );
   }
   const updatedArtifactFiles = applyConfiguredArtifactRules(

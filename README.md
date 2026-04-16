@@ -71,8 +71,13 @@ Checklist for new strategies (for example `python`):
 - implement `readVersion(cwd, config)` with explicit malformed-file errors
 - implement `writeVersion(cwd, config, version)` returning deterministic updated
   file paths
-- add release-name extraction support if package tags should derive from
-  language metadata (similar to Node/Rust/R)
+- optionally implement `readPackageName(cwd, config)` so monorepo release tags
+  can derive from language metadata (similar to Node/Rust/R)
+- optionally implement `propagateDependentPatchImpacts(cwd, packages)` if
+  dependency updates in this ecosystem should trigger dependent package patch
+  bumps
+- optionally implement `finalizeVersionWrites(cwd, writes)` for ecosystem
+  post-processing after all target version files are written
 - add focused strategy tests for ecosystem-specific behavior and edge cases
 - add/extend strategy contract tests in `tests/strategy-contract.test.ts`
 - update schema/docs for new `release-type` behavior and defaults

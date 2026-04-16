@@ -57,4 +57,18 @@ export const rVersionStrategy: VersionStrategy = {
     fs.writeFileSync(versionPath, updated, "utf8");
     return [versionFile];
   },
+  readPackageName(cwd: string, config: VersionaryConfig): string | null {
+    const versionFile = this.getVersionFile(config);
+    const versionPath = path.join(cwd, versionFile);
+    if (!fs.existsSync(versionPath)) {
+      throw new Error(`Versionary requires ${versionFile} to exist.`);
+    }
+    const content = fs.readFileSync(versionPath, "utf8");
+    const match = content.match(/^Package:\s*(.+)\s*$/mu);
+    if (!match?.[1]) {
+      return null;
+    }
+    const name = match[1].trim();
+    return name.length > 0 ? name : null;
+  },
 };

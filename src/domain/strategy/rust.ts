@@ -2,7 +2,11 @@ import fs from "node:fs";
 import path from "node:path";
 import TOML from "@iarna/toml";
 import type { VersionaryConfig } from "../../types/config.js";
-import type { VersionStrategy } from "./types.js";
+import type {
+  StrategyPackagePlanContext,
+  StrategyVersionWriteContext,
+  VersionStrategy,
+} from "./types.js";
 
 interface ParsedCargoManifest {
   packageTable: Record<string, unknown> | null;
@@ -894,5 +898,63 @@ export const rustVersionStrategy: VersionStrategy = {
     }
 
     return updatedFiles.sort((a, b) => a.localeCompare(b));
+  },
+  readPackageName(cwd: string, config: VersionaryConfig): string | null {
+    const versionFile = this.getVersionFile(config);
+    const manifests = collectRustTargetManifests(
+      cwd,
+      versionFile,
+      !config.packages,
+    );
+    const selectedManifest = manifests[0];
+    if (!selectedManifest) {
+      throw new Error(
+        `Configured rust target "${versionFile}" did not resolve to a Rust crate manifest.`,
+      );
+    }
+    const versionPath = path.join(cwd, selectedManifest);
+    if (!fs.existsSync(versionPath)) {
+      throw new Error(`Versionary requires ${selectedManifest} to exist.`);
+    }
+    const cargoTomlRaw = fs.readFileSync(versionPath, "utf8");
+    if (!isCrateManifest(selectedManifest, cargoTomlRaw)) {
+      return null;
+    }
+    return readCargoPackageName(cargoTomlRaw, selectedManifest);
+  },
+  propagateDependentPatchImpacts(
+    cwd: string,
+    packages: StrategyPackagePlanContext[],
+  ): string[] {
+    const manifestToVersion: Record<string, string> = {};
+    const candidateManifests: string[] = [];
+    const manifestToPath = new Map<string, string>();
+    for (const pkg of packages) {
+      const manifest = pkg.versionFile;
+      candidateManifests.push(manifest);
+      manifestToPath.set(manifest, pkg.packagePath);
+      if (pkg.nextVersion) {
+        manifestToVersion[manifest] = pkg.nextVersion;
+      }
+    }
+    const impactedManifests = detectRustDependencyImpact(
+      cwd,
+      manifestToVersion,
+      candidateManifests,
+    );
+    return impactedManifests
+      .map((manifest) => manifestToPath.get(manifest))
+      .filter((pkgPath): pkgPath is string => Boolean(pkgPath))
+      .sort((a, b) => a.localeCompare(b));
+  },
+  finalizeVersionWrites(
+    cwd: string,
+    writes: StrategyVersionWriteContext[],
+  ): string[] {
+    const manifestToVersion: Record<string, string> = {};
+    for (const write of writes) {
+      manifestToVersion[write.versionFile] = write.version;
+    }
+    return applyRustWorkspaceDependencyUpdates(cwd, manifestToVersion);
   },
 };

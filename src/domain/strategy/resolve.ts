@@ -5,17 +5,20 @@ import { rustVersionStrategy } from "./rust.js";
 import { simpleVersionStrategy } from "./simple.js";
 import type { VersionStrategy } from "./types.js";
 
+const strategyRegistry: Record<string, VersionStrategy> = {
+  simple: simpleVersionStrategy,
+  node: nodeVersionStrategy,
+  rust: rustVersionStrategy,
+  r: rVersionStrategy,
+};
+
+export function listKnownReleaseTypes(): string[] {
+  return Object.keys(strategyRegistry).sort((a, b) => a.localeCompare(b));
+}
+
 export function resolveVersionStrategy(
   config: VersionaryConfig,
 ): VersionStrategy {
-  if (config["release-type"] === "node") {
-    return nodeVersionStrategy;
-  }
-  if (config["release-type"] === "rust") {
-    return rustVersionStrategy;
-  }
-  if (config["release-type"] === "r") {
-    return rVersionStrategy;
-  }
-  return simpleVersionStrategy;
+  const releaseType = config["release-type"] ?? "simple";
+  return strategyRegistry[releaseType] ?? simpleVersionStrategy;
 }

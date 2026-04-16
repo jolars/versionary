@@ -4,6 +4,7 @@ import type { VersionaryConfig } from "../../types/config.js";
 import type { VersionStrategy } from "./types.js";
 
 interface NodePackageJson {
+  name?: string;
   version?: string;
   [key: string]: unknown;
 }
@@ -84,5 +85,18 @@ export const nodeVersionStrategy: VersionStrategy = {
       ...updateNodeLockfileVersion(cwd, version),
     ];
     return updatedFiles;
+  },
+  readPackageName(cwd: string, config: VersionaryConfig): string | null {
+    const versionFile = this.getVersionFile(config);
+    const versionPath = path.join(cwd, versionFile);
+    if (!fs.existsSync(versionPath)) {
+      throw new Error(`Versionary requires ${versionFile} to exist.`);
+    }
+    const packageJson = readJsonFile<NodePackageJson>(versionPath);
+    const name = packageJson.name;
+    if (typeof name !== "string" || name.trim().length === 0) {
+      return null;
+    }
+    return name.trim();
   },
 };

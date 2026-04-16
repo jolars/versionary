@@ -76,4 +76,18 @@ describe("rVersionStrategy", () => {
       }),
     ).toThrow(/Version:/i);
   });
+
+  it("reads package name from DESCRIPTION Package field", () => {
+    const cwd = makeTempDir();
+    write(
+      cwd,
+      "DESCRIPTION",
+      ["Package: panache", "Type: Package", "Version: 0.1.0", ""].join("\n"),
+    );
+    const packageName = rVersionStrategy.readPackageName?.(cwd, {
+      version: 1,
+      "release-type": "r",
+    });
+    expect(packageName).toBe("panache");
+  });
 });

@@ -14,11 +14,10 @@ import {
 } from "../../infra/git/commits.js";
 import { resolvePackageStrategyContext } from "../strategy/package-context.js";
 import { resolveVersionStrategy } from "../strategy/resolve.js";
-import {
-  detectRustDependencyImpact,
-  rustVersionStrategy,
-  toCargoManifestPath,
-} from "../strategy/rust.js";
+import type {
+  StrategyPackagePlanContext,
+  VersionStrategy,
+} from "../strategy/types.js";
 import { bumpVersion, type ReleaseType } from "./semver.js";
 
 export interface SimplePlan {
@@ -129,9 +128,11 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
     })
     .sort((a, b) => a.path.localeCompare(b.path));
 
-  const rustManifestVersionTargets: Record<string, string> = {};
-  const rustPackageManifestByPath: Record<string, string> = {};
   const packageCurrentVersionByPath: Record<string, string> = {};
+  const strategyPackagesByName = new Map<
+    string,
+    { strategy: VersionStrategy; packages: StrategyPackagePlanContext[] }
+  >();
   for (const packagePlan of packagePlans) {
     const packageConfig = loaded.config.packages?.[packagePlan.path] ?? {};
     const packageContext = resolvePackageStrategyContext(
@@ -139,27 +140,38 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
       packagePlan.path,
       packageConfig,
     );
-    if (packageContext.strategy.name === rustVersionStrategy.name) {
-      rustPackageManifestByPath[packagePlan.path] = toCargoManifestPath(
-        packagePlan.path,
-      );
+    const existingGroup = strategyPackagesByName.get(
+      packageContext.strategy.name,
+    );
+    if (existingGroup) {
+      existingGroup.packages.push({
+        packagePath: packagePlan.path,
+        versionFile: packageContext.versionFile,
+        currentVersion: packagePlan.currentVersion,
+        nextVersion: packagePlan.nextVersion,
+      });
+    } else {
+      strategyPackagesByName.set(packageContext.strategy.name, {
+        strategy: packageContext.strategy,
+        packages: [
+          {
+            packagePath: packagePlan.path,
+            versionFile: packageContext.versionFile,
+            currentVersion: packagePlan.currentVersion,
+            nextVersion: packagePlan.nextVersion,
+          },
+        ],
+      });
     }
     packageCurrentVersionByPath[packagePlan.path] = packagePlan.currentVersion;
-    if (packageContext.strategy.name === rustVersionStrategy.name) {
-      const next = packagePlan.nextVersion;
-      if (next) {
-        rustManifestVersionTargets[packageContext.versionFile] = next;
-      }
-    }
   }
-  const impactedRustManifests = detectRustDependencyImpact(
-    cwd,
-    rustManifestVersionTargets,
-    Object.values(rustPackageManifestByPath),
-  );
   const impactedPaths = new Set<string>();
-  for (const [pkgPath, manifest] of Object.entries(rustPackageManifestByPath)) {
-    if (impactedRustManifests.includes(manifest)) {
+  for (const strategyGroup of strategyPackagesByName.values()) {
+    const impacted = strategyGroup.strategy.propagateDependentPatchImpacts?.(
+      cwd,
+      strategyGroup.packages,
+    );
+    for (const pkgPath of impacted ?? []) {
       impactedPaths.add(pkgPath);
     }
   }

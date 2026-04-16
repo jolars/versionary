@@ -555,4 +555,33 @@ describe("rustVersionStrategy", () => {
 
     expect(impacted).toEqual(["crates/util/Cargo.toml"]);
   });
+
+  it("surfaces strategy package-name and hook capabilities", () => {
+    const packageNameCwd = useFixture("root-crate");
+    const packageName = rustVersionStrategy.readPackageName?.(packageNameCwd, {
+      version: 1,
+      "release-type": "rust",
+    });
+    expect(packageName).toBe("root-demo");
+
+    const cwd = useFixture("workspace-panache-like");
+    const impactedPaths = rustVersionStrategy.propagateDependentPatchImpacts?.(
+      cwd,
+      [
+        {
+          packagePath: "crates/core",
+          versionFile: "crates/core/Cargo.toml",
+          currentVersion: "0.1.0",
+          nextVersion: "0.3.0",
+        },
+        {
+          packagePath: "crates/util",
+          versionFile: "crates/util/Cargo.toml",
+          currentVersion: "0.2.0",
+          nextVersion: null,
+        },
+      ],
+    );
+    expect(impactedPaths).toEqual(["crates/util"]);
+  });
 });
