@@ -38,9 +38,9 @@ workflows.
 - [x] Expand `packages` path handling and exclusion semantics for large
       monorepos.
 - [x] Improve fixed vs independent mode UX and diagnostics.
-- [ ] Add fixtures for Rust cargo workspaces and mixed-language repos.
+- [x] Add fixtures for Rust cargo workspaces and mixed-language repos.
 - [x] Support clearer per-package release previews in `plan` output.
-- [ ] Handle complex inter-package dependency scenarios (e.g. A depends on B,
+- [x] Handle complex inter-package dependency scenarios (e.g. A depends on B,
       both updated in same release). Like Cargo workspaces.
 
 ## Plugin and extension model
@@ -49,7 +49,7 @@ workflows.
       review request, release metadata).
 - [ ] Decide whether external plugin loading remains internal-only or becomes
       public API.
-- [ ] Add built-in artifact update rules for json/toml/yaml/regex with strong
+- [x] Add built-in artifact update rules for json/toml/yaml/regex with strong
       validation.
 - [ ] Add comprehensive plugin-capability tests and failure-mode tests.
 
@@ -66,7 +66,7 @@ workflows.
 ## CLI and UX
 
 - [ ] Improve `verify` output with grouped checks and suggested fixes.
-- [ ] Add machine-readable output mode(s) for CI orchestration.
+- [x] Add machine-readable output mode(s) for CI orchestration.
 - [ ] Add dry-run guarantees for `pr` and `release` paths with deterministic
       output.
 - [ ] Ensure all commands have crisp help text and examples.
