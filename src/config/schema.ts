@@ -4,17 +4,19 @@ const artifactRuleSchema = z
   .object({
     type: z.enum(["json", "toml", "yaml", "regex"]),
     path: z.string().min(1),
+    "field-path": z.string().optional(),
     jsonpath: z.string().optional(),
     pattern: z.string().optional(),
   })
   .superRefine((value, ctx) => {
     const needsJsonPath =
       value.type === "json" || value.type === "toml" || value.type === "yaml";
-    if (needsJsonPath && !value.jsonpath) {
+    const hasFieldPath = Boolean(value["field-path"] ?? value.jsonpath);
+    if (needsJsonPath && !hasFieldPath) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `${value.type} artifact rules require "jsonpath".`,
-        path: ["jsonpath"],
+        message: `${value.type} artifact rules require "field-path" (or deprecated "jsonpath").`,
+        path: ["field-path"],
       });
     }
     if (needsJsonPath && value.pattern) {
@@ -24,6 +26,13 @@ const artifactRuleSchema = z
         path: ["pattern"],
       });
     }
+    if (value["field-path"] && value.jsonpath) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Specify only one of "field-path" or deprecated "jsonpath".',
+        path: ["field-path"],
+      });
+    }
     if (value.type === "regex" && !value.pattern) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -31,11 +40,12 @@ const artifactRuleSchema = z
         path: ["pattern"],
       });
     }
-    if (value.type === "regex" && value.jsonpath) {
+    if (value.type === "regex" && (value["field-path"] || value.jsonpath)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'regex artifact rules do not support "jsonpath".',
-        path: ["jsonpath"],
+        message:
+          'regex artifact rules do not support "field-path" or deprecated "jsonpath".',
+        path: ["field-path"],
       });
     }
   });

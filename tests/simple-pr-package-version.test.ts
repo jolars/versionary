@@ -324,7 +324,7 @@ describe("release PR package version update", () => {
               {
                 type: "toml",
                 path: "extension.toml",
-                jsonpath: "$.version",
+                "field-path": "$.version",
               },
             ],
           },

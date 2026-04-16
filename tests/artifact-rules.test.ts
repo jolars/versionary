@@ -71,9 +71,9 @@ describe("artifact rules", () => {
       packages: {
         pkg: {
           "extra-files": [
-            { type: "json", path: "meta.json", jsonpath: "$.version" },
-            { type: "toml", path: "config.toml", jsonpath: "$.version" },
-            { type: "yaml", path: "config.yaml", jsonpath: "$.version" },
+            { type: "json", path: "meta.json", "field-path": "$.version" },
+            { type: "toml", path: "config.toml", "field-path": "$.version" },
+            { type: "yaml", path: "config.yaml", "field-path": "$.version" },
             {
               type: "regex",
               path: "README.md",
@@ -114,7 +114,7 @@ describe("artifact rules", () => {
       packages: {
         pkg: {
           "extra-files": [
-            { type: "toml", path: "extension.toml", jsonpath: "$.version" },
+            { type: "toml", path: "extension.toml", "field-path": "$.version" },
           ],
         },
       },
@@ -127,6 +127,24 @@ describe("artifact rules", () => {
       'languages = ["Markdown", "Quarto", "RMarkdown"]',
     );
     expect(updated).toContain('version = "1.2.3"');
+  });
+
+  it("supports deprecated jsonpath alias for field-path", () => {
+    const cwd = makeTempDir();
+    write(cwd, "pkg/meta.json", '{\n  "version": "1.2.2"\n}\n');
+    const config: VersionaryConfig = {
+      version: 1,
+      packages: {
+        pkg: {
+          "extra-files": [
+            { type: "json", path: "meta.json", jsonpath: "$.version" },
+          ],
+        },
+      },
+    };
+
+    applyConfiguredArtifactRules(cwd, config, basePlan());
+    expect(read(cwd, "pkg/meta.json")).toContain('"version": "1.2.3"');
   });
 
   it("throws actionable errors on invalid paths and matches", () => {

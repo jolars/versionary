@@ -79,11 +79,20 @@
                     "path": {
                       "type": "string"
                     },
+                    "field-path": {
+                      "type": "string"
+                    },
                     "jsonpath": {
                       "type": "string"
                     }
                   },
-                  "required": ["type", "path", "jsonpath"],
+                  "anyOf": [
+                    { "required": ["field-path"] },
+                    { "required": ["jsonpath"] }
+                  ],
+                  "not": {
+                    "required": ["field-path", "jsonpath"]
+                  },
                   "additionalProperties": false
                 },
                 {

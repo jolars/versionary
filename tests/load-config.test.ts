@@ -94,7 +94,11 @@ describe("config loading", () => {
             "release-type": "rust",
             "package-name": "panache-zed",
             "extra-files": [
-              { type: "toml", path: "extension.toml", jsonpath: "$.version" },
+              {
+                type: "toml",
+                path: "extension.toml",
+                "field-path": "$.version",
+              },
             ],
           },
         },
@@ -111,7 +115,11 @@ describe("config loading", () => {
       "release-type": "rust",
       "package-name": "panache-zed",
       "extra-files": [
-        { type: "toml", path: "extension.toml", jsonpath: "$.version" },
+        {
+          type: "toml",
+          path: "extension.toml",
+          "field-path": "$.version",
+        },
       ],
     });
   });
@@ -142,7 +150,7 @@ describe("config loading", () => {
               {
                 type: "regex",
                 path: "README.md",
-                jsonpath: "$.version",
+                "field-path": "$.version",
                 pattern: "/v(\\d+\\.\\d+\\.\\d+)/",
               },
             ],
@@ -154,6 +162,46 @@ describe("config loading", () => {
     expect(() => loadConfig(dir)).toThrow(
       /regex artifact rules do not support/i,
     );
+  });
+
+  it("supports deprecated jsonpath alias and rejects mixed aliases", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        packages: {
+          ".": {
+            "extra-files": [
+              { type: "json", path: "package.json", jsonpath: "$.version" },
+            ],
+          },
+        },
+      }),
+      "utf8",
+    );
+    expect(() => loadConfig(dir)).not.toThrow();
+
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        packages: {
+          ".": {
+            "extra-files": [
+              {
+                type: "json",
+                path: "package.json",
+                "field-path": "$.version",
+                jsonpath: "$.version",
+              },
+            ],
+          },
+        },
+      }),
+      "utf8",
+    );
+    expect(() => loadConfig(dir)).toThrow(/Specify only one of/i);
   });
 
   it("rejects unknown top-level and package keys", () => {

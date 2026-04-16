@@ -3,6 +3,7 @@ export type ConfigFileFormat = "jsonc" | "json" | "toml" | "js";
 export interface VersionaryArtifactRule {
   type: "json" | "toml" | "yaml" | "regex";
   path: string;
+  "field-path"?: string;
   jsonpath?: string;
   pattern?: string;
 }

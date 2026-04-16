@@ -9,32 +9,34 @@ import type {
   VersionaryPackage,
 } from "../../types/config.js";
 
-type JsonPathToken = string | number;
+type FieldPathToken = string | number;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function parseJsonPath(jsonpath: string): JsonPathToken[] {
-  if (!jsonpath.startsWith("$")) {
-    throw new Error(`Invalid jsonpath "${jsonpath}". Must start with "$".`);
+function parseFieldPath(fieldPath: string): FieldPathToken[] {
+  if (!fieldPath.startsWith("$")) {
+    throw new Error(`Invalid field-path "${fieldPath}". Must start with "$".`);
   }
-  const tokens: JsonPathToken[] = [];
+  const tokens: FieldPathToken[] = [];
   let index = 1;
 
-  while (index < jsonpath.length) {
-    const current = jsonpath[index];
+  while (index < fieldPath.length) {
+    const current = fieldPath[index];
     if (current === ".") {
-      const keyMatch = jsonpath.slice(index + 1).match(/^[A-Za-z0-9_-]+/u);
+      const keyMatch = fieldPath.slice(index + 1).match(/^[A-Za-z0-9_-]+/u);
       if (!keyMatch) {
-        throw new Error(`Invalid jsonpath "${jsonpath}" near index ${index}.`);
+        throw new Error(
+          `Invalid field-path "${fieldPath}" near index ${index}.`,
+        );
       }
       tokens.push(keyMatch[0]);
       index += 1 + keyMatch[0].length;
       continue;
     }
     if (current === "[") {
-      const rest = jsonpath.slice(index + 1);
+      const rest = fieldPath.slice(index + 1);
       const numberMatch = rest.match(/^(\d+)\]/u);
       if (numberMatch) {
         tokens.push(Number(numberMatch[1]));
@@ -47,14 +49,14 @@ function parseJsonPath(jsonpath: string): JsonPathToken[] {
         index += 4 + keyMatch[1]!.length;
         continue;
       }
-      throw new Error(`Invalid jsonpath "${jsonpath}" near index ${index}.`);
+      throw new Error(`Invalid field-path "${fieldPath}" near index ${index}.`);
     }
-    throw new Error(`Invalid jsonpath "${jsonpath}" near index ${index}.`);
+    throw new Error(`Invalid field-path "${fieldPath}" near index ${index}.`);
   }
 
   if (tokens.length === 0) {
     throw new Error(
-      `Invalid jsonpath "${jsonpath}". Path must target a field.`,
+      `Invalid field-path "${fieldPath}". Path must target a field.`,
     );
   }
   return tokens;
@@ -62,10 +64,10 @@ function parseJsonPath(jsonpath: string): JsonPathToken[] {
 
 function setVersionAtJsonPath(
   document: unknown,
-  jsonpath: string,
+  fieldPath: string,
   version: string,
 ): void {
-  const tokens = parseJsonPath(jsonpath);
+  const tokens = parseFieldPath(fieldPath);
   let cursor: unknown = document;
 
   for (let index = 0; index < tokens.length - 1; index += 1) {
@@ -73,7 +75,7 @@ function setVersionAtJsonPath(
     if (typeof token === "number") {
       if (!Array.isArray(cursor) || token >= cursor.length) {
         throw new Error(
-          `jsonpath "${jsonpath}" does not resolve to an existing field.`,
+          `field-path "${fieldPath}" does not resolve to an existing field.`,
         );
       }
       cursor = cursor[token];
@@ -81,7 +83,7 @@ function setVersionAtJsonPath(
     }
     if (!isRecord(cursor) || !(token in cursor)) {
       throw new Error(
-        `jsonpath "${jsonpath}" does not resolve to an existing field.`,
+        `field-path "${fieldPath}" does not resolve to an existing field.`,
       );
     }
     cursor = cursor[token];
@@ -91,13 +93,13 @@ function setVersionAtJsonPath(
   if (typeof leaf === "number") {
     if (!Array.isArray(cursor) || leaf >= cursor.length) {
       throw new Error(
-        `jsonpath "${jsonpath}" does not resolve to an existing field.`,
+        `field-path "${fieldPath}" does not resolve to an existing field.`,
       );
     }
     const current = cursor[leaf];
     if (typeof current !== "string" && typeof current !== "number") {
       throw new Error(
-        `jsonpath "${jsonpath}" must point to a string or number field for version updates.`,
+        `field-path "${fieldPath}" must point to a string or number field for version updates.`,
       );
     }
     cursor[leaf] = version;
@@ -106,16 +108,26 @@ function setVersionAtJsonPath(
 
   if (!isRecord(cursor) || !(leaf in cursor)) {
     throw new Error(
-      `jsonpath "${jsonpath}" does not resolve to an existing field.`,
+      `field-path "${fieldPath}" does not resolve to an existing field.`,
     );
   }
   const current = cursor[leaf];
   if (typeof current !== "string" && typeof current !== "number") {
     throw new Error(
-      `jsonpath "${jsonpath}" must point to a string or number field for version updates.`,
+      `field-path "${fieldPath}" must point to a string or number field for version updates.`,
     );
   }
   cursor[leaf] = version;
+}
+
+function resolveFieldPath(rule: VersionaryArtifactRule): string {
+  const fieldPath = rule["field-path"] ?? rule.jsonpath;
+  if (!fieldPath) {
+    throw new Error(
+      `${rule.type} artifact rules require "field-path" (or deprecated "jsonpath").`,
+    );
+  }
+  return fieldPath;
 }
 
 function parseRegexPattern(pattern: string): RegExp {
@@ -156,13 +168,13 @@ function applyRegexRule(
 
 function applyTomlRulePreservingFormatting(
   content: string,
-  jsonpath: string,
+  fieldPath: string,
   version: string,
 ): string {
-  const simplePath = jsonpath.match(/^\$\.([A-Za-z0-9_-]+)$/u);
+  const simplePath = fieldPath.match(/^\$\.([A-Za-z0-9_-]+)$/u);
   if (!simplePath) {
     const parsed = TOML.parse(content) as unknown;
-    setVersionAtJsonPath(parsed, jsonpath, version);
+    setVersionAtJsonPath(parsed, fieldPath, version);
     return `${TOML.stringify(parsed as TOML.JsonMap)}\n`;
   }
 
@@ -174,7 +186,7 @@ function applyTomlRulePreservingFormatting(
   const match = content.match(linePattern);
   if (!match) {
     throw new Error(
-      `jsonpath "${jsonpath}" does not resolve to an existing field.`,
+      `field-path "${fieldPath}" does not resolve to an existing field.`,
     );
   }
   const [, prefix = "", quote = '"', , , suffix = ""] = match;
@@ -194,14 +206,18 @@ function applyArtifactRuleToContent(
   }
   if (rule.type === "json") {
     const parsed = JSON.parse(content) as unknown;
-    setVersionAtJsonPath(parsed, rule.jsonpath!, version);
+    setVersionAtJsonPath(parsed, resolveFieldPath(rule), version);
     return `${JSON.stringify(parsed, null, 2)}\n`;
   }
   if (rule.type === "toml") {
-    return applyTomlRulePreservingFormatting(content, rule.jsonpath!, version);
+    return applyTomlRulePreservingFormatting(
+      content,
+      resolveFieldPath(rule),
+      version,
+    );
   }
   const parsed = YAML.parse(content) as unknown;
-  setVersionAtJsonPath(parsed, rule.jsonpath!, version);
+  setVersionAtJsonPath(parsed, resolveFieldPath(rule), version);
   return `${YAML.stringify(parsed)}`;
 }
 
