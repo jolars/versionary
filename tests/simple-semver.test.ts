@@ -22,6 +22,13 @@ describe("simple semver", () => {
       prerelease: ["alpha", "1"],
       build: ["build", "5"],
     });
+    expect(parseVersion("7.0.4.9000")).toEqual({
+      major: 7,
+      minor: 0,
+      patch: 4,
+      prerelease: ["9000"],
+      build: [],
+    });
   });
 
   it("bumps versions", () => {
@@ -44,6 +51,14 @@ describe("simple semver", () => {
     expect(isValidVersion("1.01.0")).toBe(false);
     expect(isValidVersion("1.0.0-01")).toBe(false);
     expect(isValidVersion("1.0")).toBe(false);
+    expect(isValidVersion("7.0.4.9000")).toBe(true);
+    expect(isValidVersion("7.0.4.09")).toBe(false);
+  });
+
+  it("bumps from compatibility form x.y.z.w", () => {
+    expect(bumpVersion("7.0.4.9000", "patch")).toBe("7.0.5");
+    expect(bumpVersion("7.0.4.9000", "minor")).toBe("7.1.0");
+    expect(bumpVersion("7.0.4.9000", "major")).toBe("8.0.0");
   });
 
   it("implements SemVer precedence examples", () => {

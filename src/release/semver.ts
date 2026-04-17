@@ -14,12 +14,25 @@ export interface BumpVersionOptions {
 
 const SEMVER_PATTERN =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/u;
+const COMPAT_DOTTED_PRERELEASE_PATTERN =
+  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/u;
+
+function normalizeVersionInput(version: string): string {
+  const trimmed = version.trim();
+  const compatMatch = trimmed.match(COMPAT_DOTTED_PRERELEASE_PATTERN);
+  if (!compatMatch) {
+    return trimmed;
+  }
+  const [, major, minor, patch, prerelease] = compatMatch;
+  return `${major}.${minor}.${patch}-${prerelease}`;
+}
 
 export function parseVersion(version: string): ParsedVersion {
-  const match = version.trim().match(SEMVER_PATTERN);
+  const normalized = normalizeVersionInput(version);
+  const match = normalized.match(SEMVER_PATTERN);
   if (!match) {
     throw new Error(
-      `Invalid version in version file: "${version}". Expected SemVer 2.0.0 format.`,
+      `Invalid version in version file: "${version}". Expected SemVer 2.0.0 format (or compatibility form X.Y.Z.W).`,
     );
   }
 
@@ -33,7 +46,7 @@ export function parseVersion(version: string): ParsedVersion {
 }
 
 export function isValidVersion(version: string): boolean {
-  return SEMVER_PATTERN.test(version.trim());
+  return SEMVER_PATTERN.test(normalizeVersionInput(version));
 }
 
 function isNumericIdentifier(identifier: string): boolean {
