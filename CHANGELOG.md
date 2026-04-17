@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.13.0](https://github.com/jolars/versionary/compare/v0.12.0...v0.13.0) (2026-04-17)
+
+### Features
+- allow `x.y.z.9000`-type of versions in input ([`7c04884`](https://github.com/jolars/versionary/commit/7c04884d8a36a8ae36daf79c3f355411a29b95fd))
+
+### Bug Fixes
+- **changelog:** don't require explicit changelog path ([`15f87fe`](https://github.com/jolars/versionary/commit/15f87feddd60e33d6fa5c883e9041f4e155e8291))
+
 ## [0.12.0](https://github.com/jolars/versionary/compare/v0.11.1...v0.12.0) (2026-04-16)
 
 ### Features
