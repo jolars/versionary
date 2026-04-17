@@ -19,7 +19,11 @@ import {
   renderSimpleChangelog,
   renderSimpleReleaseNotes,
 } from "./changelog.js";
-import { createSimplePlan, type SimplePlan } from "./plan.js";
+import {
+  createSimplePlan,
+  getChangelogDefaults,
+  type SimplePlan,
+} from "./plan.js";
 import {
   getBaselineStatePath,
   type ReleaseTargetState,
@@ -391,10 +395,14 @@ export function prepareSimpleReleasePr(
       continue;
     }
     const packageConfig = loaded.config.packages?.[packagePlan.path] ?? {};
-    const packageChangelogFile = packageConfig["changelog-file"];
-    if (!packageChangelogFile) {
-      continue;
-    }
+    const { changelogFile: packageChangelogFile } = getChangelogDefaults({
+      "release-type":
+        packageConfig["release-type"] ?? loaded.config["release-type"],
+      "changelog-file":
+        packageConfig["changelog-file"] ?? loaded.config["changelog-file"],
+      "changelog-format":
+        packageConfig["changelog-format"] ?? loaded.config["changelog-format"],
+    });
     const packageMetadata = packageReleaseMetadata[packagePlan.path];
     if (!packageMetadata) {
       continue;

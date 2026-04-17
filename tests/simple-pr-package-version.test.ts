@@ -1012,4 +1012,59 @@ describe("release PR package version update", () => {
     expect(packageChangelog).toContain("### Features");
     expect(packageChangelog).toContain("- add editor enhancement");
   });
+
+  it("updates package changelogs using defaults when package changelog-file is not configured", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "CHANGELOG.md", "# Changelog\n\n");
+    write(
+      cwd,
+      "crates/parser/Cargo.toml",
+      ["[package]", 'name = "panache-parser"', 'version = "0.4.0"', ""].join(
+        "\n",
+      ),
+    );
+    write(cwd, "crates/parser/CHANGELOG.md", "# Changelog\n\n");
+    write(cwd, "crates/parser/src/lib.rs", "pub fn parse() {}\n");
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "review-mode": "direct",
+        "release-type": "rust",
+        "changelog-file": "CHANGELOG.md",
+        packages: {
+          "crates/parser": {},
+        },
+      }),
+    );
+
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "panache-parser-v0.4.0");
+    write(cwd, "crates/parser/src/lib.rs", "pub fn parse_v2() {}\n");
+    git(cwd, "add", "crates/parser/src/lib.rs");
+    git(cwd, "commit", "-m", "fix(parser): avoid panic");
+
+    prepareSimpleReleasePr(cwd);
+
+    const rootChangelog = fs.readFileSync(
+      path.join(cwd, "CHANGELOG.md"),
+      "utf8",
+    );
+    const packageChangelog = fs.readFileSync(
+      path.join(cwd, "crates/parser/CHANGELOG.md"),
+      "utf8",
+    );
+    expect(rootChangelog).toContain("## [0.4.1]");
+    expect(packageChangelog).toContain(
+      "/compare/panache-parser-v0.4.0...panache-parser-v0.4.1",
+    );
+    expect(packageChangelog).toContain("### Bug Fixes");
+    expect(packageChangelog).toContain("avoid panic");
+  });
 });

@@ -68,11 +68,14 @@ export function resolveTargetChangelogFile(
     return rootChangelogFile;
   }
 
-  const packageChangelogFile =
-    config.packages?.[targetPath]?.["changelog-file"];
-  if (!packageChangelogFile) {
-    return rootChangelogFile;
-  }
+  const packageConfig = config.packages?.[targetPath];
+  const { changelogFile: packageChangelogFile } = getChangelogDefaults({
+    "release-type": packageConfig?.["release-type"] ?? config["release-type"],
+    "changelog-file":
+      packageConfig?.["changelog-file"] ?? config["changelog-file"],
+    "changelog-format":
+      packageConfig?.["changelog-format"] ?? config["changelog-format"],
+  });
 
   return path.posix.join(targetPath, packageChangelogFile);
 }

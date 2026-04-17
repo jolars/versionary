@@ -86,8 +86,10 @@ Current ecosystem policy defaults:
 
 - changelog source for publish:
   - root target uses root `changelog-file`
-  - package target uses `packages.<path>.changelog-file` when configured, else
-    root `changelog-file`
+  - package target uses package changelog defaults:
+    - `packages.<path>.changelog-file` when configured
+    - otherwise `NEWS.md` for R targets or `CHANGELOG.md` for other targets at
+      `<package-path>/<default-file>`
 - lockfiles:
   - Node strategy updates root `package-lock.json`/`npm-shrinkwrap.json` when
     present

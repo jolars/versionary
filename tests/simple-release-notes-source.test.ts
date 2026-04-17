@@ -35,7 +35,7 @@ describe("release notes changelog source", () => {
     ).toBe("editors/zed/CHANGELOG.md");
   });
 
-  it("falls back to root changelog for package target without package changelog", () => {
+  it("defaults package target to package CHANGELOG.md when package changelog-file is not set", () => {
     const config: VersionaryConfig = {
       version: 1,
       "changelog-file": "CHANGELOG.md",
@@ -46,6 +46,6 @@ describe("release notes changelog source", () => {
 
     expect(
       resolveTargetChangelogFile(config, "CHANGELOG.md", "packages/a"),
-    ).toBe("CHANGELOG.md");
+    ).toBe("packages/a/CHANGELOG.md");
   });
 });
