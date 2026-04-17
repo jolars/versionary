@@ -49,9 +49,7 @@ release metadata management.
 - Run a single test file: `pnpm vitest run tests/simple-git-analyze.test.ts`
 - Run a single test by name: `pnpm vitest run -t "ignores chore commits"`
 - Lint/format: use Biome (`biome.jsonc` is authoritative for formatting
-  settings); match Biome formatting in edits so pre-commit checks stay clean. In
-  final handoffs, remind users to run Biome checks for both linting and
-  formatting.
+  settings); match Biome formatting in edits so pre-commit checks stay clean.
 
 CLI commands in this repo currently run from source through `tsx` scripts:
 
@@ -61,6 +59,18 @@ CLI commands in this repo currently run from source through `tsx` scripts:
 - `pnpm changelog` (append `-- --write` to update `CHANGELOG.md`)
 - `pnpm pr`
 - `pnpm release`
+
+## Essential Commands
+
+Always run before making changes and after wrapping up or comitting work:
+
+```bash
+pnpm build
+pnpm test
+pnpm verify
+pnpm typecheck
+biome check .
+```
 
 ## High-level architecture
 
