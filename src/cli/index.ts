@@ -3,19 +3,16 @@
 import { execFileSync } from "node:child_process";
 import {
   prependChangelog,
-  renderSimpleChangelog,
+  renderReleasePlanChangelog,
 } from "../release/changelog.js";
-import { createSimplePlan } from "../release/plan.js";
+import { createReleasePlan } from "../release/plan.js";
 import {
   isReleaseCommitMessage,
-  openOrUpdateSimpleReviewRequest,
-  prepareSimpleReleasePr,
+  openOrUpdateReviewRequest,
+  prepareReleasePr,
   pushReleaseBranch,
 } from "../release/pr.js";
-import {
-  runSimpleRelease,
-  runSimpleReleaseDetailed,
-} from "../release/release.js";
+import { runRelease, runReleaseDetailed } from "../release/release.js";
 import { verifyProject } from "../release/verify-project.js";
 
 function printVerifyResult(): number {
@@ -101,7 +98,7 @@ async function main(): Promise<number> {
 
     if (isReleaseCommitMessage(commitMessage)) {
       if (flags["dry-run"] && !flags.json) {
-        const release = await runSimpleReleaseDetailed(process.cwd(), {
+        const release = await runReleaseDetailed(process.cwd(), {
           logger,
           "dry-run": true,
         });
@@ -111,7 +108,7 @@ async function main(): Promise<number> {
         }
       }
       if (flags.json) {
-        const release = await runSimpleReleaseDetailed(process.cwd(), {
+        const release = await runReleaseDetailed(process.cwd(), {
           logger,
           "dry-run": flags["dry-run"],
         });
@@ -142,12 +139,12 @@ async function main(): Promise<number> {
         });
         return 0;
       }
-      const message = await runSimpleRelease(process.cwd());
+      const message = await runRelease(process.cwd());
       console.log(message);
       return 0;
     }
 
-    const plan = createSimplePlan();
+    const plan = createReleasePlan();
     if (!plan.nextVersion) {
       const message = "No releasable commits found. Nothing to do.";
       if (flags.json) {
@@ -193,9 +190,9 @@ async function main(): Promise<number> {
       return 0;
     }
 
-    const pr = prepareSimpleReleasePr(process.cwd(), { logger });
+    const pr = prepareReleasePr(process.cwd(), { logger });
     pushReleaseBranch(process.cwd(), pr.branch);
-    const reviewResult = await openOrUpdateSimpleReviewRequest(
+    const reviewResult = await openOrUpdateReviewRequest(
       process.cwd(),
       pr.branch,
       pr.title,
@@ -229,20 +226,20 @@ async function main(): Promise<number> {
   }
 
   if (command === "plan") {
-    const plan = createSimplePlan();
+    const plan = createReleasePlan();
     console.log(JSON.stringify(plan, null, 2));
     return 0;
   }
 
   if (command === "changelog") {
     const write = args.includes("--write");
-    const plan = createSimplePlan();
+    const plan = createReleasePlan();
     if (!plan.nextVersion) {
       console.log("No releasable commits found.");
       return 0;
     }
 
-    const section = renderSimpleChangelog(plan);
+    const section = renderReleasePlanChangelog(plan);
     if (!write) {
       console.log(section);
       return 0;
@@ -260,7 +257,7 @@ async function main(): Promise<number> {
 
   if (command === "pr") {
     if (flags["dry-run"]) {
-      const plan = createSimplePlan();
+      const plan = createReleasePlan();
       if (!plan.nextVersion) {
         console.log("No releasable commits found. Nothing to do.");
         return 0;
@@ -270,9 +267,9 @@ async function main(): Promise<number> {
       );
       return 0;
     }
-    const pr = prepareSimpleReleasePr(process.cwd(), { logger: console });
+    const pr = prepareReleasePr(process.cwd(), { logger: console });
     pushReleaseBranch(process.cwd(), pr.branch);
-    const reviewResult = await openOrUpdateSimpleReviewRequest(
+    const reviewResult = await openOrUpdateReviewRequest(
       process.cwd(),
       pr.branch,
       pr.title,
@@ -289,7 +286,7 @@ async function main(): Promise<number> {
 
   if (command === "release") {
     if (flags["dry-run"]) {
-      const result = await runSimpleReleaseDetailed(process.cwd(), {
+      const result = await runReleaseDetailed(process.cwd(), {
         logger,
         "dry-run": true,
       });
@@ -302,7 +299,7 @@ async function main(): Promise<number> {
       }
       return 0;
     }
-    const message = await runSimpleRelease(process.cwd());
+    const message = await runRelease(process.cwd());
     console.log(message);
     return 0;
   }
@@ -313,7 +310,7 @@ async function main(): Promise<number> {
     "  run [--json] [--dry-run]  Auto-dispatch release PR/update or release publish by context",
   );
   console.log("  verify  Validate config and basic repository shape");
-  console.log("  plan    Print release plan (simple mode)");
+  console.log("  plan    Print release plan");
   console.log("  changelog [--write]  Print or write changelog section");
   console.log("  pr [--dry-run]      Prepare release PR commit and branch");
   console.log(

@@ -6,7 +6,7 @@ import {
 } from "../git/commits.js";
 import { resolveRepositoryWebBaseUrl } from "../git/repo-url.js";
 import type { VersionaryChangelogFormat } from "../types/config.js";
-import type { SimplePlan } from "./plan.js";
+import type { ReleasePlan, SimplePlan } from "./plan.js";
 
 function formatDate(): string {
   return new Date().toISOString().slice(0, 10);
@@ -160,7 +160,7 @@ export function renderSimpleReleaseNotes(
   return lines.join("\n");
 }
 
-export function renderSimpleChangelog(plan: SimplePlan): string {
+export function renderReleasePlanChangelog(plan: ReleasePlan): string {
   if (!plan.nextVersion) {
     return "";
   }
@@ -202,6 +202,11 @@ export function renderSimpleChangelog(plan: SimplePlan): string {
   });
 }
 
+/** @deprecated Use renderReleasePlanChangelog. */
+export function renderSimpleChangelog(plan: SimplePlan): string {
+  return renderReleasePlanChangelog(plan);
+}
+
 export function renderPackageChangelogSection(input: {
   currentVersion: string;
   nextVersion: string;
@@ -241,8 +246,12 @@ export function prependChangelog(
     ? fs.readFileSync(changelogPath, "utf8")
     : "";
   if (format === "r-news") {
-    const separator = existing.length > 0 ? "\n\n" : "";
-    const next = `${`${section}${separator}${existing}`.trimEnd()}\n`;
+    const bodyWithoutDevHeader = existing.replace(
+      /^#\s+.+\s+\(development version\)\s*(?:\r?\n)*/u,
+      "",
+    );
+    const separator = bodyWithoutDevHeader.length > 0 ? "\n\n" : "";
+    const next = `${`${section}${separator}${bodyWithoutDevHeader}`.trimEnd()}\n`;
     fs.writeFileSync(changelogPath, next, "utf8");
     return;
   }

@@ -11,6 +11,64 @@ import { isReleaseCommitMessage } from "./pr.js";
 import { executeIdempotentReleaseTarget } from "./recovery.js";
 import { readReleaseTargets } from "./state.js";
 
+function escapeRegExp(input: string): string {
+  return input.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+}
+
+export function extractReleaseNotes(
+  content: string,
+  version: string,
+  changelogFormat: "markdown-changelog" | "r-news",
+): string {
+  const lines = content.split("\n");
+  const shortVersion = version.replace(/\.\d+$/u, "");
+  const start =
+    changelogFormat === "r-news"
+      ? lines.findIndex((line) => {
+          const fullMatch = new RegExp(
+            `^#\\s+.+\\s+${escapeRegExp(version)}\\s*$`,
+            "u",
+          );
+          const shortMatch = new RegExp(
+            `^#\\s+.+\\s+${escapeRegExp(shortVersion)}\\s*$`,
+            "u",
+          );
+          return fullMatch.test(line) || shortMatch.test(line);
+        })
+      : lines.findIndex(
+          (line) =>
+            line.startsWith(`## ${version} -`) ||
+            line.startsWith(`## [${version}](`) ||
+            line.startsWith(`# ${shortVersion} -`) ||
+            line.startsWith(`# [${shortVersion}](`) ||
+            new RegExp(`^#\\s+.+\\s+${shortVersion}\\s*$`, "u").test(line),
+        );
+  if (start < 0) {
+    return "";
+  }
+
+  let end = lines.length;
+  for (let idx = start + 1; idx < lines.length; idx += 1) {
+    const line = lines[idx] ?? "";
+    if (changelogFormat === "r-news") {
+      if (/^#(?!#)\s+/u.test(line)) {
+        end = idx;
+        break;
+      }
+      continue;
+    }
+    if (line.startsWith("## ")) {
+      end = idx;
+      break;
+    }
+  }
+
+  return lines
+    .slice(start + 1, end)
+    .join("\n")
+    .trim();
+}
+
 function getHeadCommitMessage(cwd: string): string {
   return execFileSync("git", ["log", "-1", "--pretty=%B"], {
     cwd,
@@ -23,6 +81,7 @@ function readReleaseNotes(
   cwd: string,
   version: string,
   changelogFile: string,
+  changelogFormat: "markdown-changelog" | "r-news",
 ): string {
   const changelogPath = path.join(cwd, changelogFile);
   if (!fs.existsSync(changelogPath)) {
@@ -30,32 +89,7 @@ function readReleaseNotes(
   }
 
   const content = fs.readFileSync(changelogPath, "utf8");
-  const lines = content.split("\n");
-  const shortVersion = version.replace(/\.\d+$/u, "");
-  const start = lines.findIndex(
-    (line) =>
-      line.startsWith(`## ${version} -`) ||
-      line.startsWith(`## [${version}](`) ||
-      line.startsWith(`# ${shortVersion} -`) ||
-      line.startsWith(`# [${shortVersion}](`) ||
-      new RegExp(`^#\\s+.+\\s+${shortVersion}\\s*$`, "u").test(line),
-  );
-  if (start < 0) {
-    return `Automated release for v${version}`;
-  }
-
-  let end = lines.length;
-  for (let idx = start + 1; idx < lines.length; idx += 1) {
-    if (lines[idx]?.startsWith("## ")) {
-      end = idx;
-      break;
-    }
-  }
-
-  const notes = lines
-    .slice(start + 1, end)
-    .join("\n")
-    .trim();
+  const notes = extractReleaseNotes(content, version, changelogFormat);
   return notes.length > 0 ? notes : `Automated release for v${version}`;
 }
 
@@ -80,15 +114,31 @@ export function resolveTargetChangelogFile(
   return path.posix.join(targetPath, packageChangelogFile);
 }
 
-export async function runSimpleRelease(cwd = process.cwd()): Promise<string> {
-  const result = await runSimpleReleaseDetailed(cwd, { logger: console });
+function resolveTargetChangelogFormat(
+  config: VersionaryConfig,
+  targetPath: string,
+): "markdown-changelog" | "r-news" {
+  const packageConfig =
+    targetPath === "." ? undefined : config.packages?.[targetPath];
+  const { changelogFormat } = getChangelogDefaults({
+    "release-type": packageConfig?.["release-type"] ?? config["release-type"],
+    "changelog-file":
+      packageConfig?.["changelog-file"] ?? config["changelog-file"],
+    "changelog-format":
+      packageConfig?.["changelog-format"] ?? config["changelog-format"],
+  });
+  return changelogFormat;
+}
+
+export async function runRelease(cwd = process.cwd()): Promise<string> {
+  const result = await runReleaseDetailed(cwd, { logger: console });
   if (result.action === "release-skipped") {
     return result.reason;
   }
   return result.message;
 }
 
-export type SimpleRunReleaseResult =
+export type RunReleaseResult =
   | {
       action: "release-skipped";
       reason: string;
@@ -112,15 +162,15 @@ export type SimpleRunReleaseResult =
       }[];
     };
 
-export interface RunSimpleReleaseOptions {
+export interface RunReleaseOptions {
   logger?: VersionaryPluginContext["logger"];
   "dry-run"?: boolean;
 }
 
-export async function runSimpleReleaseDetailed(
+export async function runReleaseDetailed(
   cwd = process.cwd(),
-  options: RunSimpleReleaseOptions = {},
-): Promise<SimpleRunReleaseResult> {
+  options: RunReleaseOptions = {},
+): Promise<RunReleaseResult> {
   const commitMessage = getHeadCommitMessage(cwd);
   if (!isReleaseCommitMessage(commitMessage)) {
     return {
@@ -175,12 +225,21 @@ export async function runSimpleReleaseDetailed(
       changelogFile,
       target.path,
     );
+    const targetChangelogFormat = resolveTargetChangelogFormat(
+      loaded.config,
+      target.path,
+    );
     const outcome = await executeIdempotentReleaseTarget(
       cwd,
       {
         tag: target.tag,
         version: target.version,
-        notes: readReleaseNotes(cwd, target.version, targetChangelogFile),
+        notes: readReleaseNotes(
+          cwd,
+          target.version,
+          targetChangelogFile,
+          targetChangelogFormat,
+        ),
         draft: loaded.config["release-draft"] ?? false,
       },
       {
@@ -209,4 +268,20 @@ export async function runSimpleReleaseDetailed(
     releases,
     message: `Published releases ${published.join(", ")}`,
   };
+}
+
+/** @deprecated Use RunReleaseResult. */
+export type SimpleRunReleaseResult = RunReleaseResult;
+/** @deprecated Use RunReleaseOptions. */
+export type RunSimpleReleaseOptions = RunReleaseOptions;
+/** @deprecated Use runRelease. */
+export async function runSimpleRelease(cwd = process.cwd()): Promise<string> {
+  return runRelease(cwd);
+}
+/** @deprecated Use runReleaseDetailed. */
+export async function runSimpleReleaseDetailed(
+  cwd = process.cwd(),
+  options: RunSimpleReleaseOptions = {},
+): Promise<SimpleRunReleaseResult> {
+  return runReleaseDetailed(cwd, options);
 }

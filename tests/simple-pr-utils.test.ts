@@ -252,6 +252,87 @@ describe("review request body rendering", () => {
     );
   });
 
+  it("keeps root direct commit notes in PR body when root also has dependency propagation", () => {
+    const prevServer = process.env.GITHUB_SERVER_URL;
+    const prevRepo = process.env.GITHUB_REPOSITORY;
+    let body = "";
+    try {
+      process.env.GITHUB_SERVER_URL = "https://github.com";
+      process.env.GITHUB_REPOSITORY = "jolars/panache";
+      body = renderSimpleReviewRequestBody(
+        "2.35.1",
+        "2.35.0",
+        [],
+        {
+          mode: "simple",
+          releaseType: "patch",
+          currentVersion: "2.35.0",
+          nextVersion: "2.35.1",
+          packageName: "panache",
+          versionFile: "version.txt",
+          changelogFile: "CHANGELOG.md",
+          changelogFormat: "markdown-changelog",
+          releaseBranchPrefix: "versionary/release",
+          baselineSha: null,
+          commits: [
+            {
+              ...parseConventionalCommitMessage(
+                "fix(parser): enable inline_link for GFM flavor",
+                "Closes #171",
+              ),
+              hash: "805979269e898a4f28faddd15dcd07f2593f37ab",
+            },
+          ],
+          packages: [
+            {
+              path: ".",
+              releaseType: "patch",
+              currentVersion: "2.35.0",
+              nextVersion: "2.35.1",
+              bumpReason: "dependency-propagation",
+              commits: [
+                {
+                  ...parseConventionalCommitMessage(
+                    "fix(parser): enable inline_link for GFM flavor",
+                    "Closes #171",
+                  ),
+                  hash: "805979269e898a4f28faddd15dcd07f2593f37ab",
+                },
+              ],
+            },
+            {
+              path: "crates/panache-parser",
+              releaseType: "patch",
+              currentVersion: "0.3.1",
+              nextVersion: "0.3.2",
+              bumpReason: "direct",
+              commits: [
+                {
+                  ...parseConventionalCommitMessage(
+                    "fix(parser): enable inline_link for GFM flavor",
+                    "Closes #171",
+                  ),
+                  hash: "805979269e898a4f28faddd15dcd07f2593f37ab",
+                },
+              ],
+            },
+          ],
+        },
+        "/tmp/panache",
+      );
+    } finally {
+      process.env.GITHUB_SERVER_URL = prevServer;
+      process.env.GITHUB_REPOSITORY = prevRepo;
+    }
+
+    expect(body).toContain(
+      "## [panache: 2.35.1](https://github.com/jolars/panache/compare/v2.35.0...v2.35.1)",
+    );
+    expect(body).toContain("### Bug Fixes");
+    expect(body).toContain("### Dependencies");
+    expect(body).toContain("- updated crates/panache-parser to v0.3.2");
+  });
+
   it("falls back to single release body for single-package plans", () => {
     const prevServer = process.env.GITHUB_SERVER_URL;
     const prevRepo = process.env.GITHUB_REPOSITORY;

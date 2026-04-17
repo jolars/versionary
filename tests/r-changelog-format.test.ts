@@ -138,4 +138,55 @@ describe("R changelog support", () => {
     expect(news).toContain("## Features");
     expect(news).toContain("add exported helper");
   });
+
+  it("drops development version header when prepending r-news release entry", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+    write(
+      cwd,
+      "DESCRIPTION",
+      ["Package: eulerr", "Type: Package", "Version: 7.0.4.9000", ""].join(
+        "\n",
+      ),
+    );
+    write(
+      cwd,
+      "NEWS.md",
+      [
+        "# eulerr (development version)",
+        "",
+        "# eulerr 7.0.4",
+        "",
+        "## Bug Fixes",
+        "",
+        "- Existing entry.",
+        "",
+      ].join("\n"),
+    );
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "release-type": "r",
+        "review-mode": "direct",
+      }),
+    );
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v7.0.4");
+
+    write(cwd, "R/fix.R", "fix <- function() TRUE\n");
+    git(cwd, "add", "R/fix.R");
+    git(cwd, "commit", "-m", "fix: patch docs");
+
+    prepareSimpleReleasePr(cwd);
+
+    const news = fs.readFileSync(path.join(cwd, "NEWS.md"), "utf8");
+    expect(news).toContain("# eulerr 7.0");
+    expect(news).not.toContain("# eulerr (development version)");
+    expect(news).toContain("# eulerr 7.0.4");
+  });
 });

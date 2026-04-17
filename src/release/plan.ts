@@ -21,7 +21,7 @@ import type {
 import { bumpVersion, type ReleaseType } from "./semver.js";
 import { readBaselineSha, readReleaseTargets } from "./state.js";
 
-export interface SimplePlan {
+export interface ReleasePlan {
   mode: "simple";
   releaseType: ReleaseType;
   currentVersion: string;
@@ -42,6 +42,9 @@ export interface SimplePlan {
     commits: ParsedCommit[];
   }>;
 }
+
+/** @deprecated Use ReleasePlan. */
+export type SimplePlan = ReleasePlan;
 
 function getMode(
   configMode?: "independent" | "fixed",
@@ -66,7 +69,7 @@ export function getChangelogDefaults(config: {
   return { changelogFile, changelogFormat };
 }
 
-export function createSimplePlan(cwd = process.cwd()): SimplePlan {
+export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
   const loaded = loadConfig(cwd);
   const strategy = resolveVersionStrategy(loaded.config);
   const versionFile = strategy.getVersionFile(loaded.config);
@@ -277,4 +280,9 @@ export function createSimplePlan(cwd = process.cwd()): SimplePlan {
     commits: adjustedPackages.flatMap((pkgPlan) => pkgPlan.commits),
     packages: adjustedPackages,
   };
+}
+
+/** @deprecated Use createReleasePlan. */
+export function createSimplePlan(cwd = process.cwd()): ReleasePlan {
+  return createReleasePlan(cwd);
 }
