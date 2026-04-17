@@ -242,15 +242,14 @@ export function prependChangelog(
     : "";
   if (format === "r-news") {
     const separator = existing.length > 0 ? "\n\n" : "";
-    const next = `${section}${separator}${existing}`.trimEnd() + "\n";
+    const next = `${`${section}${separator}${existing}`.trimEnd()}\n`;
     fs.writeFileSync(changelogPath, next, "utf8");
     return;
   }
   const heading = "# Changelog\n\n";
   const bodyWithoutHeading = existing.replace(/^# Changelog\s*/u, "");
   const separator = existing.length > 0 ? "\n" : "";
-  const next =
-    `${heading}${section}${separator}${bodyWithoutHeading}`.trimEnd() + "\n";
+  const next = `${`${heading}${section}${separator}${bodyWithoutHeading}`.trimEnd()}\n`;
   fs.writeFileSync(changelogPath, next, "utf8");
 }
 
