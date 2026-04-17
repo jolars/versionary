@@ -203,6 +203,8 @@ export async function runReleaseDetailed(
   const loaded = loadConfig(cwd);
   const strategy = resolveVersionStrategy(loaded.config);
   const { changelogFile } = getChangelogDefaults(loaded.config);
+  const referenceCommentMode =
+    loaded.config["release-reference-comments"] ?? "off";
   const version = strategy.readVersion(cwd, loaded.config);
   const defaultTag = `v${version}`;
 
@@ -285,12 +287,17 @@ export async function runReleaseDetailed(
       metadataStatus: outcome.metadataStatus,
     });
     const references = referencesByTag.get(outcome.tag) ?? [];
-    if (references.length > 0 && scmClient.createReleaseReferenceComments) {
+    if (
+      references.length > 0 &&
+      referenceCommentMode !== "off" &&
+      scmClient.createReleaseReferenceComments
+    ) {
       await scmClient.createReleaseReferenceComments(
         {
           version: target.version,
           releaseUrl: outcome.url,
           references,
+          mode: referenceCommentMode,
         },
         {
           cwd,

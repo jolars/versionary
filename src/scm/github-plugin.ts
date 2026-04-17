@@ -286,7 +286,7 @@ export function createGitHubPlugin(): VersionaryPluginRuntime & ScmClient {
     },
     async createReleaseReferenceComments(
       input: ScmReleaseReferenceCommentsInput,
-      _context: ScmClientContext,
+      context: ScmClientContext,
     ): Promise<ScmReleaseReferenceCommentsResult> {
       const repo = getRepoFromEnv();
       const octokit = new Octokit({ auth: getGitHubToken() });
@@ -294,6 +294,7 @@ export function createGitHubPlugin(): VersionaryPluginRuntime & ScmClient {
         (a, b) => a - b,
       );
       const commented: number[] = [];
+      const mode = input.mode ?? "best-effort";
       for (const reference of uniqueReferences) {
         const body =
           reference >= 1_000_000_000
@@ -309,11 +310,19 @@ export function createGitHubPlugin(): VersionaryPluginRuntime & ScmClient {
           commented.push(reference);
         } catch (error: unknown) {
           const { status, message } = parseGitHubError(error);
-          if (status === 404 || status === 410) {
+          if (mode === "strict") {
+            throw new Error(
+              `Failed creating release reference comment on #${reference}: [${repoRef(repo)}] ${message}`,
+            );
+          }
+          if (status === 404 || status === 410 || status === 403) {
+            context.logger?.warn(
+              `Skipping release reference comment on #${reference}: [${repoRef(repo)}] ${message}`,
+            );
             continue;
           }
-          throw new Error(
-            `Failed creating release reference comment on #${reference}: [${repoRef(repo)}] ${message}`,
+          context.logger?.warn(
+            `Skipping release reference comment on #${reference}: [${repoRef(repo)}] ${message}`,
           );
         }
       }

@@ -70,6 +70,7 @@ describe("config loading", () => {
         "release-type": "node",
         "changelog-format": "markdown-changelog",
         "release-draft": true,
+        "release-reference-comments": "strict",
       }),
       "utf8",
     );
@@ -82,6 +83,7 @@ describe("config loading", () => {
     expect(loaded.config["release-type"]).toBe("node");
     expect(loaded.config["changelog-format"]).toBe("markdown-changelog");
     expect(loaded.config["release-draft"]).toBe(true);
+    expect(loaded.config["release-reference-comments"]).toBe("strict");
   });
 
   it("loads manifest-style packages object", () => {

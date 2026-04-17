@@ -70,6 +70,9 @@ export const configSchema = z
     "changelog-file": z.string().optional(),
     "changelog-format": z.enum(["markdown-changelog", "r-news"]).optional(),
     "release-draft": z.boolean().optional(),
+    "release-reference-comments": z
+      .enum(["off", "best-effort", "strict"])
+      .optional(),
     "release-branch": z.string().optional(),
     "baseline-file": z.string().optional(),
     "bootstrap-sha": z.string().optional(),

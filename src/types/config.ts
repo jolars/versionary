@@ -1,5 +1,6 @@
 export type ConfigFileFormat = "jsonc" | "json" | "toml" | "js";
 export type VersionaryChangelogFormat = "markdown-changelog" | "r-news";
+export type ReleaseReferenceCommentsMode = "off" | "best-effort" | "strict";
 
 export interface VersionaryArtifactRule {
   type: "json" | "toml" | "yaml" | "regex";
@@ -25,6 +26,7 @@ export interface VersionaryConfig {
   "changelog-file"?: string;
   "changelog-format"?: VersionaryChangelogFormat;
   "release-draft"?: boolean;
+  "release-reference-comments"?: ReleaseReferenceCommentsMode;
   "release-branch"?: string;
   "baseline-file"?: string;
   "bootstrap-sha"?: string;

@@ -25,6 +25,10 @@
     "release-branch": {
       "type": "string"
     },
+    "release-reference-comments": {
+      "type": "string",
+      "enum": ["off", "best-effort", "strict"]
+    },
     "baseline-file": {
       "type": "string"
     },

@@ -40,6 +40,7 @@ export interface ScmReleaseReferenceCommentsInput {
   version: string;
   releaseUrl: string;
   references: number[];
+  mode?: "best-effort" | "strict";
 }
 
 export interface ScmReleaseReferenceCommentsResult {

@@ -144,6 +144,10 @@ For a quick trial, use:
   request)
 - `release-draft` (default `false`) publishes GitHub releases as drafts when
   enabled
+- `release-reference-comments` controls release comments on linked issues/PRs:
+  - `off` (default): do not post comments
+  - `best-effort`: post comments and continue on API/permission failures
+  - `strict`: fail release if comment posting fails
 - optional monorepo planning with `monorepo-mode` and `packages`:
   - `independent` computes package bumps per path
   - `fixed` computes one shared bump across configured package paths

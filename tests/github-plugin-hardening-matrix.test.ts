@@ -416,6 +416,7 @@ describe("github plugin hardening matrix", () => {
         version: "2.23.0",
         releaseUrl: "https://github.com/owner/repo/releases/tag/v2.23.0",
         references: [171, 2000000001],
+        mode: "best-effort",
       },
       { cwd: process.cwd() },
     );
@@ -435,7 +436,7 @@ describe("github plugin hardening matrix", () => {
     );
   });
 
-  it("ignores missing references but fails on other createComment errors", async () => {
+  it("treats release reference comment failures as best effort", async () => {
     process.env.GITHUB_REPOSITORY = "owner/repo";
     process.env.GITHUB_TOKEN = "token";
     const plugin = createGitHubPlugin();
@@ -450,11 +451,37 @@ describe("github plugin hardening matrix", () => {
           version: "2.23.0",
           releaseUrl: "https://github.com/owner/repo/releases/tag/v2.23.0",
           references: [171, 172],
+          mode: "best-effort",
         },
-        { cwd: process.cwd() },
+        { cwd: process.cwd(), logger: console },
+      ),
+    ).resolves.toEqual({
+      commented: [],
+    });
+  });
+
+  it("fails release reference comments in strict mode", async () => {
+    process.env.GITHUB_REPOSITORY = "owner/repo";
+    process.env.GITHUB_TOKEN = "token";
+    const plugin = createGitHubPlugin();
+
+    mockApi.issues.createComment.mockRejectedValueOnce({
+      status: 403,
+      message: "forbidden",
+    });
+
+    await expect(
+      plugin.createReleaseReferenceComments?.(
+        {
+          version: "2.23.0",
+          releaseUrl: "https://github.com/owner/repo/releases/tag/v2.23.0",
+          references: [171],
+          mode: "strict",
+        },
+        { cwd: process.cwd(), logger: console },
       ),
     ).rejects.toThrow(
-      "Failed creating release reference comment on #172: [owner/repo]",
+      "Failed creating release reference comment on #171: [owner/repo]",
     );
   });
 });
