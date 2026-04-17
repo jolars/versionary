@@ -70,6 +70,7 @@ pnpm test
 pnpm verify
 pnpm typecheck
 biome check .
+biome format . --write
 ```
 
 ## High-level architecture
