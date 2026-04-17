@@ -5,6 +5,8 @@ import type {
   ScmClientContext,
   ScmReleaseMetadataInput,
   ScmReleaseMetadataResult,
+  ScmReleaseReferenceCommentsInput,
+  ScmReleaseReferenceCommentsResult,
   ScmReviewRequestInput,
   ScmReviewRequestResult,
 } from "./types.js";
@@ -139,7 +141,11 @@ async function ensureLabels(
 export function createGitHubPlugin(): VersionaryPluginRuntime & ScmClient {
   return {
     name: "github",
-    capabilities: ["scm.reviewRequest", "scm.releaseMetadata"],
+    capabilities: [
+      "scm.reviewRequest",
+      "scm.releaseMetadata",
+      "scm.releaseReferenceComments",
+    ],
     provider: "github",
     async createOrUpdateReviewRequest(
       input: ScmReviewRequestInput,
@@ -277,6 +283,41 @@ export function createGitHubPlugin(): VersionaryPluginRuntime & ScmClient {
         );
       }
       return { url: data.html_url, status: "created" };
+    },
+    async createReleaseReferenceComments(
+      input: ScmReleaseReferenceCommentsInput,
+      _context: ScmClientContext,
+    ): Promise<ScmReleaseReferenceCommentsResult> {
+      const repo = getRepoFromEnv();
+      const octokit = new Octokit({ auth: getGitHubToken() });
+      const uniqueReferences = [...new Set(input.references)].sort(
+        (a, b) => a - b,
+      );
+      const commented: number[] = [];
+      for (const reference of uniqueReferences) {
+        const body =
+          reference >= 1_000_000_000
+            ? `This pull request is included in [version ${input.version}](${input.releaseUrl}).`
+            : `This issue has been resolved in [version ${input.version}](${input.releaseUrl}).`;
+        try {
+          await octokit.issues.createComment({
+            owner: repo.owner,
+            repo: repo.repo,
+            issue_number: reference,
+            body,
+          });
+          commented.push(reference);
+        } catch (error: unknown) {
+          const { status, message } = parseGitHubError(error);
+          if (status === 404 || status === 410) {
+            continue;
+          }
+          throw new Error(
+            `Failed creating release reference comment on #${reference}: [${repoRef(repo)}] ${message}`,
+          );
+        }
+      }
+      return { commented };
     },
   };
 }

@@ -36,6 +36,16 @@ export interface ScmReleaseMetadataResult {
   status?: "created" | "exists";
 }
 
+export interface ScmReleaseReferenceCommentsInput {
+  version: string;
+  releaseUrl: string;
+  references: number[];
+}
+
+export interface ScmReleaseReferenceCommentsResult {
+  commented: number[];
+}
+
 export interface ScmClient {
   provider: ScmProvider;
   createOrUpdateReviewRequest: (
@@ -46,4 +56,8 @@ export interface ScmClient {
     input: ScmReleaseMetadataInput,
     context: ScmClientContext,
   ) => Promise<ScmReleaseMetadataResult>;
+  createReleaseReferenceComments?: (
+    input: ScmReleaseReferenceCommentsInput,
+    context: ScmClientContext,
+  ) => Promise<ScmReleaseReferenceCommentsResult>;
 }

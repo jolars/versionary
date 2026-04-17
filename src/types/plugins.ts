@@ -3,13 +3,16 @@ import type {
   ScmProvider,
   ScmReleaseMetadataInput,
   ScmReleaseMetadataResult,
+  ScmReleaseReferenceCommentsInput,
+  ScmReleaseReferenceCommentsResult,
   ScmReviewRequestInput,
   ScmReviewRequestResult,
 } from "../scm/types.js";
 
 export type VersionaryPluginCapability =
   | "scm.reviewRequest"
-  | "scm.releaseMetadata";
+  | "scm.releaseMetadata"
+  | "scm.releaseReferenceComments";
 
 export type VersionaryScmReviewRequestInput = ScmReviewRequestInput;
 
@@ -18,6 +21,12 @@ export type VersionaryScmReviewRequestResult = ScmReviewRequestResult;
 export type VersionaryScmReleaseMetadataInput = ScmReleaseMetadataInput;
 
 export type VersionaryScmReleaseMetadataResult = ScmReleaseMetadataResult;
+
+export type VersionaryScmReleaseReferenceCommentsInput =
+  ScmReleaseReferenceCommentsInput;
+
+export type VersionaryScmReleaseReferenceCommentsResult =
+  ScmReleaseReferenceCommentsResult;
 
 export type VersionaryPluginContext = ScmClientContext;
 
@@ -33,4 +42,8 @@ export interface VersionaryPluginRuntime {
     input: VersionaryScmReleaseMetadataInput,
     context: VersionaryPluginContext,
   ) => Promise<VersionaryScmReleaseMetadataResult>;
+  createReleaseReferenceComments?: (
+    input: VersionaryScmReleaseReferenceCommentsInput,
+    context: VersionaryPluginContext,
+  ) => Promise<VersionaryScmReleaseReferenceCommentsResult>;
 }

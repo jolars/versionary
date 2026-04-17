@@ -55,6 +55,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: write
+      issues: write
       pull-requests: write
     steps:
       - uses: actions/checkout@v6

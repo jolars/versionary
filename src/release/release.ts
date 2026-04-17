@@ -93,6 +93,27 @@ function readReleaseNotes(
   return notes.length > 0 ? notes : `Automated release for v${version}`;
 }
 
+export function extractClosingReferencesFromNotes(notes: string): number[] {
+  const refs = new Set<number>();
+  const linkedPattern =
+    /\b(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\b\s+\[#(\d+)\]\([^)]+\)/giu;
+  for (const match of notes.matchAll(linkedPattern)) {
+    const issue = Number(match[2] ?? "");
+    if (Number.isInteger(issue) && issue > 0) {
+      refs.add(issue);
+    }
+  }
+  const plainPattern =
+    /\b(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\b\s+#(\d+)/giu;
+  for (const match of notes.matchAll(plainPattern)) {
+    const issue = Number(match[2] ?? "");
+    if (Number.isInteger(issue) && issue > 0) {
+      refs.add(issue);
+    }
+  }
+  return [...refs].sort((a, b) => a - b);
+}
+
 export function resolveTargetChangelogFile(
   config: VersionaryConfig,
   rootChangelogFile: string,
@@ -219,6 +240,7 @@ export async function runReleaseDetailed(
     tagStatus: "created" | "exists";
     metadataStatus: "created" | "exists";
   }[] = [];
+  const referencesByTag = new Map<string, number[]>();
   for (const target of targets) {
     const targetChangelogFile = resolveTargetChangelogFile(
       loaded.config,
@@ -229,17 +251,22 @@ export async function runReleaseDetailed(
       loaded.config,
       target.path,
     );
+    const releaseNotes = readReleaseNotes(
+      cwd,
+      target.version,
+      targetChangelogFile,
+      targetChangelogFormat,
+    );
+    referencesByTag.set(
+      target.tag,
+      extractClosingReferencesFromNotes(releaseNotes),
+    );
     const outcome = await executeIdempotentReleaseTarget(
       cwd,
       {
         tag: target.tag,
         version: target.version,
-        notes: readReleaseNotes(
-          cwd,
-          target.version,
-          targetChangelogFile,
-          targetChangelogFormat,
-        ),
+        notes: releaseNotes,
         draft: loaded.config["release-draft"] ?? false,
       },
       {
@@ -257,6 +284,20 @@ export async function runReleaseDetailed(
       tagStatus: outcome.tagStatus,
       metadataStatus: outcome.metadataStatus,
     });
+    const references = referencesByTag.get(outcome.tag) ?? [];
+    if (references.length > 0 && scmClient.createReleaseReferenceComments) {
+      await scmClient.createReleaseReferenceComments(
+        {
+          version: target.version,
+          releaseUrl: outcome.url,
+          references,
+        },
+        {
+          cwd,
+          logger: options.logger,
+        },
+      );
+    }
   }
 
   const published = releases.map(

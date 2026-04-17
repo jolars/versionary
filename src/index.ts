@@ -12,6 +12,8 @@ export type {
   ScmProvider,
   ScmReleaseMetadataInput,
   ScmReleaseMetadataResult,
+  ScmReleaseReferenceCommentsInput,
+  ScmReleaseReferenceCommentsResult,
   ScmReviewRequestInput,
   ScmReviewRequestResult,
 } from "./scm/types.js";
@@ -27,6 +29,8 @@ export type {
   VersionaryPluginRuntime,
   VersionaryScmReleaseMetadataInput,
   VersionaryScmReleaseMetadataResult,
+  VersionaryScmReleaseReferenceCommentsInput,
+  VersionaryScmReleaseReferenceCommentsResult,
   VersionaryScmReviewRequestInput,
   VersionaryScmReviewRequestResult,
 } from "./types/plugins.js";

@@ -16,6 +16,7 @@ interface MockGitHubApi {
   };
   issues: {
     addLabels: ReturnType<typeof vi.fn>;
+    createComment: ReturnType<typeof vi.fn>;
   };
   repos: {
     getReleaseByTag: ReturnType<typeof vi.fn>;
@@ -36,6 +37,8 @@ vi.mock("@octokit/rest", () => {
 
     issues = {
       addLabels: (...args: unknown[]) => mockApi.issues.addLabels(...args),
+      createComment: (...args: unknown[]) =>
+        mockApi.issues.createComment(...args),
     };
 
     repos = {
@@ -88,6 +91,7 @@ function createDefaultMockApi(): MockGitHubApi {
     },
     issues: {
       addLabels: vi.fn(async () => ({ data: {} })),
+      createComment: vi.fn(async () => ({ data: {} })),
     },
     repos: {
       getReleaseByTag: vi.fn(async () => ({
@@ -399,6 +403,58 @@ describe("github plugin hardening matrix", () => {
       plugin.createReleaseMetadata?.(releaseInput, { cwd: process.cwd() }),
     ).rejects.toThrow(
       'Failed checking existing GitHub release for tag "v1.2.3":',
+    );
+  });
+
+  it("posts release reference comments for issues and pull requests", async () => {
+    process.env.GITHUB_REPOSITORY = "owner/repo";
+    process.env.GITHUB_TOKEN = "token";
+    const plugin = createGitHubPlugin();
+
+    const result = await plugin.createReleaseReferenceComments?.(
+      {
+        version: "2.23.0",
+        releaseUrl: "https://github.com/owner/repo/releases/tag/v2.23.0",
+        references: [171, 2000000001],
+      },
+      { cwd: process.cwd() },
+    );
+
+    expect(result).toEqual({ commented: [171, 2000000001] });
+    expect(mockApi.issues.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        issue_number: 171,
+        body: "This issue has been resolved in [version 2.23.0](https://github.com/owner/repo/releases/tag/v2.23.0).",
+      }),
+    );
+    expect(mockApi.issues.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        issue_number: 2000000001,
+        body: "This pull request is included in [version 2.23.0](https://github.com/owner/repo/releases/tag/v2.23.0).",
+      }),
+    );
+  });
+
+  it("ignores missing references but fails on other createComment errors", async () => {
+    process.env.GITHUB_REPOSITORY = "owner/repo";
+    process.env.GITHUB_TOKEN = "token";
+    const plugin = createGitHubPlugin();
+
+    mockApi.issues.createComment
+      .mockRejectedValueOnce({ status: 404, message: "not found" })
+      .mockRejectedValueOnce({ status: 403, message: "forbidden" });
+
+    await expect(
+      plugin.createReleaseReferenceComments?.(
+        {
+          version: "2.23.0",
+          releaseUrl: "https://github.com/owner/repo/releases/tag/v2.23.0",
+          references: [171, 172],
+        },
+        { cwd: process.cwd() },
+      ),
+    ).rejects.toThrow(
+      "Failed creating release reference comment on #172: [owner/repo]",
     );
   });
 });
