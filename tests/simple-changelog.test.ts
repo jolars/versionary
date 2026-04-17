@@ -129,4 +129,29 @@ describe("simple changelog rendering", () => {
     expect(changelog).toContain("### Dependencies");
     expect(changelog).toContain("- updated crates/panache-parser to v0.3.2");
   });
+
+  it("deduplicates root changelog commits by hash when commit ranges overlap", () => {
+    const prevServer = process.env.GITHUB_SERVER_URL;
+    const prevRepo = process.env.GITHUB_REPOSITORY;
+    let changelog = "";
+    try {
+      process.env.GITHUB_SERVER_URL = "https://github.com";
+      process.env.GITHUB_REPOSITORY = "jolars/panache";
+      const duplicate = {
+        ...parseConventionalCommitMessage("feat: support smart punctuation"),
+        hash: "926a4c80ed854f5a0afdfdae4d512adf91840525",
+      };
+      const plan = makePlan();
+      plan.currentVersion = "2.35.0";
+      plan.nextVersion = "2.36.0";
+      plan.commits = [duplicate, duplicate];
+      changelog = renderSimpleChangelog(plan);
+    } finally {
+      process.env.GITHUB_SERVER_URL = prevServer;
+      process.env.GITHUB_REPOSITORY = prevRepo;
+    }
+
+    const matches = changelog.match(/support smart punctuation/gu) ?? [];
+    expect(matches).toHaveLength(1);
+  });
 });

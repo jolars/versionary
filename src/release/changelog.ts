@@ -185,18 +185,21 @@ export function renderReleasePlanChangelog(plan: ReleasePlan): string {
             version: pkg.nextVersion as string,
           }))
       : [];
+  const dedupedCommits = [
+    ...new Map(plan.commits.map((commit) => [commit.hash, commit])).values(),
+  ];
   if (plan.changelogFormat === "r-news") {
     return renderRNewsReleaseNotes({
       packageName: plan.packageName,
       nextVersion: plan.nextVersion,
-      commits: plan.commits,
+      commits: dedupedCommits,
       cwd: process.cwd(),
     });
   }
   return renderSimpleReleaseNotes({
     currentVersion: plan.currentVersion,
     nextVersion: plan.nextVersion,
-    commits: plan.commits,
+    commits: dedupedCommits,
     cwd: process.cwd(),
     dependencies,
   });
