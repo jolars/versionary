@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.14.0](https://github.com/jolars/versionary/compare/v0.13.0...v0.14.0) (2026-04-17)
+
+### Features
+- make issue commenting off by default, and add options ([`4a91d6c`](https://github.com/jolars/versionary/commit/4a91d6c1441357665c260f6b42c56be7cf0d6288))
+- implement issue commenting on GitHub ([`73264a0`](https://github.com/jolars/versionary/commit/73264a049fd2ea4506b2193798001ea7bb68f289)), closes [#23](https://github.com/jolars/versionary/issues/23)
+
+### Bug Fixes
+- **changelog:** fix duplicated entries in changelog ([`6bdc88d`](https://github.com/jolars/versionary/commit/6bdc88d60040ac92ffab3df751ed3735dbd2a913))
+
 ## [0.13.0](https://github.com/jolars/versionary/compare/v0.12.0...v0.13.0) (2026-04-17)
 
 ### Features
