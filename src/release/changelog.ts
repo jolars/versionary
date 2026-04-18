@@ -3,6 +3,7 @@ import path from "node:path";
 import {
   inferReleaseTypeFromParsedCommit,
   type ParsedCommit,
+  parseConventionalCommitMessage,
 } from "../git/commits.js";
 import { resolveRepositoryWebBaseUrl } from "../git/repo-url.js";
 import type { VersionaryChangelogFormat } from "../types/config.js";
@@ -66,6 +67,32 @@ function groupCommitLines(
   const fixes: string[] = [];
   const reverts: string[] = [];
 
+  const getRevertedSubject = (commit: ParsedCommit): string => {
+    const normalizedDescription = (commit.description ?? "")
+      .trim()
+      .replace(/^"(.*)"$/u, "$1");
+    if (normalizedDescription.length > 0) {
+      return normalizedDescription;
+    }
+
+    const quoted = commit.subject.match(/^revert:\s+"(.+)"$/iu);
+    if (quoted) {
+      return quoted[1].trim();
+    }
+
+    const plain = commit.subject.match(/^revert:\s+(.+)$/iu);
+    return plain ? plain[1].trim() : "";
+  };
+
+  const shouldIncludeRevert = (commit: ParsedCommit): boolean => {
+    const revertedSubject = getRevertedSubject(commit);
+    if (revertedSubject.length === 0) {
+      return true;
+    }
+    const revertedCommit = parseConventionalCommitMessage(revertedSubject);
+    return inferReleaseTypeFromParsedCommit(revertedCommit) !== null;
+  };
+
   for (const commit of commits) {
     const type = inferReleaseTypeFromParsedCommit(commit);
     if (!type) {
@@ -84,6 +111,9 @@ function groupCommitLines(
     const isBreaking = type === "major";
 
     if (commit.isRevert) {
+      if (!shouldIncludeRevert(commit)) {
+        continue;
+      }
       reverts.push(line);
       continue;
     }

@@ -89,6 +89,30 @@ describe("simple changelog rendering", () => {
     );
   });
 
+  it("omits reverts of non-releasable commits from Reverts section", () => {
+    const prevServer = process.env.GITHUB_SERVER_URL;
+    const prevRepo = process.env.GITHUB_REPOSITORY;
+    let changelog = "";
+    try {
+      process.env.GITHUB_SERVER_URL = "https://github.com";
+      process.env.GITHUB_REPOSITORY = "jolars/versionary";
+      const plan = makePlan();
+      plan.commits = [
+        {
+          ...parseConventionalCommitMessage('revert: "chore(release): v1.2.3"'),
+          hash: "6666666",
+        },
+      ];
+      changelog = renderSimpleChangelog(plan);
+    } finally {
+      process.env.GITHUB_SERVER_URL = prevServer;
+      process.env.GITHUB_REPOSITORY = prevRepo;
+    }
+
+    expect(changelog).not.toContain("### Reverts");
+    expect(changelog).not.toContain("chore(release): v1.2.3");
+  });
+
   it("adds Dependencies section for dependency-propagated root bumps", () => {
     const prevServer = process.env.GITHUB_SERVER_URL;
     const prevRepo = process.env.GITHUB_REPOSITORY;
