@@ -124,12 +124,17 @@ export function resolveTargetChangelogFile(
   }
 
   const packageConfig = config.packages?.[targetPath];
+  const packageStrategy = resolveVersionStrategy({
+    ...config,
+    "release-type": packageConfig?.["release-type"] ?? config["release-type"],
+  });
   const { changelogFile: packageChangelogFile } = getChangelogDefaults({
     "release-type": packageConfig?.["release-type"] ?? config["release-type"],
     "changelog-file":
       packageConfig?.["changelog-file"] ?? config["changelog-file"],
     "changelog-format":
       packageConfig?.["changelog-format"] ?? config["changelog-format"],
+    defaultChangelogFormat: packageStrategy.getDefaultChangelogFormat?.(),
   });
 
   return path.posix.join(targetPath, packageChangelogFile);
@@ -141,12 +146,17 @@ function resolveTargetChangelogFormat(
 ): "markdown-changelog" | "r-news" {
   const packageConfig =
     targetPath === "." ? undefined : config.packages?.[targetPath];
+  const packageStrategy = resolveVersionStrategy({
+    ...config,
+    "release-type": packageConfig?.["release-type"] ?? config["release-type"],
+  });
   const { changelogFormat } = getChangelogDefaults({
     "release-type": packageConfig?.["release-type"] ?? config["release-type"],
     "changelog-file":
       packageConfig?.["changelog-file"] ?? config["changelog-file"],
     "changelog-format":
       packageConfig?.["changelog-format"] ?? config["changelog-format"],
+    defaultChangelogFormat: packageStrategy.getDefaultChangelogFormat?.(),
   });
   return changelogFormat;
 }
@@ -202,7 +212,10 @@ export async function runReleaseDetailed(
 
   const loaded = loadConfig(cwd);
   const strategy = resolveVersionStrategy(loaded.config);
-  const { changelogFile } = getChangelogDefaults(loaded.config);
+  const { changelogFile } = getChangelogDefaults({
+    ...loaded.config,
+    defaultChangelogFormat: strategy.getDefaultChangelogFormat?.(),
+  });
   const referenceCommentMode =
     loaded.config["release-reference-comments"] ?? "off";
   const version = strategy.readVersion(cwd, loaded.config);

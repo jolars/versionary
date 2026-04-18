@@ -56,13 +56,15 @@ export function getChangelogDefaults(config: {
   "release-type"?: VersionaryConfig["release-type"];
   "changelog-file"?: VersionaryConfig["changelog-file"];
   "changelog-format"?: VersionaryConfig["changelog-format"];
+  defaultChangelogFormat?: VersionaryChangelogFormat;
 }): {
   changelogFile: string;
   changelogFormat: VersionaryChangelogFormat;
 } {
   const changelogFormat =
     config["changelog-format"] ??
-    (config["release-type"] === "r" ? "r-news" : "markdown-changelog");
+    config.defaultChangelogFormat ??
+    "markdown-changelog";
   const changelogFile =
     config["changelog-file"] ??
     (changelogFormat === "r-news" ? "NEWS.md" : "CHANGELOG.md");
@@ -72,14 +74,21 @@ export function getChangelogDefaults(config: {
 export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
   const loaded = loadConfig(cwd);
   const strategy = resolveVersionStrategy(loaded.config);
-  const versionFile = strategy.getVersionFile(loaded.config);
-  const { changelogFile, changelogFormat } = getChangelogDefaults(
-    loaded.config,
+  const configuredPackages = Object.entries(loaded.config.packages ?? {}).map(
+    ([pkgPath, cfg]) => ({
+      path: pkgPath,
+      ...cfg,
+    }),
   );
-  const packageName =
-    loaded.config["release-type"] === "r"
-      ? (strategy.readPackageName?.(cwd, loaded.config) ?? path.basename(cwd))
-      : path.basename(cwd);
+  const hasPackages = configuredPackages.length > 0;
+  const versionFile = strategy.getVersionFile(loaded.config);
+  const { changelogFile, changelogFormat } = getChangelogDefaults({
+    ...loaded.config,
+    defaultChangelogFormat: strategy.getDefaultChangelogFormat?.(),
+  });
+  const packageName = hasPackages
+    ? path.basename(cwd)
+    : (strategy.readPackageName?.(cwd, loaded.config) ?? path.basename(cwd));
   const releaseBranchPrefix =
     loaded.config["release-branch"] ?? "versionary/release";
   const baselineSha =
@@ -88,14 +97,7 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
     readReleaseTargets(cwd).map((target) => [target.path, target]),
   );
   const allowStableMajor = loaded.config["allow-stable-major"] ?? false;
-  const configuredPackages = Object.entries(loaded.config.packages ?? {}).map(
-    ([pkgPath, cfg]) => ({
-      path: pkgPath,
-      ...cfg,
-    }),
-  );
   const monorepoMode = getMode(loaded.config["monorepo-mode"]);
-  const hasPackages = configuredPackages.length > 0;
 
   if (!hasPackages) {
     const versionPath = path.join(cwd, versionFile);

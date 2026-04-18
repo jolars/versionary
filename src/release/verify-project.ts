@@ -38,6 +38,18 @@ export function verifyProject(cwd = process.cwd()): VerifyResult {
       ? undefined
       : `Create ${versionFile} or set "version-file" to the correct path for your release strategy.`,
   });
+  if (exists) {
+    const validationError = strategy.validateProject?.(cwd, config.config);
+    checks.push({
+      name: `strategy-validate:${strategy.name}`,
+      ok: !validationError,
+      details: validationError ?? "Strategy-level validation passed",
+      category: "version-files",
+      remediation: validationError
+        ? `Fix strategy-specific version metadata in ${versionFile} for release-type "${strategy.name}".`
+        : undefined,
+    });
+  }
 
   if (config.config.packages) {
     for (const [pkgPathRaw, packageConfig] of Object.entries(
@@ -76,6 +88,23 @@ export function verifyProject(cwd = process.cwd()): VerifyResult {
             ? undefined
             : `Create ${packageVersionFile} or adjust package release settings ("release-type"/"version-file") for ${pkgPathRaw}.`,
         });
+        if (packageVersionExists) {
+          const packageValidationError =
+            packageContext.strategy.validateProject?.(
+              cwd,
+              packageContext.config,
+            );
+          checks.push({
+            name: `strategy-validate:${packageContext.strategy.name}:${pkgPathRaw}`,
+            ok: !packageValidationError,
+            details:
+              packageValidationError ?? "Strategy-level validation passed",
+            category: "version-files",
+            remediation: packageValidationError
+              ? `Fix strategy-specific version metadata in ${packageVersionFile} for package "${pkgPathRaw}".`
+              : undefined,
+          });
+        }
       }
     }
   }

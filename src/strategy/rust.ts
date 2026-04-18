@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import TOML from "@iarna/toml";
@@ -110,6 +111,65 @@ function collectAllCrateManifests(cwd: string): string[] {
     manifests.push(manifest);
   }
   return manifests.sort((a, b) => a.localeCompare(b));
+}
+
+function listCargoLockFiles(cwd: string): string[] {
+  const lockfiles: string[] = [];
+  const queue: string[] = [cwd];
+
+  while (queue.length > 0) {
+    const currentDir = queue.shift();
+    if (!currentDir) {
+      continue;
+    }
+    const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.name === ".git") {
+        continue;
+      }
+      const fullPath = path.join(currentDir, entry.name);
+      if (entry.isDirectory()) {
+        queue.push(fullPath);
+        continue;
+      }
+      if (!entry.isFile() || entry.name !== "Cargo.lock") {
+        continue;
+      }
+      lockfiles.push(normalizeSlashPath(path.relative(cwd, fullPath)));
+    }
+  }
+
+  return lockfiles.sort((a, b) => a.localeCompare(b));
+}
+
+function ensureCargoLockUpToDate(cwd: string): string[] {
+  const lockfiles = listCargoLockFiles(cwd);
+  if (lockfiles.length === 0) {
+    return [];
+  }
+
+  const updatedLockfiles: string[] = [];
+  for (const lockfile of lockfiles) {
+    const lockfilePath = path.join(cwd, lockfile);
+    const before = fs.readFileSync(lockfilePath, "utf8");
+    try {
+      execFileSync("cargo", ["generate-lockfile"], {
+        cwd: path.dirname(lockfilePath),
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `Failed to refresh ${lockfile} via "cargo generate-lockfile". Ensure cargo is installed and available in PATH. Details: ${message}`,
+      );
+    }
+    const after = fs.readFileSync(lockfilePath, "utf8");
+    if (after !== before) {
+      updatedLockfiles.push(lockfile);
+    }
+  }
+
+  return updatedLockfiles;
 }
 
 function parseCargoManifest(
@@ -814,6 +874,29 @@ export const rustVersionStrategy: VersionStrategy = {
     );
     return readResolvedCargoVersion(cwd, selectedManifest, cargoTomlRaw);
   },
+  validateProject(cwd: string, config: VersionaryConfig): string | null {
+    try {
+      const versionFile = this.getVersionFile(config);
+      const manifests = collectRustTargetManifests(
+        cwd,
+        versionFile,
+        !config.packages,
+      );
+      const selectedManifest = manifests[0];
+      if (!selectedManifest) {
+        return null;
+      }
+      const versionPath = path.join(cwd, selectedManifest);
+      if (!fs.existsSync(versionPath)) {
+        return null;
+      }
+      const cargoTomlRaw = fs.readFileSync(versionPath, "utf8");
+      readResolvedCargoVersion(cwd, selectedManifest, cargoTomlRaw);
+      return null;
+    } catch (error: unknown) {
+      return error instanceof Error ? error.message : String(error);
+    }
+  },
   writeVersion(
     cwd: string,
     config: VersionaryConfig,
@@ -955,6 +1038,9 @@ export const rustVersionStrategy: VersionStrategy = {
     for (const write of writes) {
       manifestToVersion[write.versionFile] = write.version;
     }
-    return applyRustWorkspaceDependencyUpdates(cwd, manifestToVersion);
+    return [
+      ...applyRustWorkspaceDependencyUpdates(cwd, manifestToVersion),
+      ...ensureCargoLockUpToDate(cwd),
+    ];
   },
 };

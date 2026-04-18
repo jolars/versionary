@@ -28,8 +28,24 @@ function writeDescriptionVersion(
 
 export const rVersionStrategy: VersionStrategy = {
   name: "r",
+  getDefaultChangelogFormat() {
+    return "r-news";
+  },
   getVersionFile(config: VersionaryConfig): string {
     return config["version-file"] ?? "DESCRIPTION";
+  },
+  validateProject(cwd: string, config: VersionaryConfig): string | null {
+    const versionFile = this.getVersionFile(config);
+    const versionPath = path.join(cwd, versionFile);
+    if (!fs.existsSync(versionPath)) {
+      return null;
+    }
+    try {
+      readDescriptionVersion(fs.readFileSync(versionPath, "utf8"), versionFile);
+      return null;
+    } catch (error: unknown) {
+      return error instanceof Error ? error.message : String(error);
+    }
   },
   readVersion(cwd: string, config: VersionaryConfig): string {
     const versionFile = this.getVersionFile(config);

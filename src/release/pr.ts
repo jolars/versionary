@@ -1,5 +1,4 @@
 import { execFileSync } from "node:child_process";
-import fs from "node:fs";
 import path from "node:path";
 import { loadConfig } from "../config/load-config.js";
 import type { ParsedCommit } from "../git/commits.js";
@@ -98,69 +97,6 @@ function ensureCleanWorktree(
       `Ignoring safe tracked changes before versionary pr:\n${ignored.join("\n")}`,
     );
   }
-}
-
-function normalizeSlashPath(input: string): string {
-  return input.replaceAll("\\", "/");
-}
-
-function listCargoLockFiles(cwd: string): string[] {
-  const lockfiles: string[] = [];
-  const queue: string[] = [cwd];
-
-  while (queue.length > 0) {
-    const currentDir = queue.shift();
-    if (!currentDir) {
-      continue;
-    }
-    const entries = fs.readdirSync(currentDir, { withFileTypes: true });
-    for (const entry of entries) {
-      if (entry.name === ".git") {
-        continue;
-      }
-      const fullPath = path.join(currentDir, entry.name);
-      if (entry.isDirectory()) {
-        queue.push(fullPath);
-        continue;
-      }
-      if (!entry.isFile() || entry.name !== "Cargo.lock") {
-        continue;
-      }
-      lockfiles.push(normalizeSlashPath(path.relative(cwd, fullPath)));
-    }
-  }
-
-  return lockfiles.sort((a, b) => a.localeCompare(b));
-}
-
-function ensureCargoLockUpToDate(cwd: string): string[] {
-  const lockfiles = listCargoLockFiles(cwd);
-  if (lockfiles.length === 0) {
-    return [];
-  }
-
-  const updatedLockfiles: string[] = [];
-  for (const lockfile of lockfiles) {
-    const lockfilePath = path.join(cwd, lockfile);
-    const before = fs.readFileSync(lockfilePath, "utf8");
-    try {
-      execFileSync("cargo", ["generate-lockfile"], {
-        cwd: path.dirname(lockfilePath),
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      throw new Error(
-        `Failed to refresh ${lockfile} via "cargo generate-lockfile". Ensure cargo is installed and available in PATH. Details: ${message}`,
-      );
-    }
-    const after = fs.readFileSync(lockfilePath, "utf8");
-    if (after !== before) {
-      updatedLockfiles.push(lockfile);
-    }
-  }
-
-  return updatedLockfiles;
 }
 
 function normalizeReleaseNameForTag(releaseName: string): string {
@@ -432,7 +368,6 @@ export function prepareReleasePr(
     loaded.config,
     plan,
   );
-  const updatedRustLockFiles = ensureCargoLockUpToDate(cwd);
   const packageReleaseMetadata = buildPackageReleaseMetadata(
     cwd,
     plan,
@@ -446,6 +381,11 @@ export function prepareReleasePr(
       continue;
     }
     const packageConfig = loaded.config.packages?.[packagePlan.path] ?? {};
+    const packageContext = resolvePackageStrategyContext(
+      loaded.config,
+      packagePlan.path,
+      packageConfig,
+    );
     const { changelogFile: packageChangelogFile } = getChangelogDefaults({
       "release-type":
         packageConfig["release-type"] ?? loaded.config["release-type"],
@@ -453,6 +393,8 @@ export function prepareReleasePr(
         packageConfig["changelog-file"] ?? loaded.config["changelog-file"],
       "changelog-format":
         packageConfig["changelog-format"] ?? loaded.config["changelog-format"],
+      defaultChangelogFormat:
+        packageContext.strategy.getDefaultChangelogFormat?.(),
     });
     const packageMetadata = packageReleaseMetadata[packagePlan.path];
     if (!packageMetadata) {
@@ -497,7 +439,6 @@ export function prepareReleasePr(
     ...new Set([
       ...updatedVersionFiles,
       ...updatedArtifactFiles,
-      ...updatedRustLockFiles,
       ...updatedChangelogFiles,
     ]),
   ];
