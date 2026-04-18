@@ -27,6 +27,18 @@ function write(cwd: string, relative: string, content: string): void {
   fs.writeFileSync(target, content, "utf8");
 }
 
+function setupRepoWithOrigin(prefix: string): { cwd: string; origin: string } {
+  const origin = makeTempDir(`${prefix}-origin-`);
+  git(origin, "init", "--bare");
+
+  const cwd = makeTempDir(`${prefix}-work-`);
+  git(cwd, "init");
+  git(cwd, "config", "user.name", "Test User");
+  git(cwd, "config", "user.email", "test@example.com");
+  git(cwd, "remote", "add", "origin", origin);
+  return { cwd, origin };
+}
+
 afterEach(() => {
   while (tempDirs.length > 0) {
     const dir = tempDirs.pop();
@@ -139,5 +151,64 @@ describe("cli run --json", () => {
     expect(parsed.tagNames).toEqual(["v1.2.3"]);
     expect(parsed.releaseCreated).toBe(false);
     expect(git(cwd, "tag", "--list")).toBe("");
+  });
+
+  it("prints machine-readable up-to-date PR result on repeated run", () => {
+    const { cwd } = setupRepoWithOrigin("versionary-cli-json-up-to-date");
+    const testsDir = path.dirname(fileURLToPath(import.meta.url));
+    const repoRoot = path.resolve(testsDir, "..");
+    const tsx = path.join(repoRoot, "node_modules", ".bin", "tsx");
+    const cliEntry = path.join(repoRoot, "src", "cli", "index.ts");
+
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({ version: 1, "review-mode": "direct" }),
+    );
+    write(cwd, "version.txt", "0.1.0\n");
+    write(cwd, "README.md", "# temp\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: init");
+    git(cwd, "branch", "-M", "main");
+    git(cwd, "push", "-u", "origin", "main");
+
+    write(cwd, "src/index.ts", "export const x = 1;\n");
+    git(cwd, "add", "src/index.ts");
+    git(cwd, "commit", "-m", "feat: add value");
+
+    const firstOutput = execFileSync(tsx, [cliEntry, "run", "--json"], {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      env: {
+        ...process.env,
+        GITHUB_REPOSITORY: "jolars/versionary",
+      },
+    }).trim();
+    const firstParsed = JSON.parse(firstOutput) as {
+      action: string;
+      branch?: string;
+    };
+    expect(firstParsed.action).toBe("pr-prepared");
+    expect(firstParsed.branch).toBe("versionary/release");
+    git(cwd, "checkout", "main");
+
+    const secondOutput = execFileSync(tsx, [cliEntry, "run", "--json"], {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      env: {
+        ...process.env,
+        GITHUB_REPOSITORY: "jolars/versionary",
+      },
+    }).trim();
+    const secondParsed = JSON.parse(secondOutput) as {
+      action: string;
+      message: string;
+      branch?: string;
+    };
+    expect(secondParsed.action).toBe("pr-up-to-date");
+    expect(secondParsed.branch).toBe("versionary/release");
+    expect(secondParsed.message).toContain("already up to date");
   });
 });

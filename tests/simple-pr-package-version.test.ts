@@ -37,6 +37,21 @@ function writeExecutable(cwd: string, relative: string, content: string): void {
   fs.writeFileSync(target, content, { encoding: "utf8", mode: 0o755 });
 }
 
+function setupRepoWithOrigin(): { cwd: string; origin: string } {
+  const origin = fs.mkdtempSync(
+    path.join(os.tmpdir(), "versionary-pr-origin-test-"),
+  );
+  tempDirs.push(origin);
+  git(origin, "init", "--bare");
+
+  const cwd = makeTempDir();
+  git(cwd, "init");
+  git(cwd, "config", "user.name", "Test User");
+  git(cwd, "config", "user.email", "test@example.com");
+  git(cwd, "remote", "add", "origin", origin);
+  return { cwd, origin };
+}
+
 afterEach(() => {
   while (tempDirs.length > 0) {
     const dir = tempDirs.pop();
@@ -227,6 +242,33 @@ describe("release PR package version update", () => {
       fs.readFileSync(path.join(cwd, "package.json"), "utf8"),
     ) as { version: string };
     expect(pkg.version).toBe("1.0.0");
+  });
+
+  it("marks release PR as not updated when remote release branch tree matches", () => {
+    const { cwd } = setupRepoWithOrigin();
+    write(cwd, "versionary.jsonc", JSON.stringify({ version: 1 }));
+    write(cwd, "version.txt", "0.1.0\n");
+    write(cwd, "CHANGELOG.md", "# Changelog\n\n");
+    write(cwd, "README.md", "# temp\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: init");
+    git(cwd, "branch", "-M", "main");
+    git(cwd, "push", "-u", "origin", "main");
+
+    write(cwd, "src/index.ts", "export const x = 1;\n");
+    git(cwd, "add", "src/index.ts");
+    git(cwd, "commit", "-m", "feat: add value");
+
+    const first = prepareSimpleReleasePr(cwd);
+    expect(first.updated).toBe(true);
+    git(cwd, "push", "--force-with-lease", "origin", first.branch);
+    git(cwd, "checkout", "main");
+
+    const second = prepareSimpleReleasePr(cwd);
+    expect(second.updated).toBe(false);
+    expect(git(cwd, "rev-parse", "HEAD^{tree}")).toBe(
+      git(cwd, "rev-parse", `origin/${second.branch}^{tree}`),
+    );
   });
 
   it("stores monorepo release targets in baseline state", () => {

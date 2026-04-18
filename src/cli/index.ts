@@ -59,6 +59,7 @@ interface RunJsonResult {
   action:
     | "noop"
     | "pr-prepared"
+    | "pr-up-to-date"
     | "pr-dry-run"
     | "release-skipped"
     | "release-dry-run"
@@ -191,6 +192,23 @@ async function main(): Promise<number> {
     }
 
     const pr = prepareReleasePr(process.cwd(), { logger });
+    if (!pr.updated) {
+      const message = `Release PR branch ${pr.branch} is already up to date.`;
+      if (flags.json) {
+        emitJson({
+          action: "pr-up-to-date",
+          message,
+          releaseCreated: false,
+          tagNames: [],
+          branch: pr.branch,
+          title: pr.title,
+        });
+        return 0;
+      }
+      console.log(message);
+      console.log(`Title: ${pr.title}`);
+      return 0;
+    }
     pushReleaseBranch(process.cwd(), pr.branch);
     const reviewResult = await openOrUpdateReviewRequest(
       process.cwd(),
@@ -268,6 +286,11 @@ async function main(): Promise<number> {
       return 0;
     }
     const pr = prepareReleasePr(process.cwd(), { logger: console });
+    if (!pr.updated) {
+      console.log(`Release PR branch ${pr.branch} is already up to date.`);
+      console.log(`Title: ${pr.title}`);
+      return 0;
+    }
     pushReleaseBranch(process.cwd(), pr.branch);
     const reviewResult = await openOrUpdateReviewRequest(
       process.cwd(),

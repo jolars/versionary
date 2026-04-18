@@ -171,6 +171,55 @@ function normalizeReleaseNameForTag(releaseName: string): string {
     .replace(/\s+/gu, "-");
 }
 
+function getCommitTreeSha(cwd: string, revision: string): string {
+  return execFileSync("git", ["rev-parse", `${revision}^{tree}`], {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  }).trim();
+}
+
+function hasOriginRemote(cwd: string): boolean {
+  const remotes = execFileSync("git", ["remote"], {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  })
+    .split("\n")
+    .map((remote) => remote.trim())
+    .filter((remote) => remote.length > 0);
+  return remotes.includes("origin");
+}
+
+function remoteReleaseBranchExists(cwd: string, branch: string): boolean {
+  if (!hasOriginRemote(cwd)) {
+    return false;
+  }
+  const output = execFileSync(
+    "git",
+    ["ls-remote", "--heads", "origin", branch],
+    {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    },
+  ).trim();
+  return output.length > 0;
+}
+
+function fetchRemoteReleaseBranch(cwd: string, branch: string): string {
+  const remoteRef = `refs/remotes/origin/${branch}`;
+  execFileSync(
+    "git",
+    ["fetch", "--no-tags", "origin", `refs/heads/${branch}:${remoteRef}`],
+    {
+      cwd,
+      stdio: ["ignore", "pipe", "ignore"],
+    },
+  );
+  return remoteRef;
+}
+
 function resolveReleaseName(
   cwd: string,
   packagePath: string,
@@ -302,6 +351,7 @@ export function prepareReleasePr(
   previousVersion: string;
   commits: ParsedCommit[];
   plan: ReleasePlan;
+  updated: boolean;
 } {
   const plan = createReleasePlan(cwd);
   const loaded = loadConfig(cwd);
@@ -429,6 +479,15 @@ export function prepareReleasePr(
 
   const branch = plan.releaseBranchPrefix;
   const title = formatReleaseCommitTitle(releaseTargets);
+  const releaseBaselineSha = execFileSync("git", ["rev-parse", "HEAD"], {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  }).trim();
+  const hasRemoteReleaseBranch = remoteReleaseBranchExists(cwd, branch);
+  const remoteReleaseRef = hasRemoteReleaseBranch
+    ? fetchRemoteReleaseBranch(cwd, branch)
+    : null;
 
   execFileSync("git", ["checkout", "-B", branch], {
     cwd,
@@ -454,7 +513,7 @@ export function prepareReleasePr(
       stdio: ["ignore", "pipe", "ignore"],
     },
   );
-  writeBaselineSha(cwd, undefined, releaseTargets);
+  writeBaselineSha(cwd, releaseBaselineSha, releaseTargets);
   execFileSync("git", ["add", getBaselineStatePath(cwd)], {
     cwd,
     stdio: ["ignore", "pipe", "ignore"],
@@ -463,6 +522,9 @@ export function prepareReleasePr(
     cwd,
     stdio: ["ignore", "pipe", "ignore"],
   });
+  const updated =
+    !remoteReleaseRef ||
+    getCommitTreeSha(cwd, "HEAD") !== getCommitTreeSha(cwd, remoteReleaseRef);
 
   return {
     branch,
@@ -471,6 +533,7 @@ export function prepareReleasePr(
     previousVersion: plan.currentVersion,
     commits: plan.commits,
     plan,
+    updated,
   };
 }
 
