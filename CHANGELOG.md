@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.14.1](https://github.com/jolars/versionary/compare/v0.14.0...v0.14.1) (2026-04-18)
+
+### Bug Fixes
+- omit reverted chores from changelog ([`1f31a46`](https://github.com/jolars/versionary/commit/1f31a46f514e069749361fab7fcf7e88b3310f6d))
+
 ## [0.14.0](https://github.com/jolars/versionary/compare/v0.13.0...v0.14.0) (2026-04-17)
 
 ### Features
