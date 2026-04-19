@@ -512,4 +512,62 @@ describe("simple monorepo planning", () => {
     expect(zed?.releaseType).toBeNull();
     expect(zed?.nextVersion).toBeNull();
   });
+
+  it("excludes nested paths for root package commit collection", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "version.txt", "2.35.0\n");
+    write(
+      cwd,
+      "Cargo.toml",
+      ["[package]", 'name = "workspace-root"', 'version = "2.35.0"', ""].join(
+        "\n",
+      ),
+    );
+    write(
+      cwd,
+      "editors/zed/Cargo.toml",
+      ["[package]", 'name = "zed_panache"', 'version = "2.35.0"', ""].join(
+        "\n",
+      ),
+    );
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "release-type": "rust",
+        "version-file": "Cargo.toml",
+        "monorepo-mode": "independent",
+        packages: {
+          ".": {
+            "exclude-paths": ["editors/zed"],
+          },
+          "editors/zed": {
+            "release-type": "rust",
+          },
+        },
+      }),
+    );
+    write(cwd, "editors/zed/src/lib.rs", "pub fn zed() {}\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v2.35.0");
+
+    write(cwd, "editors/zed/src/lib.rs", "pub fn zed_v2() {}\n");
+    git(cwd, "add", "editors/zed/src/lib.rs");
+    git(cwd, "commit", "-m", "feat: zed-only feature");
+
+    const plan = createSimplePlan(cwd);
+    const root = plan.packages?.find((pkg) => pkg.path === ".");
+    const zed = plan.packages?.find((pkg) => pkg.path === "editors/zed");
+
+    expect(root?.releaseType).toBeNull();
+    expect(root?.nextVersion).toBeNull();
+    expect(zed?.releaseType).toBe("minor");
+    expect(zed?.nextVersion).toBe("2.36.0");
+  });
 });

@@ -503,12 +503,15 @@ export function getCommitsForPath(
   const range = resolveRange(cwd, baselineSha);
   const normalizedPackagePath = packagePath === "." ? "." : packagePath;
 
-  const excludes = excludePaths.map((excludePath) => {
+  const excludes = excludePaths.flatMap((excludePath) => {
+    const normalizedExcludePath = excludePath
+      .replace(/^\.\//u, "")
+      .replace(/\/+$/u, "");
     const combined =
       normalizedPackagePath === "."
-        ? excludePath
-        : path.posix.join(normalizedPackagePath, excludePath);
-    return `:(exclude)${combined}`;
+        ? normalizedExcludePath
+        : path.posix.join(normalizedPackagePath, normalizedExcludePath);
+    return [`:(exclude)${combined}`, `:(exclude)${combined}/**`];
   });
 
   return readGitLog(cwd, range, [normalizedPackagePath, ...excludes]);
@@ -530,12 +533,15 @@ export function getParsedCommitsForPath(
 ): ParsedCommit[] {
   const range = resolveRange(cwd, baselineSha);
   const normalizedPackagePath = packagePath === "." ? "." : packagePath;
-  const excludes = excludePaths.map((excludePath) => {
+  const excludes = excludePaths.flatMap((excludePath) => {
+    const normalizedExcludePath = excludePath
+      .replace(/^\.\//u, "")
+      .replace(/\/+$/u, "");
     const combined =
       normalizedPackagePath === "."
-        ? excludePath
-        : path.posix.join(normalizedPackagePath, excludePath);
-    return `:(exclude)${combined}`;
+        ? normalizedExcludePath
+        : path.posix.join(normalizedPackagePath, normalizedExcludePath);
+    return [`:(exclude)${combined}`, `:(exclude)${combined}/**`];
   });
   return readGitLogFull(cwd, range, [normalizedPackagePath, ...excludes]);
 }
