@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.15.1](https://github.com/jolars/versionary/compare/v0.15.0...v0.15.1) (2026-04-19)
+
+### Bug Fixes
+- handle leaky gitpath spec filtering ([`adac8ac`](https://github.com/jolars/versionary/commit/adac8ac28dec76539c6e250e66be431d266c61bc))
+
 ## [0.15.0](https://github.com/jolars/versionary/compare/v0.14.1...v0.15.0) (2026-04-19)
 
 ### Features
