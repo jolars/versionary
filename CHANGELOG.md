@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.15.0](https://github.com/jolars/versionary/compare/v0.14.1...v0.15.0) (2026-04-19)
+
+### Features
+- don't update PR if no changes ([`6d88cf9`](https://github.com/jolars/versionary/commit/6d88cf97fd99f5cae97ba52a716f06d1203270ce))
+
+### Bug Fixes
+- handle github's set of issue/pr keywords ([`1c2dfda`](https://github.com/jolars/versionary/commit/1c2dfdab67fe78a076a7aa52135a22853436c020))
+
 ## [0.14.1](https://github.com/jolars/versionary/compare/v0.14.0...v0.14.1) (2026-04-18)
 
 ### Bug Fixes
