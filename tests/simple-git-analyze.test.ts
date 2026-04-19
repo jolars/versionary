@@ -230,6 +230,36 @@ describe("simple commit analysis", () => {
     );
   });
 
+  it("extracts inline closing references from body sentences", () => {
+    const parsed = parseConventionalCommitMessage(
+      "feat: support smart punctuation",
+      "Add smart punctuation conversion. Closes #182",
+    );
+    expect(parsed.references).toContainEqual({
+      action: "Closes",
+      owner: null,
+      repository: null,
+      issue: "182",
+      raw: "#182",
+      prefix: "#",
+    });
+  });
+
+  it("extracts inline owner/repo closing references from body sentences", () => {
+    const parsed = parseConventionalCommitMessage(
+      "feat: support smart punctuation",
+      "Add smart punctuation conversion. Fixes octo-org/octo-repo#100",
+    );
+    expect(parsed.references).toContainEqual({
+      action: "Fixes",
+      owner: "octo-org",
+      repository: "octo-repo",
+      issue: "100",
+      raw: "octo-org/octo-repo#100",
+      prefix: "#",
+    });
+  });
+
   it("captures ambiguous revert diagnostics when no sha exists", () => {
     const parsed = parseConventionalCommitMessage(
       "revert: feat: add thing",

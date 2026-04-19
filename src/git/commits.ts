@@ -327,6 +327,30 @@ function parseFooters(body: string): {
     }
   };
 
+  const extractInlineSentenceReferences = (text: string): void => {
+    const inlineMatches = text.matchAll(
+      /\b(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\b\s+((?:(?<owner>[A-Za-z0-9_.-]+)\/(?<repo>[A-Za-z0-9_.-]+))?#(?<issue>\d+)|GH-(?<ghIssue>\d+))/giu,
+    );
+    for (const match of inlineMatches) {
+      const action = match[1] ?? null;
+      const raw = match[2] ?? "";
+      const owner = match.groups?.owner ?? null;
+      const repository = match.groups?.repo ?? null;
+      const issue = match.groups?.issue ?? match.groups?.ghIssue ?? null;
+      if (!issue || !/^\d+$/u.test(issue)) {
+        continue;
+      }
+      references.push({
+        action,
+        owner,
+        repository,
+        issue,
+        raw,
+        prefix: raw.startsWith("GH-") ? "GH-" : "#",
+      });
+    }
+  };
+
   for (const line of footerLines) {
     const footerMatch = parseFooterLine(line);
     if (footerMatch) {
@@ -356,13 +380,22 @@ function parseFooters(body: string): {
     }
     extractReferences(`${footer.token}: ${footer.value}`, footer.token);
   }
+  extractInlineSentenceReferences(body);
+  const dedupedReferences = [
+    ...new Map(
+      references.map((reference) => [
+        `${reference.action ?? ""}:${reference.owner ?? ""}/${reference.repository ?? ""}:${reference.prefix}:${reference.issue ?? ""}`,
+        reference,
+      ]),
+    ).values(),
+  ];
 
   return {
     bodyText: bodyLines.join("\n").trim() || "",
     footerText: footerLines.length > 0 ? footerLines.join("\n").trim() : null,
     footers,
     diagnostics,
-    references,
+    references: dedupedReferences,
     notes,
   };
 }
