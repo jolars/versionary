@@ -17,6 +17,7 @@ import type {
 import type {
   VersionaryChangelogFormat,
   VersionaryConfig,
+  VersionaryPackage,
 } from "../types/config.js";
 import { bumpVersion, type ReleaseType } from "./semver.js";
 import { readBaselineSha, readReleaseTargets } from "./state.js";
@@ -71,16 +72,34 @@ export function getChangelogDefaults(config: {
   return { changelogFile, changelogFormat };
 }
 
+function getNormalizedPackages(
+  config: VersionaryConfig,
+): Array<{ path: string; config: VersionaryPackage; implicitRoot: boolean }> {
+  const configured = Object.entries(config.packages ?? {}).map(
+    ([packagePath, packageConfig]) => ({
+      path: packagePath,
+      config: packageConfig,
+      implicitRoot: false,
+    }),
+  );
+  if (configured.length === 0) {
+    return [{ path: ".", config: {}, implicitRoot: false }];
+  }
+  if (configured.some((pkg) => pkg.path === ".")) {
+    return configured;
+  }
+  return [{ path: ".", config: {}, implicitRoot: true }, ...configured];
+}
+
 export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
   const loaded = loadConfig(cwd);
   const strategy = resolveVersionStrategy(loaded.config);
-  const configuredPackages = Object.entries(loaded.config.packages ?? {}).map(
-    ([pkgPath, cfg]) => ({
-      path: pkgPath,
-      ...cfg,
-    }),
-  );
-  const hasPackages = configuredPackages.length > 0;
+  const configuredPackageCount = Object.keys(
+    loaded.config.packages ?? {},
+  ).length;
+  const hasPackages = configuredPackageCount > 0;
+  const hasExplicitRootPackage = Boolean(loaded.config.packages?.["."]);
+  const normalizedPackages = getNormalizedPackages(loaded.config);
   const versionFile = strategy.getVersionFile(loaded.config);
   const { changelogFile, changelogFormat } = getChangelogDefaults({
     ...loaded.config,
@@ -99,69 +118,84 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
   const allowStableMajor = loaded.config["allow-stable-major"] ?? false;
   const monorepoMode = getMode(loaded.config["monorepo-mode"]);
 
-  if (!hasPackages) {
-    const versionPath = path.join(cwd, versionFile);
-    if (!fs.existsSync(versionPath)) {
-      throw new Error(`Versionary requires ${versionFile} to exist.`);
+  const buildPackagePlan = (pkg: {
+    path: string;
+    config: VersionaryPackage;
+    implicitRoot: boolean;
+  }): {
+    path: string;
+    implicitRoot: boolean;
+    releaseType: ReleaseType;
+    currentVersion: string;
+    nextVersion: string | null;
+    bumpReason?: "direct";
+    commits: ParsedCommit[];
+    parsedCommits: ParsedCommit[];
+    resolvedVersionFile: string;
+  } => {
+    const packageContext = resolvePackageStrategyContext(
+      loaded.config,
+      pkg.path,
+      pkg.config,
+    );
+    const currentVersionFile = path.join(cwd, packageContext.versionFile);
+    if (!fs.existsSync(currentVersionFile)) {
+      throw new Error(
+        `Versionary requires ${packageContext.versionFile} to exist for package "${pkg.path}".`,
+      );
     }
-    const currentVersion = strategy.readVersion(cwd, loaded.config);
-    const parsedCommits = getParsedCommitsSinceLastTag(cwd, baselineSha);
+    const packageCurrentVersion = packageContext.strategy.readVersion(
+      cwd,
+      packageContext.config,
+    );
+    const parsedCommits =
+      !hasPackages && pkg.path === "."
+        ? getParsedCommitsSinceLastTag(cwd, baselineSha)
+        : getParsedCommitsForPath(
+            cwd,
+            releaseTargetByPath.get(pkg.path)?.tag ?? baselineSha,
+            pkg.path,
+            pkg.config["exclude-paths"] ?? [],
+          );
     const effectiveCommits = applyRevertSuppression(parsedCommits);
     const commits = effectiveCommits;
     const releaseType = analyzeParsedCommits(parsedCommits);
     const nextVersion = releaseType
-      ? bumpVersion(currentVersion, releaseType, { allowStableMajor })
+      ? bumpVersion(packageCurrentVersion, releaseType, { allowStableMajor })
       : null;
-
     return {
-      mode: "simple",
+      path: pkg.path,
+      implicitRoot: pkg.implicitRoot,
       releaseType,
-      currentVersion,
+      currentVersion: packageCurrentVersion,
       nextVersion,
-      packageName,
-      versionFile,
-      changelogFile,
-      changelogFormat,
-      releaseBranchPrefix,
-      baselineSha,
+      bumpReason: nextVersion ? ("direct" as const) : undefined,
       commits,
+      parsedCommits,
+      resolvedVersionFile: packageContext.versionFile,
     };
-  }
+  };
 
-  const packagePlans = configuredPackages
-    .map((pkg) => {
-      const packageContext = resolvePackageStrategyContext(
-        loaded.config,
-        pkg.path,
-        pkg,
-      );
-      const packageCurrentVersion = packageContext.strategy.readVersion(
-        cwd,
-        packageContext.config,
-      );
-      const parsedCommits = getParsedCommitsForPath(
-        cwd,
-        releaseTargetByPath.get(pkg.path)?.tag ?? baselineSha,
-        pkg.path,
-        pkg["exclude-paths"] ?? [],
-      );
-      const effectiveCommits = applyRevertSuppression(parsedCommits);
-      const commits = effectiveCommits;
-      const releaseType = analyzeParsedCommits(parsedCommits);
-      const nextVersion = releaseType
-        ? bumpVersion(packageCurrentVersion, releaseType, { allowStableMajor })
-        : null;
-      return {
-        path: pkg.path,
-        releaseType,
-        currentVersion: packageCurrentVersion,
-        nextVersion,
-        bumpReason: nextVersion ? ("direct" as const) : undefined,
-        commits,
-        parsedCommits,
-      };
-    })
-    .sort((a, b) => a.path.localeCompare(b.path));
+  const explicitPackagePlans = normalizedPackages
+    .filter((pkg) => !pkg.implicitRoot)
+    .map((pkg) => buildPackagePlan(pkg));
+  const implicitRoot = normalizedPackages.find((pkg) => pkg.implicitRoot);
+  const implicitRootPlan = implicitRoot
+    ? {
+        path: ".",
+        implicitRoot: true,
+        releaseType: null as ReleaseType,
+        currentVersion: explicitPackagePlans[0]?.currentVersion ?? "0.0.0",
+        nextVersion: null,
+        commits: [] as ParsedCommit[],
+        parsedCommits: [] as ParsedCommit[],
+        resolvedVersionFile: versionFile,
+      }
+    : null;
+  const packagePlans = [
+    ...explicitPackagePlans,
+    ...(implicitRootPlan ? [implicitRootPlan] : []),
+  ].sort((a, b) => a.path.localeCompare(b.path));
 
   const packageCurrentVersionByPath: Record<string, string> = {};
   const strategyPackagesByName = new Map<
@@ -181,7 +215,7 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
     if (existingGroup) {
       existingGroup.packages.push({
         packagePath: packagePlan.path,
-        versionFile: packageContext.versionFile,
+        versionFile: packagePlan.resolvedVersionFile,
         currentVersion: packagePlan.currentVersion,
         nextVersion: packagePlan.nextVersion,
       });
@@ -191,7 +225,7 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
         packages: [
           {
             packagePath: packagePlan.path,
-            versionFile: packageContext.versionFile,
+            versionFile: packagePlan.resolvedVersionFile,
             currentVersion: packagePlan.currentVersion,
             nextVersion: packagePlan.nextVersion,
           },
@@ -223,16 +257,40 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
       bumpReason: "dependency-propagation" as const,
     };
   });
+  const visiblePackages = adjustedPackages.filter(
+    (pkgPlan) => !pkgPlan.implicitRoot || hasExplicitRootPackage,
+  );
+
+  const rootPackagePlan = adjustedPackages.find(
+    (pkgPlan) => pkgPlan.path === ".",
+  );
+  if (!rootPackagePlan) {
+    throw new Error(
+      'Internal error: normalized package list must always include root path ".".',
+    );
+  }
+
+  if (!hasPackages) {
+    return {
+      mode: "simple",
+      releaseType: rootPackagePlan.releaseType,
+      currentVersion: rootPackagePlan.currentVersion,
+      nextVersion: rootPackagePlan.nextVersion,
+      packageName,
+      versionFile,
+      changelogFile,
+      changelogFormat,
+      releaseBranchPrefix,
+      baselineSha,
+      commits: rootPackagePlan.commits,
+    };
+  }
 
   if (monorepoMode === "fixed") {
     const fixedType = analyzeParsedCommits(
       adjustedPackages.flatMap((pkgPlan) => pkgPlan.parsedCommits),
     );
-    const fixedBaseVersion =
-      adjustedPackages.find((pkgPlan) => pkgPlan.path === ".")
-        ?.currentVersion ??
-      adjustedPackages[0]?.currentVersion ??
-      "0.0.0";
+    const fixedBaseVersion = rootPackagePlan.currentVersion;
     const fixedNextVersion = fixedType
       ? bumpVersion(fixedBaseVersion, fixedType, { allowStableMajor })
       : null;
@@ -253,17 +311,16 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
       releaseBranchPrefix,
       baselineSha,
       commits: adjusted.flatMap((pkgPlan) => pkgPlan.commits),
-      packages: adjusted,
+      packages: adjusted
+        .filter((pkgPlan) => !pkgPlan.implicitRoot || hasExplicitRootPackage)
+        .map(({ implicitRoot: _implicitRoot, ...pkgPlan }) => pkgPlan),
     };
   }
 
   const overallType = analyzeParsedCommits(
     adjustedPackages.flatMap((pkgPlan) => pkgPlan.parsedCommits),
   );
-  const overallBaseVersion =
-    adjustedPackages.find((pkgPlan) => pkgPlan.path === ".")?.currentVersion ??
-    adjustedPackages[0]?.currentVersion ??
-    "0.0.0";
+  const overallBaseVersion = rootPackagePlan.currentVersion;
   const overallNextVersion = overallType
     ? bumpVersion(overallBaseVersion, overallType, { allowStableMajor })
     : null;
@@ -280,7 +337,9 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
     releaseBranchPrefix,
     baselineSha,
     commits: adjustedPackages.flatMap((pkgPlan) => pkgPlan.commits),
-    packages: adjustedPackages,
+    packages: visiblePackages.map(
+      ({ implicitRoot: _implicitRoot, ...pkgPlan }) => pkgPlan,
+    ),
   };
 }
 

@@ -291,7 +291,6 @@ export function prepareReleasePr(
 } {
   const plan = createReleasePlan(cwd);
   const loaded = loadConfig(cwd);
-  const strategy = resolveVersionStrategy(loaded.config);
   if (!plan.nextVersion) {
     throw new Error(
       "No releasable commits found. Nothing to open a release PR for.",
@@ -322,37 +321,38 @@ export function prepareReleasePr(
       writes: [write],
     });
   };
-  if (plan.packages && plan.packages.length > 0) {
-    for (const packagePlan of plan.packages) {
-      if (!packagePlan.nextVersion) {
-        continue;
-      }
-      const packageConfig = loaded.config.packages?.[packagePlan.path] ?? {};
-      const packageContext = resolvePackageStrategyContext(
-        loaded.config,
-        packagePlan.path,
-        packageConfig,
-      );
-      const packageUpdated = packageContext.strategy.writeVersion(
-        cwd,
-        packageContext.config,
-        packagePlan.nextVersion,
-      );
-      updatedVersionFiles.push(...packageUpdated);
-      addStrategyWrite(packageContext.strategy, {
-        packagePath: packagePlan.path,
-        versionFile: packageContext.versionFile,
-        version: packagePlan.nextVersion,
-      });
+  const versionTargets =
+    plan.packages && plan.packages.length > 0
+      ? plan.packages
+      : [
+          {
+            path: ".",
+            releaseType: plan.releaseType,
+            currentVersion: plan.currentVersion,
+            nextVersion: plan.nextVersion,
+            commits: plan.commits,
+          },
+        ];
+  for (const packagePlan of versionTargets) {
+    if (!packagePlan.nextVersion) {
+      continue;
     }
-  } else {
-    updatedVersionFiles.push(
-      ...strategy.writeVersion(cwd, loaded.config, plan.nextVersion),
+    const packageConfig = loaded.config.packages?.[packagePlan.path] ?? {};
+    const packageContext = resolvePackageStrategyContext(
+      loaded.config,
+      packagePlan.path,
+      packageConfig,
     );
-    addStrategyWrite(strategy, {
-      packagePath: ".",
-      versionFile: strategy.getVersionFile(loaded.config),
-      version: plan.nextVersion,
+    const packageUpdated = packageContext.strategy.writeVersion(
+      cwd,
+      packageContext.config,
+      packagePlan.nextVersion,
+    );
+    updatedVersionFiles.push(...packageUpdated);
+    addStrategyWrite(packageContext.strategy, {
+      packagePath: packagePlan.path,
+      versionFile: packageContext.versionFile,
+      version: packagePlan.nextVersion,
     });
   }
   for (const strategyGroup of writesByStrategy.values()) {

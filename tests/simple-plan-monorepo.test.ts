@@ -126,6 +126,41 @@ describe("simple monorepo planning", () => {
     );
   });
 
+  it("auto-includes root for fixed-mode baseline without listing it in packages", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "version.txt", "2.0.0\n");
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "monorepo-mode": "fixed",
+        packages: {
+          "packages/a": {},
+          "packages/b": {},
+        },
+      }),
+    );
+    write(cwd, "packages/a/index.ts", "export const a = 1;\n");
+    write(cwd, "packages/b/index.ts", "export const b = 1;\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v2.0.0");
+
+    write(cwd, "packages/a/index.ts", "export const a = 2;\n");
+    git(cwd, "add", "packages/a/index.ts");
+    git(cwd, "commit", "-m", "feat: add package a feature");
+
+    const plan = createSimplePlan(cwd);
+    expect(plan.currentVersion).toBe("2.0.0");
+    expect(plan.nextVersion).toBe("2.1.0");
+    expect(plan.packages?.find((pkg) => pkg.path === ".")).toBeUndefined();
+  });
+
   it("uses per-package release tag as baseline when available", () => {
     const cwd = makeTempDir();
     git(cwd, "init");

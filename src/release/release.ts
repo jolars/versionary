@@ -144,8 +144,7 @@ function resolveTargetChangelogFormat(
   config: VersionaryConfig,
   targetPath: string,
 ): "markdown-changelog" | "r-news" {
-  const packageConfig =
-    targetPath === "." ? undefined : config.packages?.[targetPath];
+  const packageConfig = config.packages?.[targetPath];
   const packageStrategy = resolveVersionStrategy({
     ...config,
     "release-type": packageConfig?.["release-type"] ?? config["release-type"],
