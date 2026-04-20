@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.16.0](https://github.com/jolars/versionary/compare/v0.15.1...v0.16.0) (2026-04-20)
+
+### Features
+- **strategies:** add latex strategy ([`ff225d2`](https://github.com/jolars/versionary/commit/ff225d296f5fba2fa40d445c1c06cce95d6e95ce))
+- merge fixing and closing phrases in changelogs ([`7a57758`](https://github.com/jolars/versionary/commit/7a577582c16f3443b94bb13aac1de14bde1dc38d))
+
+### Bug Fixes
+- deduplicate "fixes #<issue>" notes ([`e6c895e`](https://github.com/jolars/versionary/commit/e6c895e4d47b9adec5f497f3bdfab99372d3d835))
+
 ## [0.15.1](https://github.com/jolars/versionary/compare/v0.15.0...v0.15.1) (2026-04-19)
 
 ### Bug Fixes
