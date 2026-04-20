@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { latexVersionStrategy } from "../src/strategy/latex.js";
 import { nodeVersionStrategy } from "../src/strategy/node.js";
 import { rVersionStrategy } from "../src/strategy/r.js";
 import {
@@ -52,6 +53,17 @@ describe("resolveVersionStrategy", () => {
     expect(strategy.name).toBe("node");
   });
 
+  it("routes release-type latex to latex strategy", () => {
+    const config: VersionaryConfig = {
+      version: 1,
+      "release-type": "latex",
+    };
+
+    const strategy = resolveVersionStrategy(config);
+    expect(strategy).toBe(latexVersionStrategy);
+    expect(strategy.name).toBe("latex");
+  });
+
   it("falls back to simple strategy for unknown release type", () => {
     const config: VersionaryConfig = {
       version: 1,
@@ -64,7 +76,13 @@ describe("resolveVersionStrategy", () => {
   });
 
   it("lists known release types from internal strategy registry", () => {
-    expect(listKnownReleaseTypes()).toEqual(["node", "r", "rust", "simple"]);
+    expect(listKnownReleaseTypes()).toEqual([
+      "latex",
+      "node",
+      "r",
+      "rust",
+      "simple",
+    ]);
   });
 
   it("uses DESCRIPTION as r strategy default version file", () => {
@@ -74,5 +92,14 @@ describe("resolveVersionStrategy", () => {
         "release-type": "r",
       }),
     ).toBe("DESCRIPTION");
+  });
+
+  it("uses build.lua as latex strategy default version file", () => {
+    expect(
+      latexVersionStrategy.getVersionFile({
+        version: 1,
+        "release-type": "latex",
+      }),
+    ).toBe("build.lua");
   });
 });

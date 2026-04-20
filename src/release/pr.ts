@@ -6,6 +6,7 @@ import { getScmClient } from "../scm/client.js";
 import { resolvePackageStrategyContext } from "../strategy/package-context.js";
 import { resolveVersionStrategy } from "../strategy/resolve.js";
 import type {
+  StrategyFinalizeContext,
   StrategyVersionWriteContext,
   VersionStrategy,
 } from "../strategy/types.js";
@@ -109,6 +110,14 @@ function normalizeReleaseNameForTag(releaseName: string): string {
 
 function getCommitTreeSha(cwd: string, revision: string): string {
   return execFileSync("git", ["rev-parse", `${revision}^{tree}`], {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  }).trim();
+}
+
+function resolveCommitDate(cwd: string, revision: string): string {
+  return execFileSync("git", ["show", "-s", "--format=%cs", revision], {
     cwd,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "ignore"],
@@ -298,6 +307,15 @@ export function prepareReleasePr(
   }
 
   ensureCleanWorktree(cwd, options.logger);
+  const releaseBaselineSha = execFileSync("git", ["rev-parse", "HEAD"], {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  }).trim();
+  const finalizeContext: StrategyFinalizeContext = {
+    releaseCommitSha: releaseBaselineSha,
+    releaseDate: resolveCommitDate(cwd, releaseBaselineSha),
+  };
 
   const updatedVersionFiles: string[] = [];
   const writesByStrategy = new Map<
@@ -360,6 +378,7 @@ export function prepareReleasePr(
       ...(strategyGroup.strategy.finalizeVersionWrites?.(
         cwd,
         strategyGroup.writes,
+        finalizeContext,
       ) ?? []),
     );
   }
@@ -421,11 +440,6 @@ export function prepareReleasePr(
 
   const branch = plan.releaseBranchPrefix;
   const title = formatReleaseCommitTitle(releaseTargets);
-  const releaseBaselineSha = execFileSync("git", ["rev-parse", "HEAD"], {
-    cwd,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "ignore"],
-  }).trim();
   const hasRemoteReleaseBranch = remoteReleaseBranchExists(cwd, branch);
   const remoteReleaseRef = hasRemoteReleaseBranch
     ? fetchRemoteReleaseBranch(cwd, branch)

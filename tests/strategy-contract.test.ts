@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { afterEach, expect } from "vitest";
+import { latexVersionStrategy } from "../src/strategy/latex.js";
 import { nodeVersionStrategy } from "../src/strategy/node.js";
 import { rVersionStrategy } from "../src/strategy/r.js";
 import { rustVersionStrategy } from "../src/strategy/rust.js";
@@ -25,6 +26,32 @@ defineVersionStrategyContractSuite({
       "version.txt": "1.2.3\n",
     },
     expectedUpdatedFiles: ["version.txt"],
+  },
+});
+
+defineVersionStrategyContractSuite({
+  name: "latex",
+  strategy: latexVersionStrategy,
+  config: { version: 1, "release-type": "latex" },
+  initialVersion: "2.2.0",
+  nextVersion: "2.3.0",
+  fixture: {
+    files: {
+      "build.lua": [
+        "uploadconfig = {",
+        '  pkg = "moloch",',
+        '  version = "2.2.0",',
+        "}",
+        "",
+      ].join("\n"),
+    },
+    expectedUpdatedFiles: ["build.lua"],
+    malformedFiles: {
+      "build.lua": ["uploadconfig = {", '  pkg = "moloch",', "}", ""].join(
+        "\n",
+      ),
+    },
+    malformedReadError: /missing a valid version field/i,
   },
 });
 

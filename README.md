@@ -49,7 +49,7 @@ release/tag.
 
 Current implementation focuses on:
 
-- strategy-based version updates (`simple`, `node`, `rust`, `r`)
+- strategy-based version updates (`simple`, `node`, `rust`, `r`, `latex`)
 - release planning and changelog generation
 - review-mode vs direct-mode release flow
 - a static internal SCM client (`github` provider today)
@@ -76,8 +76,8 @@ Checklist for new strategies (for example `python`):
 - optionally implement `propagateDependentPatchImpacts(cwd, packages)` if
   dependency updates in this ecosystem should trigger dependent package patch
   bumps
-- optionally implement `finalizeVersionWrites(cwd, writes)` for ecosystem
-  post-processing after all target version files are written
+- optionally implement `finalizeVersionWrites(cwd, writes, context)` for
+  ecosystem post-processing after all target version files are written
 - add focused strategy tests for ecosystem-specific behavior and edge cases
 - add/extend strategy contract tests in `tests/strategy-contract.test.ts`
 - update schema/docs for new `release-type` behavior and defaults
@@ -105,7 +105,7 @@ Current runtime code uses a flat `src/` layout with clear module boundaries:
 - `src/cli/`: command router (`run`, `verify`, `plan`, `changelog`, `pr`, `release`)
 - `src/release/`: release orchestration (plan/changelog/PR/release/state/recovery)
 - `src/strategy/`: strategy contracts, resolver, and built-in implementations
-  (`simple`, `node`, `rust`, `r`)
+  (`simple`, `node`, `rust`, `r`, `latex`)
 - `src/scm/`: SCM client contracts and provider implementation(s)
 - `src/config/`: config loading and schema validation
 - `src/git/`: git commit/range and repository URL helpers
@@ -131,6 +131,9 @@ For a quick trial, use:
   `Version:` field
 - `release-type: "rust"` uses Cargo manifests (`Cargo.toml`) as version source;
   `version-file` must point to a `Cargo.toml` (default: `Cargo.toml`)
+- `release-type: "latex"` uses `build.lua` as version source and updates LaTeX
+  `\ProvidesPackage{...}[YYYY-MM-DD vX.Y.Z ...]` metadata in `src/**/*.dtx`
+  using the release commit date
 - simple/default strategy keeps `version.txt` as source of truth and does not
   update `package.json`
 - stable release branch (`release-branch`, default: `versionary/release`) so
@@ -248,6 +251,27 @@ Commands:
 `pnpm pr` prepares release commit + branch and opens/updates a review request
 through the SCM client. `pnpm run` is the recommended CI entrypoint and
 auto-dispatches between PR/update and release publish.
+
+### Moloch migration example (semantic-release -> versionary)
+
+For LaTeX projects like `moloch`, use `release-type: "latex"` so Versionary:
+
+- bumps `build.lua` version
+- updates `src/**/*.dtx` `\ProvidesPackage{...}[YYYY-MM-DD vX.Y.Z ...]` entries
+  with the release commit date (`git show --format=%cs <sha>`)
+
+Example `versionary.jsonc` for `moloch`:
+
+```jsonc
+{
+  "version": 1,
+  "review-mode": "pr",
+  "release-type": "latex",
+  "version-file": "build.lua",
+  "changelog-file": "CHANGELOG.md",
+  "release-branch": "versionary/release"
+}
+```
 
 For first-run bootstrapping, set `bootstrap-sha` (similar to release-please).
 Subsequent runs use the baseline state file.

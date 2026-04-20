@@ -4,6 +4,7 @@ import path from "node:path";
 import TOML from "@iarna/toml";
 import type { VersionaryConfig } from "../types/config.js";
 import type {
+  StrategyFinalizeContext,
   StrategyPackagePlanContext,
   StrategyVersionWriteContext,
   VersionStrategy,
@@ -1033,6 +1034,7 @@ export const rustVersionStrategy: VersionStrategy = {
   finalizeVersionWrites(
     cwd: string,
     writes: StrategyVersionWriteContext[],
+    _context: StrategyFinalizeContext,
   ): string[] {
     const manifestToVersion: Record<string, string> = {};
     for (const write of writes) {

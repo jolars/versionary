@@ -16,6 +16,11 @@ export interface StrategyVersionWriteContext {
   version: string;
 }
 
+export interface StrategyFinalizeContext {
+  releaseCommitSha: string;
+  releaseDate: string;
+}
+
 export interface VersionStrategy {
   name: string;
   getVersionFile(config: VersionaryConfig): string;
@@ -35,5 +40,6 @@ export interface VersionStrategy {
   finalizeVersionWrites?(
     cwd: string,
     writes: StrategyVersionWriteContext[],
+    context: StrategyFinalizeContext,
   ): string[];
 }

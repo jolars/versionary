@@ -1,4 +1,5 @@
 import type { VersionaryConfig } from "../types/config.js";
+import { latexVersionStrategy } from "./latex.js";
 import { nodeVersionStrategy } from "./node.js";
 import { rVersionStrategy } from "./r.js";
 import { rustVersionStrategy } from "./rust.js";
@@ -6,6 +7,7 @@ import { simpleVersionStrategy } from "./simple.js";
 import type { VersionStrategy } from "./types.js";
 
 const strategyRegistry: Record<string, VersionStrategy> = {
+  latex: latexVersionStrategy,
   simple: simpleVersionStrategy,
   node: nodeVersionStrategy,
   rust: rustVersionStrategy,
