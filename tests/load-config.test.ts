@@ -241,6 +241,41 @@ describe("config loading", () => {
     expect(() => loadConfig(dir)).toThrow(/unrecognized key/i);
   });
 
+  it("rejects unknown top-level release-type", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        "release-type": "not-real",
+      }),
+      "utf8",
+    );
+    expect(() => loadConfig(dir)).toThrow(
+      /Unsupported release-type "not-real"/i,
+    );
+  });
+
+  it("rejects unknown package release-type", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        "release-type": "simple",
+        packages: {
+          ".": {
+            "release-type": "also-not-real",
+          },
+        },
+      }),
+      "utf8",
+    );
+    expect(() => loadConfig(dir)).toThrow(
+      /Unsupported release-type "also-not-real"/i,
+    );
+  });
+
   it("accepts review-mode pr and legacy review alias", () => {
     const dir = makeTempDir();
     fs.writeFileSync(

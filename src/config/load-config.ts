@@ -1,6 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { parse as parseJsonc } from "jsonc-parser";
+import {
+  listKnownReleaseTypes,
+  resolveVersionStrategy,
+} from "../strategy/resolve.js";
 import type {
   ConfigFileFormat,
   LoadedConfig,
@@ -25,6 +29,40 @@ function parseConfig(raw: string, format: ConfigFileFormat): unknown {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function validateReleaseTypes(config: VersionaryConfig): void {
+  try {
+    resolveVersionStrategy(config);
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    const known = listKnownReleaseTypes().join(", ");
+    throw new Error(
+      `Unsupported release-type. Supported release types: ${known}.`,
+    );
+  }
+
+  for (const [packagePath, packageConfig] of Object.entries(
+    config.packages ?? {},
+  )) {
+    const packageReleaseType = packageConfig["release-type"];
+    if (!packageReleaseType) {
+      continue;
+    }
+    try {
+      resolveVersionStrategy({ ...config, "release-type": packageReleaseType });
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`${error.message} (in packages["${packagePath}"])`);
+      }
+      const known = listKnownReleaseTypes().join(", ");
+      throw new Error(
+        `Unsupported release-type in packages["${packagePath}"]. Supported release types: ${known}.`,
+      );
+    }
+  }
 }
 
 export function findConfigFile(
@@ -59,6 +97,7 @@ export function loadConfig(cwd = process.cwd()): LoadedConfig {
     );
   }
   const validated = configSchema.parse(parsed) as VersionaryConfig;
+  validateReleaseTypes(validated);
 
   return {
     path: found.path,

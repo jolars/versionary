@@ -7,7 +7,6 @@ import {
   resolveVersionStrategy,
 } from "../src/strategy/resolve.js";
 import { rustVersionStrategy } from "../src/strategy/rust.js";
-import { simpleVersionStrategy } from "../src/strategy/simple.js";
 import type { VersionaryConfig } from "../src/types/config.js";
 
 describe("resolveVersionStrategy", () => {
@@ -64,15 +63,15 @@ describe("resolveVersionStrategy", () => {
     expect(strategy.name).toBe("latex");
   });
 
-  it("falls back to simple strategy for unknown release type", () => {
+  it("throws for unknown release type", () => {
     const config: VersionaryConfig = {
       version: 1,
       "release-type": "not-real",
     };
 
-    const strategy = resolveVersionStrategy(config);
-    expect(strategy).toBe(simpleVersionStrategy);
-    expect(strategy.name).toBe("simple");
+    expect(() => resolveVersionStrategy(config)).toThrow(
+      /Unsupported release-type "not-real"/,
+    );
   });
 
   it("lists known release types from internal strategy registry", () => {

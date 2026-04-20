@@ -22,5 +22,12 @@ export function resolveVersionStrategy(
   config: VersionaryConfig,
 ): VersionStrategy {
   const releaseType = config["release-type"] ?? "simple";
-  return strategyRegistry[releaseType] ?? simpleVersionStrategy;
+  const strategy = strategyRegistry[releaseType];
+  if (!strategy) {
+    const known = listKnownReleaseTypes().join(", ");
+    throw new Error(
+      `Unsupported release-type "${releaseType}". Supported release types: ${known}.`,
+    );
+  }
+  return strategy;
 }
