@@ -37,17 +37,43 @@ function formatCommitReferences(
     return "";
   }
 
-  return references
-    .map((reference) => {
-      const issue = reference.issue;
-      if (!issue) {
+  const formatIssueList = (issues: string[]): string => {
+    if (issues.length === 0) {
+      return "";
+    }
+    if (issues.length === 1) {
+      return issues[0] ?? "";
+    }
+    if (issues.length === 2) {
+      return `${issues[0] ?? ""} and ${issues[1] ?? ""}`;
+    }
+    return `${issues.slice(0, -1).join(", ")}, and ${issues[issues.length - 1] ?? ""}`;
+  };
+
+  const referencesByAction = new Map<string, string[]>();
+  for (const reference of references) {
+    const issue = reference.issue;
+    if (!issue) {
+      continue;
+    }
+    const action = (reference.action?.trim() || "refs").toLowerCase();
+    const formattedIssue = repoBaseUrl
+      ? `[#${issue}](${repoBaseUrl}/issues/${issue})`
+      : `#${issue}`;
+    const existing = referencesByAction.get(action) ?? [];
+    if (!existing.includes(formattedIssue)) {
+      existing.push(formattedIssue);
+      referencesByAction.set(action, existing);
+    }
+  }
+
+  return [...referencesByAction.entries()]
+    .map(([action, issues]) => {
+      const list = formatIssueList(issues);
+      if (list.length === 0) {
         return "";
       }
-      const action = (reference.action?.trim() || "refs").toLowerCase();
-      if (!repoBaseUrl) {
-        return `${action} #${issue}`;
-      }
-      return `${action} [#${issue}](${repoBaseUrl}/issues/${issue})`;
+      return `${action} ${list}`;
     })
     .filter((entry) => entry.length > 0)
     .join(", ");

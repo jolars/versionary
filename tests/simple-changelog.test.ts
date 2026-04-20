@@ -178,4 +178,61 @@ describe("simple changelog rendering", () => {
     const matches = changelog.match(/support smart punctuation/gu) ?? [];
     expect(matches).toHaveLength(1);
   });
+
+  it("groups same-action references with natural language for two issues", () => {
+    const prevServer = process.env.GITHUB_SERVER_URL;
+    const prevRepo = process.env.GITHUB_REPOSITORY;
+    let changelog = "";
+    try {
+      process.env.GITHUB_SERVER_URL = "https://github.com";
+      process.env.GITHUB_REPOSITORY = "jolars/panache";
+      const plan = makePlan();
+      plan.commits = [
+        {
+          ...parseConventionalCommitMessage(
+            "fix(parser): handle bare #| comments",
+            "Fixes #188, fixes #190",
+          ),
+          hash: "1a7d009",
+        },
+      ];
+      changelog = renderSimpleChangelog(plan);
+    } finally {
+      process.env.GITHUB_SERVER_URL = prevServer;
+      process.env.GITHUB_REPOSITORY = prevRepo;
+    }
+
+    expect(changelog).toContain(
+      "fixes [#188](https://github.com/jolars/panache/issues/188) and [#190](https://github.com/jolars/panache/issues/190)",
+    );
+    expect(changelog).not.toContain(", fixes [#190]");
+  });
+
+  it("groups same-action references with Oxford comma for three+ issues", () => {
+    const prevServer = process.env.GITHUB_SERVER_URL;
+    const prevRepo = process.env.GITHUB_REPOSITORY;
+    let changelog = "";
+    try {
+      process.env.GITHUB_SERVER_URL = "https://github.com";
+      process.env.GITHUB_REPOSITORY = "jolars/panache";
+      const plan = makePlan();
+      plan.commits = [
+        {
+          ...parseConventionalCommitMessage(
+            "fix(parser): handle bare #| comments",
+            "Fixes #188, fixes #190, and fixes #201",
+          ),
+          hash: "1a7d009",
+        },
+      ];
+      changelog = renderSimpleChangelog(plan);
+    } finally {
+      process.env.GITHUB_SERVER_URL = prevServer;
+      process.env.GITHUB_REPOSITORY = prevRepo;
+    }
+
+    expect(changelog).toContain(
+      "fixes [#188](https://github.com/jolars/panache/issues/188), [#190](https://github.com/jolars/panache/issues/190), and [#201](https://github.com/jolars/panache/issues/201)",
+    );
+  });
 });
