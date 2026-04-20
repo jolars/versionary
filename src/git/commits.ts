@@ -381,14 +381,14 @@ function parseFooters(body: string): {
     extractReferences(`${footer.token}: ${footer.value}`, footer.token);
   }
   extractInlineSentenceReferences(body);
-  const dedupedReferences = [
-    ...new Map(
-      references.map((reference) => [
-        `${reference.action ?? ""}:${reference.owner ?? ""}/${reference.repository ?? ""}:${reference.prefix}:${reference.issue ?? ""}`,
-        reference,
-      ]),
-    ).values(),
-  ];
+  const dedupedReferenceMap = new Map<string, CommitReference>();
+  for (const reference of references) {
+    const key = `${reference.action?.trim().toLowerCase() ?? ""}:${reference.owner?.trim().toLowerCase() ?? ""}/${reference.repository?.trim().toLowerCase() ?? ""}:${reference.prefix}:${reference.issue ?? ""}`;
+    if (!dedupedReferenceMap.has(key)) {
+      dedupedReferenceMap.set(key, reference);
+    }
+  }
+  const dedupedReferences = [...dedupedReferenceMap.values()];
 
   return {
     bodyText: bodyLines.join("\n").trim() || "",

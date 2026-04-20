@@ -260,6 +260,31 @@ describe("simple commit analysis", () => {
     });
   });
 
+  it("deduplicates references regardless of action capitalization", () => {
+    const parsed = parseConventionalCommitMessage(
+      "fix(parser): handle bare #| comments",
+      "Fixes #188, fixes #190\n\nfixes #190",
+    );
+    expect(parsed.references).toEqual([
+      {
+        action: "Fixes",
+        owner: null,
+        repository: null,
+        issue: "188",
+        raw: "#188",
+        prefix: "#",
+      },
+      {
+        action: "Fixes",
+        owner: null,
+        repository: null,
+        issue: "190",
+        raw: "#190",
+        prefix: "#",
+      },
+    ]);
+  });
+
   it("captures ambiguous revert diagnostics when no sha exists", () => {
     const parsed = parseConventionalCommitMessage(
       "revert: feat: add thing",
