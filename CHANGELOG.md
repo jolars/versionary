@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.17.0](https://github.com/jolars/versionary/compare/v0.16.0...v0.17.0) (2026-04-21)
+
+### Features
+- **github:** make root release latest ([`f17d860`](https://github.com/jolars/versionary/commit/f17d86019b9ec2ca5b2401242401411d271309dd))
+- fail on unknown release strategy ([`8da9ee8`](https://github.com/jolars/versionary/commit/8da9ee87011cc8d2b729c9a35bb39aaf2685ec1f))
+
+### Bug Fixes
+- unify changelog creation branches ([`444f4e5`](https://github.com/jolars/versionary/commit/444f4e5dc72012ab092236d03c9b07d6dd1bc94d))
 ## [0.16.0](https://github.com/jolars/versionary/compare/v0.15.1...v0.16.0) (2026-04-20)
 
 ### Features
