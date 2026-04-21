@@ -282,6 +282,7 @@ export async function runReleaseDetailed(
         version: target.version,
         notes: releaseNotes,
         draft: loaded.config["release-draft"] ?? false,
+        makeLatest: target.path === "." ? "true" : "false",
       },
       {
         createReleaseMetadata: (input) =>

@@ -29,6 +29,7 @@ export interface ScmReleaseMetadataInput {
   version: string;
   notes: string;
   draft?: boolean;
+  makeLatest?: "true" | "false" | "legacy";
 }
 
 export interface ScmReleaseMetadataResult {

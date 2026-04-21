@@ -8,6 +8,7 @@ export interface ReleaseTargetInput {
   version: string;
   notes: string;
   draft?: boolean;
+  makeLatest?: "true" | "false" | "legacy";
 }
 
 export interface ReleaseExecutionContext {
