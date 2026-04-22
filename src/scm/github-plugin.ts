@@ -3,6 +3,8 @@ import type { VersionaryPluginRuntime } from "../types/plugins.js";
 import type {
   ScmClient,
   ScmClientContext,
+  ScmCloseReviewRequestInput,
+  ScmCloseReviewRequestResult,
   ScmReleaseMetadataInput,
   ScmReleaseMetadataResult,
   ScmReleaseReferenceCommentsInput,
@@ -242,6 +244,81 @@ export function createGitHubPlugin(): VersionaryPluginRuntime & ScmClient {
           created,
           `pull request #${created.number} in ${repoRef(repo)}`,
         ),
+      };
+    },
+    async closeReviewRequestIfExists(
+      input: ScmCloseReviewRequestInput,
+      _context: ScmClientContext,
+    ): Promise<ScmCloseReviewRequestResult> {
+      const repo = getRepoFromEnv();
+      const octokit = new Octokit({ auth: getGitHubToken() });
+      const listHead = resolveHeadForList(repo, input.headBranch);
+
+      let existing: Awaited<ReturnType<typeof octokit.pulls.list>>["data"];
+      try {
+        const response = await octokit.pulls.list({
+          owner: repo.owner,
+          repo: repo.repo,
+          state: "open",
+          head: listHead,
+          base: input.baseBranch,
+          per_page: 100,
+        });
+        existing = response.data;
+      } catch (error: unknown) {
+        const { message } = parseGitHubError(error);
+        throw new Error(
+          `Failed listing open pull requests for branch "${input.headBranch}" into "${input.baseBranch}": [${repoRef(repo)}] ${message}`,
+        );
+      }
+
+      if (existing.length > 1) {
+        const matches = existing.map((item) => `#${item.number}`).join(", ");
+        throw new Error(
+          `Ambiguous open pull request matches for "${input.headBranch}" into "${input.baseBranch}": [${repoRef(repo)}] ${matches}`,
+        );
+      }
+      if (existing.length === 0) {
+        return { closed: false };
+      }
+
+      const pr = existing[0];
+      let updated: Awaited<ReturnType<typeof octokit.pulls.update>>["data"];
+      try {
+        const response = await octokit.pulls.update({
+          owner: repo.owner,
+          repo: repo.repo,
+          pull_number: pr.number,
+          state: "closed",
+        });
+        updated = response.data;
+      } catch (error: unknown) {
+        const { message } = parseGitHubError(error);
+        throw new Error(
+          `Failed closing pull request #${pr.number}: [${repoRef(repo)} base=${input.baseBranch} head=${input.headBranch}] ${message}`,
+        );
+      }
+
+      try {
+        await octokit.issues.createComment({
+          owner: repo.owner,
+          repo: repo.repo,
+          issue_number: pr.number,
+          body: input.reason,
+        });
+      } catch (error: unknown) {
+        const { status, message } = parseGitHubError(error);
+        if (status !== 404 && status !== 410) {
+          throw new Error(
+            `Failed commenting on closed pull request #${pr.number}: [${repoRef(repo)} base=${input.baseBranch} head=${input.headBranch}] ${message}`,
+          );
+        }
+      }
+
+      return {
+        closed: true,
+        number: updated.number,
+        url: updated.html_url,
       };
     },
     async createReleaseMetadata(

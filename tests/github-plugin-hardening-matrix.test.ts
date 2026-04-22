@@ -207,6 +207,66 @@ describe("github plugin hardening matrix", () => {
     expect(result).toMatchObject({ number: 34, state: "open" });
   });
 
+  it("closes matching open release PR and comments reason", async () => {
+    process.env.GITHUB_REPOSITORY = "owner/repo";
+    process.env.GITHUB_TOKEN = "token";
+    mockApi.pulls.list.mockResolvedValueOnce({ data: [pr(7)] });
+    mockApi.pulls.update.mockResolvedValueOnce({
+      data: {
+        ...pr(7),
+        state: "closed",
+      },
+    });
+    const plugin = createGitHubPlugin();
+
+    const result = await plugin.closeReviewRequestIfExists(
+      {
+        baseBranch: "main",
+        headBranch: "versionary/release-v1.2.3",
+        reason: "No releasable commits remain.",
+      },
+      { cwd: process.cwd() },
+    );
+
+    expect(mockApi.pulls.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pull_number: 7,
+        state: "closed",
+      }),
+    );
+    expect(mockApi.issues.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        issue_number: 7,
+        body: "No releasable commits remain.",
+      }),
+    );
+    expect(result).toEqual({
+      closed: true,
+      number: 7,
+      url: "https://github.com/owner/repo/pull/7",
+    });
+  });
+
+  it("does nothing when no matching open release PR exists", async () => {
+    process.env.GITHUB_REPOSITORY = "owner/repo";
+    process.env.GITHUB_TOKEN = "token";
+    mockApi.pulls.list.mockResolvedValueOnce({ data: [] });
+    const plugin = createGitHubPlugin();
+
+    const result = await plugin.closeReviewRequestIfExists(
+      {
+        baseBranch: "main",
+        headBranch: "versionary/release-v1.2.3",
+        reason: "No releasable commits remain.",
+      },
+      { cwd: process.cwd() },
+    );
+
+    expect(mockApi.pulls.update).not.toHaveBeenCalled();
+    expect(mockApi.issues.createComment).not.toHaveBeenCalled();
+    expect(result).toEqual({ closed: false });
+  });
+
   it("uses head owner override when provided as owner:branch", async () => {
     process.env.GITHUB_REPOSITORY = "owner/repo";
     process.env.GITHUB_TOKEN = "token";

@@ -7,6 +7,7 @@ import {
 } from "../release/changelog.js";
 import { createReleasePlan } from "../release/plan.js";
 import {
+  closeStaleReviewRequestIfExists,
   isReleaseCommitMessage,
   openOrUpdateReviewRequest,
   prepareReleasePr,
@@ -147,6 +148,9 @@ async function main(): Promise<number> {
 
     const plan = createReleasePlan();
     if (!plan.nextVersion) {
+      if (!flags["dry-run"]) {
+        await closeStaleReviewRequestIfExists(process.cwd(), { logger });
+      }
       const message = "No releasable commits found. Nothing to do.";
       if (flags.json) {
         emitJson({
@@ -274,12 +278,18 @@ async function main(): Promise<number> {
   }
 
   if (command === "pr") {
-    if (flags["dry-run"]) {
-      const plan = createReleasePlan();
-      if (!plan.nextVersion) {
-        console.log("No releasable commits found. Nothing to do.");
-        return 0;
+    const plan = createReleasePlan();
+    if (!plan.nextVersion) {
+      if (!flags["dry-run"]) {
+        await closeStaleReviewRequestIfExists(process.cwd(), {
+          logger: console,
+        });
       }
+      console.log("No releasable commits found. Nothing to do.");
+      return 0;
+    }
+
+    if (flags["dry-run"]) {
       console.log(
         `Dry run: would prepare release PR branch ${plan.releaseBranchPrefix} for ${plan.nextVersion}`,
       );

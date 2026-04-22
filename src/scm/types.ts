@@ -24,6 +24,18 @@ export interface ScmReviewRequestResult {
   state: "open" | "closed" | "merged";
 }
 
+export interface ScmCloseReviewRequestInput {
+  baseBranch: string;
+  headBranch: string;
+  reason: string;
+}
+
+export interface ScmCloseReviewRequestResult {
+  closed: boolean;
+  number?: number;
+  url?: string;
+}
+
 export interface ScmReleaseMetadataInput {
   tag: string;
   version: string;
@@ -54,6 +66,10 @@ export interface ScmClient {
     input: ScmReviewRequestInput,
     context: ScmClientContext,
   ) => Promise<ScmReviewRequestResult>;
+  closeReviewRequestIfExists: (
+    input: ScmCloseReviewRequestInput,
+    context: ScmClientContext,
+  ) => Promise<ScmCloseReviewRequestResult>;
   createReleaseMetadata: (
     input: ScmReleaseMetadataInput,
     context: ScmClientContext,

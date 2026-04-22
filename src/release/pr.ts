@@ -621,6 +621,45 @@ export async function openOrUpdateReviewRequest(
   return result.url;
 }
 
+function hasScmRuntimeContext(): boolean {
+  const hasRepository = Boolean(process.env.GITHUB_REPOSITORY);
+  const hasToken = Boolean(
+    process.env.VERSIONARY_PR_TOKEN ??
+      process.env.GH_TOKEN ??
+      process.env.GITHUB_TOKEN,
+  );
+  return hasRepository && hasToken;
+}
+
+export async function closeStaleReviewRequestIfExists(
+  cwd = process.cwd(),
+  options: { logger?: VersionaryPluginContext["logger"] } = {},
+): Promise<{ closed: boolean; url?: string; number?: number }> {
+  if (!hasScmRuntimeContext()) {
+    return { closed: false };
+  }
+  const plan = createReleasePlan(cwd);
+  const scmClient = getScmClient();
+  const result = await scmClient.closeReviewRequestIfExists(
+    {
+      baseBranch: process.env.VERSIONARY_BASE_BRANCH ?? "main",
+      headBranch: plan.releaseBranchPrefix,
+      reason:
+        "Closing stale release PR because no releasable commits remain for the current baseline/tag state.",
+    },
+    {
+      cwd,
+      logger: options.logger,
+    },
+  );
+  if (result.closed && result.number) {
+    options.logger?.info(
+      `Closed stale release review request #${result.number} for ${plan.releaseBranchPrefix}.`,
+    );
+  }
+  return result;
+}
+
 /** @deprecated Use prepareReleasePr. */
 export function prepareSimpleReleasePr(
   cwd = process.cwd(),
