@@ -49,6 +49,20 @@ function hasOriginRemote(cwd: string): boolean {
   }
 }
 
+function getRemoteRefSha(cwd: string, ref: string): string | null {
+  try {
+    const output = runGit(cwd, ["ls-remote", "origin", ref]);
+    const line = output.split("\n")[0]?.trim() ?? "";
+    if (!line) {
+      return null;
+    }
+    const sha = line.split(/\s+/u)[0]?.trim() ?? "";
+    return sha.length > 0 ? sha : null;
+  } catch {
+    return null;
+  }
+}
+
 function setOutput(name: string, value: string): void {
   const outputPath = process.env.GITHUB_OUTPUT;
   if (!outputPath) {
@@ -99,6 +113,39 @@ function main(): void {
       "origin",
       `https://x-access-token:${encodedToken}@${base}/${repository}.git`,
     ]);
+  }
+
+  const eventName = process.env.GITHUB_EVENT_NAME ?? "";
+  const ref = process.env.GITHUB_REF ?? "";
+  const sha = process.env.GITHUB_SHA?.trim() ?? "";
+  if (
+    eventName === "push" &&
+    ref.startsWith("refs/heads/") &&
+    sha.length > 0 &&
+    hasOriginRemote(cwd)
+  ) {
+    const remoteSha = getRemoteRefSha(cwd, ref);
+    if (remoteSha && remoteSha !== sha) {
+      const staleMessage =
+        `Skipping stale push run for ${sha.slice(0, 7)}; ` +
+        `${ref} now points to ${remoteSha.slice(0, 7)}.`;
+      const stalePayload = {
+        action: "stale-run-skipped",
+        message: staleMessage,
+        releaseCreated: false,
+        tagNames: [],
+      };
+      process.stdout.write(`${JSON.stringify(stalePayload)}\n`);
+      setOutput("action", stalePayload.action);
+      setOutput("message", stalePayload.message);
+      setOutput("release_created", "false");
+      setOutput("tag_name", "");
+      setOutput("tag_names", "[]");
+      setOutput("review_url", "");
+      setOutput("branch", "");
+      setOutput("title", "");
+      return;
+    }
   }
 
   const raw = execFileSync(
