@@ -94,6 +94,35 @@ describe("latexVersionStrategy", () => {
     );
   });
 
+  it("updates ProvidesExplPackage metadata using release commit date", () => {
+    const cwd = makeTempDir();
+    write(
+      cwd,
+      "build.lua",
+      ["uploadconfig = {", '  version = "1.2.2",', "}", ""].join("\n"),
+    );
+    write(
+      cwd,
+      "src/cvd.dtx",
+      [
+        "\\ProvidesExplPackage{cvd}{2025-01-01}{1.2.2}{Color vision deficiency simulation}",
+        "",
+      ].join("\n"),
+    );
+
+    const writes: StrategyVersionWriteContext[] = [
+      { packagePath: ".", versionFile: "build.lua", version: "1.2.3" },
+    ];
+    const updated = latexVersionStrategy.finalizeVersionWrites?.(cwd, writes, {
+      releaseCommitSha: "abc123",
+      releaseDate: "2026-04-20",
+    });
+    expect(updated).toEqual(["src/cvd.dtx"]);
+    expect(read(cwd, "src/cvd.dtx")).toContain(
+      "\\ProvidesExplPackage{cvd}{2026-04-20}{1.2.3}{Color vision deficiency simulation}",
+    );
+  });
+
   it("throws actionable error when no dtx files exist", () => {
     const cwd = makeTempDir();
     write(
@@ -132,6 +161,8 @@ describe("latexVersionStrategy", () => {
         releaseCommitSha: "abc123",
         releaseDate: "2026-04-20",
       }),
-    ).toThrow(/must contain exactly one \\ProvidesPackage metadata entry/i);
+    ).toThrow(
+      /must contain exactly one \\ProvidesPackage or \\ProvidesExplPackage metadata entry/i,
+    );
   });
 });

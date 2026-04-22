@@ -10,6 +10,8 @@ import type {
 const BUILD_LUA_VERSION_PATTERN = /^(\s*version\s*=\s*")([^"]+)(")/mu;
 const PROVIDES_PACKAGE_PATTERN =
   /\\ProvidesPackage\{([^}]+)\}\[\d{4}-\d{2}-\d{2} v([0-9]+\.[0-9]+\.[0-9]+) ([^\]]+)\]/gu;
+const PROVIDES_EXPL_PACKAGE_PATTERN =
+  /\\ProvidesExplPackage\{([^}]+)\}\{\d{4}-\d{2}-\d{2}\}\{[^}]+\}\{([^}]*)\}/gu;
 
 function normalizeRelative(base: string, target: string): string {
   return path.relative(base, target).replaceAll("\\", "/");
@@ -54,10 +56,21 @@ function replaceProvidesPackageMetadata(
   releaseDate: string,
   relativePath: string,
 ): string {
-  const matches = [...content.matchAll(PROVIDES_PACKAGE_PATTERN)];
+  const packageMatches = [...content.matchAll(PROVIDES_PACKAGE_PATTERN)];
+  const explPackageMatches = [
+    ...content.matchAll(PROVIDES_EXPL_PACKAGE_PATTERN),
+  ];
+  const matches = [...packageMatches, ...explPackageMatches];
   if (matches.length !== 1) {
     throw new Error(
-      `${relativePath} must contain exactly one \\ProvidesPackage metadata entry; matched ${matches.length}.`,
+      `${relativePath} must contain exactly one \\ProvidesPackage or \\ProvidesExplPackage metadata entry; matched ${matches.length}.`,
+    );
+  }
+  if (explPackageMatches.length === 1) {
+    return content.replace(
+      PROVIDES_EXPL_PACKAGE_PATTERN,
+      (_full, pkg, desc) =>
+        `\\ProvidesExplPackage{${pkg}}{${releaseDate}}{${version}}{${desc}}`,
     );
   }
   return content.replace(
