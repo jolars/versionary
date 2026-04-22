@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.19.0](https://github.com/jolars/versionary/compare/v0.18.0...v0.19.0) (2026-04-22)
+
+### Features
+- guard against concurrency and race conditions ([`2739163`](https://github.com/jolars/versionary/commit/2739163758a16d6dd8aa977338e586ff5180f533))
+- support expl3 latex packages ([`5f12c53`](https://github.com/jolars/versionary/commit/5f12c537a74a37e085677d9d71a9d7f1fc3f48d8))
 ## [0.18.0](https://github.com/jolars/versionary/compare/v0.17.0...v0.18.0) (2026-04-22)
 
 ### Features
