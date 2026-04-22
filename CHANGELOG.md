@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.0](https://github.com/jolars/versionary/compare/v0.17.0...v0.18.0) (2026-04-22)
+
+### Features
+- auto-close stale PRs ([`6447c2d`](https://github.com/jolars/versionary/commit/6447c2df6f9ddeab2c140e786649f658359d190e))
+
+### Bug Fixes
+- correctly suppress reverts when between releases ([`d6b1779`](https://github.com/jolars/versionary/commit/d6b17790144a9ace66f3096abc05077dc04375e8))
 ## [0.17.0](https://github.com/jolars/versionary/compare/v0.16.0...v0.17.0) (2026-04-21)
 
 ### Features
