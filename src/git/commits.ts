@@ -621,10 +621,17 @@ export function applyRevertSuppression(
     commits.map((commit) => commit.hash.toLowerCase()),
   );
   const reverted = new Set<string>();
+  const suppressedReverts = new Set<string>();
 
   for (const commit of commits) {
     if (!commit.isRevert) {
       continue;
+    }
+    const revertsOnlyInWindow =
+      commit.revertedShas.length > 0 &&
+      commit.revertedShas.every((sha) => presentShas.has(sha));
+    if (revertsOnlyInWindow) {
+      suppressedReverts.add(commit.hash.toLowerCase());
     }
     for (const sha of commit.revertedShas) {
       if (presentShas.has(sha)) {
@@ -633,7 +640,10 @@ export function applyRevertSuppression(
     }
   }
 
-  return commits.filter((commit) => !reverted.has(commit.hash.toLowerCase()));
+  return commits.filter((commit) => {
+    const hash = commit.hash.toLowerCase();
+    return !reverted.has(hash) && !suppressedReverts.has(hash);
+  });
 }
 
 export function analyzeParsedCommits(commits: ParsedCommit[]): ReleaseType {

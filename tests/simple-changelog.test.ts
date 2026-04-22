@@ -113,6 +113,37 @@ describe("simple changelog rendering", () => {
     expect(changelog).not.toContain("chore(release): v1.2.3");
   });
 
+  it("omits revert pairs that cancel out within the same release window", () => {
+    const prevServer = process.env.GITHUB_SERVER_URL;
+    const prevRepo = process.env.GITHUB_REPOSITORY;
+    let changelog = "";
+    try {
+      process.env.GITHUB_SERVER_URL = "https://github.com";
+      process.env.GITHUB_REPOSITORY = "jolars/versionary";
+      const feature = {
+        ...parseConventionalCommitMessage("feat: add feature"),
+        hash: "7777771",
+      };
+      const revert = {
+        ...parseConventionalCommitMessage(
+          "revert: feat: add feature",
+          "This reverts commit 7777771.",
+        ),
+        hash: "7777772",
+      };
+      const plan = makePlan();
+      plan.commits = [feature, revert];
+      changelog = renderSimpleChangelog(plan);
+    } finally {
+      process.env.GITHUB_SERVER_URL = prevServer;
+      process.env.GITHUB_REPOSITORY = prevRepo;
+    }
+
+    expect(changelog).not.toContain("### Features");
+    expect(changelog).not.toContain("### Reverts");
+    expect(changelog).not.toContain("add feature");
+  });
+
   it("adds Dependencies section for dependency-propagated root bumps", () => {
     const prevServer = process.env.GITHUB_SERVER_URL;
     const prevRepo = process.env.GITHUB_REPOSITORY;

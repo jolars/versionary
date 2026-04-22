@@ -76,7 +76,7 @@ describe("simple commit analysis", () => {
     expect(release).toBe("major");
   });
 
-  it("suppresses reverted commits by SHA", () => {
+  it("suppresses commits that are added and reverted in the same window", () => {
     const effective = applyRevertSuppression([
       {
         hash: "abcdef1",
@@ -91,6 +91,26 @@ describe("simple commit analysis", () => {
         footers: [],
         revertedShas: [],
       },
+      {
+        hash: "abcdef2",
+        subject: "revert: feat: add capability",
+        body: "This reverts commit abcdef1.",
+        fullMessage:
+          "revert: feat: add capability\n\nThis reverts commit abcdef1.",
+        type: "revert",
+        scope: null,
+        description: "feat: add capability",
+        isBreaking: false,
+        isRevert: true,
+        footers: [],
+        revertedShas: ["abcdef1"],
+      },
+    ]);
+    expect(effective.map((commit) => commit.hash)).toEqual([]);
+  });
+
+  it("keeps revert commits that target commits outside the analyzed window", () => {
+    const effective = applyRevertSuppression([
       {
         hash: "abcdef2",
         subject: "revert: feat: add capability",

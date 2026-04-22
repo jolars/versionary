@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import {
+  applyRevertSuppression,
   inferReleaseTypeFromParsedCommit,
   type ParsedCommit,
   parseConventionalCommitMessage,
@@ -95,6 +96,7 @@ function groupCommitLines(
   const features: string[] = [];
   const fixes: string[] = [];
   const reverts: string[] = [];
+  const effectiveCommits = applyRevertSuppression(commits);
 
   const getRevertedSubject = (commit: ParsedCommit): string => {
     const normalizedDescription = (commit.description ?? "")
@@ -122,7 +124,7 @@ function groupCommitLines(
     return inferReleaseTypeFromParsedCommit(revertedCommit) !== null;
   };
 
-  for (const commit of commits) {
+  for (const commit of effectiveCommits) {
     const type = inferReleaseTypeFromParsedCommit(commit);
     if (!type) {
       continue;
