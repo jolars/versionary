@@ -236,9 +236,7 @@ export function renderReleasePlanChangelog(
   if (!plan.nextVersion) {
     return "";
   }
-  const propagatedRootPackage = plan.packages?.find(
-    (pkg) => pkg.path === "." && pkg.bumpReason === "dependency-propagation",
-  );
+  const propagatedRootPackage = plan.packages?.find((pkg) => pkg.path === ".");
   const isDirectBump = (
     pkg: NonNullable<SimplePlan["packages"]>[number],
   ): boolean =>
@@ -246,17 +244,37 @@ export function renderReleasePlanChangelog(
     (pkg.bumpReason === undefined &&
       Boolean(pkg.nextVersion) &&
       pkg.commits.length > 0);
-  const dependencies =
-    propagatedRootPackage && plan.packages
+  const legacyDependencySources =
+    propagatedRootPackage?.bumpReason === "dependency-propagation" &&
+    plan.packages
       ? plan.packages
           .filter(
             (pkg) => pkg.path !== "." && isDirectBump(pkg) && pkg.nextVersion,
           )
-          .map((pkg) => ({
-            name: pkg.path,
-            version: pkg.nextVersion as string,
-          }))
+          .map((pkg) => pkg.path)
       : [];
+  const dependencySourcePaths = [
+    ...(propagatedRootPackage?.dependencySourcePaths ??
+      legacyDependencySources),
+  ].sort((a, b) => a.localeCompare(b));
+  const dependencies = plan.packages
+    ? dependencySourcePaths
+        .map((sourcePath) =>
+          plan.packages?.find(
+            (pkg) => pkg.path === sourcePath && pkg.nextVersion,
+          ),
+        )
+        .filter(
+          (
+            sourcePackage,
+          ): sourcePackage is NonNullable<SimplePlan["packages"]>[number] =>
+            Boolean(sourcePackage),
+        )
+        .map((pkg) => ({
+          name: pkg.path,
+          version: pkg.nextVersion as string,
+        }))
+    : [];
   const dedupedCommits = [
     ...new Map(plan.commits.map((commit) => [commit.hash, commit])).values(),
   ];

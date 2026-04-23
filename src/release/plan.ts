@@ -40,6 +40,7 @@ export interface ReleasePlan {
     currentVersion: string;
     nextVersion: string | null;
     bumpReason?: "direct" | "dependency-propagation";
+    dependencySourcePaths?: string[];
     commits: ParsedCommit[];
   }>;
 }
@@ -198,6 +199,7 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
   ].sort((a, b) => a.path.localeCompare(b.path));
 
   const packageCurrentVersionByPath: Record<string, string> = {};
+  const packageNextVersionByPath: Record<string, string> = {};
   const strategyPackagesByName = new Map<
     string,
     { strategy: VersionStrategy; packages: StrategyPackagePlanContext[] }
@@ -233,20 +235,74 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
       });
     }
     packageCurrentVersionByPath[packagePlan.path] = packagePlan.currentVersion;
+    if (packagePlan.nextVersion) {
+      packageNextVersionByPath[packagePlan.path] = packagePlan.nextVersion;
+    }
   }
   const impactedPaths = new Set<string>();
+  const dependencySourcePathsByPackage = new Map<string, Set<string>>();
+
+  const addDependencySourcePath = (
+    targetPath: string,
+    sourcePath: string,
+  ): void => {
+    if (targetPath === sourcePath) {
+      return;
+    }
+    const existing = dependencySourcePathsByPackage.get(targetPath);
+    if (existing) {
+      existing.add(sourcePath);
+      return;
+    }
+    dependencySourcePathsByPackage.set(targetPath, new Set([sourcePath]));
+  };
+
   for (const strategyGroup of strategyPackagesByName.values()) {
-    const impacted = strategyGroup.strategy.propagateDependentPatchImpacts?.(
-      cwd,
-      strategyGroup.packages,
-    );
-    for (const pkgPath of impacted ?? []) {
+    const impactedByAll =
+      strategyGroup.strategy.propagateDependentPatchImpacts?.(
+        cwd,
+        strategyGroup.packages,
+      ) ?? [];
+    for (const pkgPath of impactedByAll) {
       impactedPaths.add(pkgPath);
+    }
+
+    const sourcePackages = strategyGroup.packages.filter((pkg) =>
+      Boolean(pkg.nextVersion),
+    );
+    for (const sourcePackage of sourcePackages) {
+      const scopedImpacts =
+        strategyGroup.strategy.propagateDependentPatchImpacts?.(
+          cwd,
+          strategyGroup.packages.map((pkg) => ({
+            ...pkg,
+            nextVersion:
+              pkg.packagePath === sourcePackage.packagePath
+                ? sourcePackage.nextVersion
+                : null,
+          })),
+        ) ?? [];
+      for (const impactedPath of scopedImpacts) {
+        addDependencySourcePath(impactedPath, sourcePackage.packagePath);
+      }
     }
   }
   const adjustedPackages = packagePlans.map((pkgPlan) => {
+    const dependencySourcePaths = [
+      ...(dependencySourcePathsByPackage.get(pkgPlan.path) ??
+        new Set<string>()),
+    ]
+      .filter((sourcePath) => Boolean(packageNextVersionByPath[sourcePath]))
+      .sort((a, b) => a.localeCompare(b));
+
     if (pkgPlan.nextVersion || !impactedPaths.has(pkgPlan.path)) {
-      return pkgPlan;
+      if (dependencySourcePaths.length === 0) {
+        return pkgPlan;
+      }
+      return {
+        ...pkgPlan,
+        dependencySourcePaths,
+      };
     }
     const current =
       packageCurrentVersionByPath[pkgPlan.path] ?? pkgPlan.currentVersion;
@@ -255,6 +311,7 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
       releaseType: "patch" as ReleaseType,
       nextVersion: bumpVersion(current, "patch", { allowStableMajor }),
       bumpReason: "dependency-propagation" as const,
+      dependencySourcePaths,
     };
   });
   const visiblePackages = adjustedPackages.filter(

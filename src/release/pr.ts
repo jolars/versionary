@@ -514,18 +514,31 @@ export function renderSimpleReviewRequestBody(
     packages: NonNullable<SimplePlan["packages"]>,
   ): Array<{ name: string; version: string }> => {
     const target = packages.find((pkg) => pkg.path === packagePath);
-    if (!target || target.bumpReason !== "dependency-propagation") {
+    if (!target) {
       return [];
     }
-    const directSources = packages
-      .filter((pkg) => isDirectBump(pkg))
+
+    const sourcePaths =
+      target.dependencySourcePaths && target.dependencySourcePaths.length > 0
+        ? target.dependencySourcePaths
+        : target.bumpReason === "dependency-propagation"
+          ? packages.filter((pkg) => isDirectBump(pkg)).map((pkg) => pkg.path)
+          : [];
+
+    return sourcePaths
+      .map((sourcePath) => packages.find((pkg) => pkg.path === sourcePath))
+      .filter(
+        (
+          sourcePackage,
+        ): sourcePackage is NonNullable<SimplePlan["packages"]>[number] =>
+          Boolean(sourcePackage),
+      )
       .map((pkg) => ({
         name: formatPackageLabel(pkg.path),
         version: pkg.nextVersion ?? "",
       }))
       .filter((dependency) => dependency.version.length > 0)
       .sort((a, b) => a.name.localeCompare(b.name));
-    return directSources;
   };
   if (plan?.packages && plan.packages.length > 1) {
     const sections: string[] = [];

@@ -191,6 +191,83 @@ describe("review request body rendering", () => {
     expect(body).toContain("---");
   });
 
+  it("renders only actual propagated dependency sources per package", () => {
+    const prevServer = process.env.GITHUB_SERVER_URL;
+    const prevRepo = process.env.GITHUB_REPOSITORY;
+    let body = "";
+    try {
+      process.env.GITHUB_SERVER_URL = "https://github.com";
+      process.env.GITHUB_REPOSITORY = "jolars/panache";
+      body = renderSimpleReviewRequestBody("2.38.0", "2.37.0", [], {
+        mode: "simple",
+        releaseType: "minor",
+        currentVersion: "2.37.0",
+        nextVersion: "2.38.0",
+        packageName: "panache",
+        versionFile: "Cargo.toml",
+        changelogFile: "CHANGELOG.md",
+        changelogFormat: "markdown-changelog",
+        releaseBranchPrefix: "versionary/release",
+        baselineSha: null,
+        commits: [
+          {
+            ...parseConventionalCommitMessage(
+              "feat(cli): default to cache dir",
+            ),
+            hash: "aaaaaaa1",
+          },
+        ],
+        packages: [
+          {
+            path: ".",
+            releaseType: "minor",
+            currentVersion: "2.37.0",
+            nextVersion: "2.38.0",
+            bumpReason: "direct",
+            commits: [
+              {
+                ...parseConventionalCommitMessage(
+                  "feat(cli): default to cache dir",
+                ),
+                hash: "aaaaaaa1",
+              },
+            ],
+          },
+          {
+            path: "crates/panache-parser",
+            releaseType: "patch",
+            currentVersion: "0.4.1",
+            nextVersion: "0.4.2",
+            bumpReason: "direct",
+            commits: [
+              {
+                ...parseConventionalCommitMessage("fix(parser): support Rcpp"),
+                hash: "bbbbbbb2",
+              },
+            ],
+          },
+          {
+            path: "crates/panache-formatter",
+            releaseType: "patch",
+            currentVersion: "0.2.0",
+            nextVersion: "0.2.1",
+            bumpReason: "dependency-propagation",
+            dependencySourcePaths: ["crates/panache-parser"],
+            commits: [],
+          },
+        ],
+      });
+    } finally {
+      process.env.GITHUB_SERVER_URL = prevServer;
+      process.env.GITHUB_REPOSITORY = prevRepo;
+    }
+
+    expect(body).toContain("## [crates/panache-formatter: 0.2.1]");
+    expect(body).toContain("### Dependencies");
+    expect(body).toContain("- updated crates/panache-parser to v0.4.2");
+    expect(body).not.toContain("- updated panache to v2.38.0");
+  });
+
   it("uses repository directory name for root package section labels", () => {
     const prevServer = process.env.GITHUB_SERVER_URL;
     const prevRepo = process.env.GITHUB_REPOSITORY;
