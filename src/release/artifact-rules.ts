@@ -225,6 +225,231 @@ function applyTomlRulePreservingFormatting(
   );
 }
 
+function findMatchingBrace(
+  content: string,
+  openBraceIndex: number,
+  endExclusive: number,
+): number {
+  let depth = 0;
+  let inDoubleQuoted = false;
+  let inMultiSingleQuoted = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+
+  for (let index = openBraceIndex; index < endExclusive; index += 1) {
+    const current = content[index] ?? "";
+    const next = content[index + 1] ?? "";
+
+    if (inLineComment) {
+      if (current === "\n") {
+        inLineComment = false;
+      }
+      continue;
+    }
+
+    if (inBlockComment) {
+      if (current === "*" && next === "/") {
+        inBlockComment = false;
+        index += 1;
+      }
+      continue;
+    }
+
+    if (inDoubleQuoted) {
+      if (current === "\\") {
+        index += 1;
+        continue;
+      }
+      if (current === '"') {
+        inDoubleQuoted = false;
+      }
+      continue;
+    }
+
+    if (inMultiSingleQuoted) {
+      if (current === "'" && next === "'") {
+        inMultiSingleQuoted = false;
+        index += 1;
+      }
+      continue;
+    }
+
+    if (current === "#") {
+      inLineComment = true;
+      continue;
+    }
+
+    if (current === "/" && next === "*") {
+      inBlockComment = true;
+      index += 1;
+      continue;
+    }
+
+    if (current === '"') {
+      inDoubleQuoted = true;
+      continue;
+    }
+
+    if (current === "'" && next === "'") {
+      inMultiSingleQuoted = true;
+      index += 1;
+      continue;
+    }
+
+    if (current === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (current === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return index;
+      }
+    }
+  }
+
+  return -1;
+}
+
+function resolveNixPathTokens(fieldPath: string): string[] {
+  const tokens = parseFieldPath(fieldPath);
+  if (tokens.some((token) => typeof token === "number")) {
+    throw new Error(
+      `Nix artifact rules do not support array index segments in field-path "${fieldPath}".`,
+    );
+  }
+  return tokens as string[];
+}
+
+function escapeForRegex(input: string): string {
+  return input.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+}
+
+function buildNixKeyPattern(key: string): string {
+  const escaped = escapeForRegex(key);
+  return `(?:${escaped}|"${escaped}")`;
+}
+
+function findNixScopeRanges(
+  content: string,
+  key: string,
+  rangeStart: number,
+  rangeEnd: number,
+): Array<{ start: number; end: number }> {
+  const keyPattern = buildNixKeyPattern(key);
+  const assignmentPattern = new RegExp(
+    `^\\s*${keyPattern}\\s*=.*\\{(?:\\s*(?:#.*)?)$`,
+    "gmu",
+  );
+  const scopedContent = content.slice(rangeStart, rangeEnd);
+  const ranges: Array<{ start: number; end: number }> = [];
+
+  let match = assignmentPattern.exec(scopedContent);
+  while (match) {
+    const matchText = match[0] ?? "";
+    const relLineStart = match.index;
+    const relBracePos = matchText.lastIndexOf("{");
+    if (relLineStart >= 0 && relBracePos >= 0) {
+      const absoluteBrace = rangeStart + relLineStart + relBracePos;
+      const closingBrace = findMatchingBrace(content, absoluteBrace, rangeEnd);
+      if (closingBrace < 0) {
+        throw new Error(
+          `Nix field-path segment "${key}" has an unterminated attrset.`,
+        );
+      }
+      ranges.push({ start: absoluteBrace + 1, end: closingBrace });
+    }
+    match = assignmentPattern.exec(scopedContent);
+  }
+
+  return ranges;
+}
+
+function applyNixRulePreservingFormatting(
+  content: string,
+  fieldPath: string,
+  version: string,
+): string {
+  const tokens = resolveNixPathTokens(fieldPath);
+  const parentTokens = tokens.slice(0, -1);
+  const leaf = tokens.at(-1);
+  if (!leaf) {
+    throw new Error(
+      `field-path "${fieldPath}" does not resolve to an existing field.`,
+    );
+  }
+
+  let candidateRanges: Array<{ start: number; end: number }> = [
+    { start: 0, end: content.length },
+  ];
+  for (const parent of parentTokens) {
+    const nextRanges: Array<{ start: number; end: number }> = [];
+    for (const range of candidateRanges) {
+      const nested = findNixScopeRanges(
+        content,
+        parent,
+        range.start,
+        range.end,
+      );
+      nextRanges.push(...nested);
+    }
+    candidateRanges = nextRanges;
+    if (candidateRanges.length === 0) {
+      throw new Error(
+        `field-path "${fieldPath}" does not resolve to an existing field.`,
+      );
+    }
+  }
+
+  const leafPattern = new RegExp(
+    `(^\\s*${buildNixKeyPattern(leaf)}\\s*=\\s*)(["'])([^"']*)(\\2)(\\s*;)`,
+    "gmu",
+  );
+
+  const replacements: Array<{
+    start: number;
+    end: number;
+    replacement: string;
+  }> = [];
+
+  for (const range of candidateRanges) {
+    const segment = content.slice(range.start, range.end);
+    let match = leafPattern.exec(segment);
+    while (match) {
+      const full = match[0] ?? "";
+      const prefix = match[1] ?? "";
+      const quote = match[2] ?? '"';
+      const suffix = match[5] ?? ";";
+      const relStart = match.index;
+      replacements.push({
+        start: range.start + relStart,
+        end: range.start + relStart + full.length,
+        replacement: `${prefix}${quote}${version}${quote}${suffix}`,
+      });
+      match = leafPattern.exec(segment);
+    }
+  }
+
+  if (replacements.length === 0) {
+    throw new Error(
+      `field-path "${fieldPath}" does not resolve to an existing field.`,
+    );
+  }
+
+  if (replacements.length > 1) {
+    throw new Error(
+      `Nix artifact rule field-path "${fieldPath}" matched multiple assignments; refine the path to match exactly one field.`,
+    );
+  }
+
+  const [target] = replacements;
+  if (!target) {
+    throw new Error("Nix replacement target missing.");
+  }
+  return `${content.slice(0, target.start)}${target.replacement}${content.slice(target.end)}`;
+}
+
 function applyArtifactRuleToContent(
   content: string,
   rule: VersionaryArtifactRule,
@@ -243,6 +468,13 @@ function applyArtifactRuleToContent(
   }
   if (rule.type === "toml") {
     return applyTomlRulePreservingFormatting(
+      content,
+      resolveFieldPath(rule),
+      version,
+    );
+  }
+  if (rule.type === "nix") {
+    return applyNixRulePreservingFormatting(
       content,
       resolveFieldPath(rule),
       version,

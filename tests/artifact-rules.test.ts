@@ -61,11 +61,27 @@ afterEach(() => {
 });
 
 describe("artifact rules", () => {
-  it("updates json/toml/yaml and regex targets", () => {
+  it("updates json/toml/yaml/nix and regex targets", () => {
     const cwd = makeTempDir();
     write(cwd, "pkg/meta.json", '{\n  "version": "1.2.2"\n}\n');
     write(cwd, "pkg/config.toml", 'version = "1.2.2"\n');
     write(cwd, "pkg/config.yaml", "version: 1.2.2\n");
+    write(
+      cwd,
+      "pkg/flake.nix",
+      [
+        "{",
+        "  outputs = { self, nixpkgs }: let",
+        "    panache = nixpkgs.rustPlatform.buildRustPackage {",
+        '      version = "1.2.2";',
+        "    };",
+        "  in {",
+        "    packages.default = panache;",
+        "  };",
+        "}",
+        "",
+      ].join("\n"),
+    );
     write(cwd, "pkg/README.md", "Current version: v1.2.2\n");
 
     const config: VersionaryConfig = {
@@ -76,6 +92,11 @@ describe("artifact rules", () => {
             { type: "json", path: "meta.json", "field-path": "$.version" },
             { type: "toml", path: "config.toml", "field-path": "$.version" },
             { type: "yaml", path: "config.yaml", "field-path": "$.version" },
+            {
+              type: "nix",
+              path: "flake.nix",
+              "field-path": "$.panache.version",
+            },
             {
               type: "regex",
               path: "README.md",
@@ -90,12 +111,14 @@ describe("artifact rules", () => {
     expect(updated).toEqual([
       "pkg/config.toml",
       "pkg/config.yaml",
+      "pkg/flake.nix",
       "pkg/meta.json",
       "pkg/README.md",
     ]);
     expect(read(cwd, "pkg/meta.json")).toContain('"version": "1.2.3"');
     expect(read(cwd, "pkg/config.toml")).toContain('version = "1.2.3"');
     expect(read(cwd, "pkg/config.yaml")).toContain("version: 1.2.3");
+    expect(read(cwd, "pkg/flake.nix")).toContain('version = "1.2.3";');
     expect(read(cwd, "pkg/README.md")).toContain("v1.2.3");
   });
 

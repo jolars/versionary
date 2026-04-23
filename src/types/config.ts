@@ -3,7 +3,7 @@ export type VersionaryChangelogFormat = "markdown-changelog" | "r-news";
 export type ReleaseReferenceCommentsMode = "off" | "best-effort" | "strict";
 
 export interface VersionaryArtifactRule {
-  type: "json" | "toml" | "yaml" | "regex";
+  type: "json" | "toml" | "yaml" | "nix" | "regex";
   path: string;
   "field-path"?: string;
   jsonpath?: string;

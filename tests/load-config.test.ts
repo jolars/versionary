@@ -172,6 +172,20 @@ describe("config loading", () => {
     expect(() => loadConfig(dir)).toThrow(
       /regex artifact rules do not support/i,
     );
+
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        packages: {
+          ".": {
+            "extra-files": [{ type: "nix", path: "flake.nix" }],
+          },
+        },
+      }),
+      "utf8",
+    );
+    expect(() => loadConfig(dir)).toThrow(/nix artifact rules require/i);
   });
 
   it("supports deprecated jsonpath alias and rejects mixed aliases", () => {

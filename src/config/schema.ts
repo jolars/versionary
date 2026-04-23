@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const artifactRuleSchema = z
   .object({
-    type: z.enum(["json", "toml", "yaml", "regex"]),
+    type: z.enum(["json", "toml", "yaml", "nix", "regex"]),
     path: z.string().min(1),
     "field-path": z.string().optional(),
     jsonpath: z.string().optional(),
@@ -10,7 +10,10 @@ const artifactRuleSchema = z
   })
   .superRefine((value, ctx) => {
     const needsJsonPath =
-      value.type === "json" || value.type === "toml" || value.type === "yaml";
+      value.type === "json" ||
+      value.type === "toml" ||
+      value.type === "yaml" ||
+      value.type === "nix";
     const hasFieldPath = Boolean(value["field-path"] ?? value.jsonpath);
     if (needsJsonPath && !hasFieldPath) {
       ctx.addIssue({
