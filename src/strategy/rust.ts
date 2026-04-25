@@ -306,23 +306,30 @@ function collectRustTargetManifests(
   const parsedRoot = parseCargoManifest(versionFile, rootRaw);
   const rootIsCrate = parsedRoot.packageTable !== null;
   const rootDir = path.dirname(rootManifestPath);
-  const workspaceMembers = includeWorkspaceMembers
+  const augmentingMembers = includeWorkspaceMembers
     ? resolveWorkspaceMemberManifests(rootDir, parsedRoot.workspaceTable)
     : [];
 
   if (rootIsCrate) {
     const relRoot = normalizeSlashPath(path.relative(cwd, rootManifestPath));
-    return [...new Set([relRoot, ...workspaceMembers])].sort((a, b) =>
+    return [...new Set([relRoot, ...augmentingMembers])].sort((a, b) =>
       a.localeCompare(b),
     );
   }
 
-  if (workspaceMembers.length > 0) {
-    return workspaceMembers;
+  const fallbackMembers = includeWorkspaceMembers
+    ? augmentingMembers
+    : resolveWorkspaceMemberManifests(rootDir, parsedRoot.workspaceTable);
+  if (fallbackMembers.length > 0) {
+    return fallbackMembers;
   }
 
+  const isWorkspaceOnly = parsedRoot.workspaceTable !== null;
+  const detail = isWorkspaceOnly
+    ? `Workspace root "${versionFile}" has no [workspace].members resolving to crate Cargo.toml files.`
+    : `"${versionFile}" has neither [package] nor [workspace].`;
   throw new Error(
-    `Configured rust target "${versionFile}" is not a Rust crate manifest. Expected [package].version or [workspace].members with crate Cargo.toml files.`,
+    `Configured rust target "${versionFile}" is not a Rust crate manifest. ${detail} Either remove the "packages" config so the workspace is auto-discovered, or point a package at a member crate path (e.g. "packages": { "crates/foo": {} }).`,
   );
 }
 

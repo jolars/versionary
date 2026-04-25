@@ -447,6 +447,99 @@ describe("rustVersionStrategy", () => {
     ).toThrow(/is not a Rust crate manifest/i);
   });
 
+  it("falls back to workspace members when packages config targets a workspace-only root", () => {
+    const cwd = makeTempDir("workspace-only-root-package");
+    write(
+      cwd,
+      "Cargo.toml",
+      [
+        "[workspace]",
+        'members = ["crates/core", "crates/util"]',
+        "",
+        "[workspace.package]",
+        'version = "0.4.0"',
+        "",
+      ].join("\n"),
+    );
+    write(
+      cwd,
+      "crates/core/Cargo.toml",
+      ["[package]", 'name = "core-lib"', "version.workspace = true", ""].join(
+        "\n",
+      ),
+    );
+    write(
+      cwd,
+      "crates/util/Cargo.toml",
+      ["[package]", 'name = "util-lib"', "version.workspace = true", ""].join(
+        "\n",
+      ),
+    );
+
+    const config = {
+      version: 1,
+      "release-type": "rust",
+      packages: { ".": {} },
+    } as const;
+
+    expect(rustVersionStrategy.readVersion(cwd, config)).toBe("0.4.0");
+    expect(rustVersionStrategy.validateProject(cwd, config)).toBeNull();
+    expect(rustVersionStrategy.readPackageName?.(cwd, config)).toBe("core-lib");
+
+    const updatedFiles = rustVersionStrategy.writeVersion(cwd, config, "0.5.0");
+    expect(updatedFiles).toEqual(["Cargo.toml"]);
+    expect(read(cwd, "Cargo.toml")).toContain('version = "0.5.0"');
+  });
+
+  it("does not crash on implicit-root resolution when packages omits root", () => {
+    const cwd = makeTempDir("workspace-only-implicit-root");
+    write(
+      cwd,
+      "Cargo.toml",
+      [
+        "[workspace]",
+        'members = ["crates/core"]',
+        "",
+        "[workspace.package]",
+        'version = "0.1.0"',
+        "",
+      ].join("\n"),
+    );
+    write(
+      cwd,
+      "crates/core/Cargo.toml",
+      ["[package]", 'name = "core-lib"', "version.workspace = true", ""].join(
+        "\n",
+      ),
+    );
+
+    const implicitRootConfig = {
+      version: 1,
+      "release-type": "rust",
+      packages: { "crates/core": {} },
+    } as const;
+
+    expect(
+      rustVersionStrategy.validateProject(cwd, implicitRootConfig),
+    ).toBeNull();
+    expect(rustVersionStrategy.readVersion(cwd, implicitRootConfig)).toBe(
+      "0.1.0",
+    );
+  });
+
+  it("throws actionable error when workspace root has no resolvable members", () => {
+    const cwd = makeTempDir("workspace-empty-members");
+    write(cwd, "Cargo.toml", ["[workspace]", "members = []", ""].join("\n"));
+
+    expect(() =>
+      rustVersionStrategy.readVersion(cwd, {
+        version: 1,
+        "release-type": "rust",
+        packages: { ".": {} },
+      }),
+    ).toThrow(/is not a Rust crate manifest/i);
+  });
+
   it("updates internal dependency versions for targeted package releases", () => {
     const cwd = useFixture("workspace-panache-like");
 
