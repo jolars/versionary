@@ -771,12 +771,54 @@ function readPackageNameForManifest(cwd: string, manifest: string): string {
   return readCargoPackageName(cargoTomlRaw, manifest);
 }
 
+function expandWorkspaceOnlyManifests(
+  cwd: string,
+  manifestToVersion: Record<string, string>,
+): Record<string, string> {
+  const expanded: Record<string, string> = {};
+  for (const [manifest, version] of Object.entries(manifestToVersion)) {
+    const manifestPath = path.join(cwd, manifest);
+    if (!fs.existsSync(manifestPath)) {
+      expanded[manifest] = version;
+      continue;
+    }
+    const cargoTomlRaw = fs.readFileSync(manifestPath, "utf8");
+    const parsed = parseCargoManifest(manifest, cargoTomlRaw);
+    if (parsed.packageTable !== null || parsed.workspaceTable === null) {
+      expanded[manifest] = version;
+      continue;
+    }
+    const rootDir = path.dirname(manifestPath);
+    const memberManifests = resolveWorkspaceMemberManifests(
+      rootDir,
+      parsed.workspaceTable,
+    );
+    if (memberManifests.length === 0) {
+      expanded[manifest] = version;
+      continue;
+    }
+    const manifestDir = normalizeSlashPath(path.posix.dirname(manifest));
+    for (const memberManifest of memberManifests) {
+      const joined =
+        manifestDir === "." || manifestDir === ""
+          ? memberManifest
+          : normalizeSlashPath(path.posix.join(manifestDir, memberManifest));
+      expanded[joined] = version;
+    }
+  }
+  return expanded;
+}
+
 export function applyRustWorkspaceDependencyUpdates(
   cwd: string,
   manifestToVersion: Record<string, string>,
 ): string[] {
+  const expandedManifestToVersion = expandWorkspaceOnlyManifests(
+    cwd,
+    manifestToVersion,
+  );
   const versionByDependency = new Map<string, string>();
-  for (const [manifest, version] of Object.entries(manifestToVersion)) {
+  for (const [manifest, version] of Object.entries(expandedManifestToVersion)) {
     if (!version) {
       continue;
     }
@@ -816,8 +858,12 @@ export function detectRustDependencyImpact(
   manifestToVersion: Record<string, string>,
   candidateManifests: string[],
 ): string[] {
+  const expandedManifestToVersion = expandWorkspaceOnlyManifests(
+    cwd,
+    manifestToVersion,
+  );
   const versionByDependency = new Map<string, string>();
-  for (const [manifest, version] of Object.entries(manifestToVersion)) {
+  for (const [manifest, version] of Object.entries(expandedManifestToVersion)) {
     if (!version) {
       continue;
     }

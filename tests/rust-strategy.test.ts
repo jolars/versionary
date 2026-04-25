@@ -527,6 +527,51 @@ describe("rustVersionStrategy", () => {
     );
   });
 
+  it("expands workspace-only root entries when applying dependency updates", () => {
+    const cwd = makeTempDir("workspace-only-root-deps");
+    write(
+      cwd,
+      "Cargo.toml",
+      [
+        "[workspace]",
+        'members = ["crates/core", "crates/util"]',
+        "",
+        "[workspace.package]",
+        'version = "0.1.0"',
+        "",
+      ].join("\n"),
+    );
+    write(
+      cwd,
+      "crates/core/Cargo.toml",
+      ["[package]", 'name = "core-lib"', "version.workspace = true", ""].join(
+        "\n",
+      ),
+    );
+    write(
+      cwd,
+      "crates/util/Cargo.toml",
+      [
+        "[package]",
+        'name = "util-lib"',
+        "version.workspace = true",
+        "",
+        "[dependencies]",
+        'core-lib = { path = "../core", version = "0.1.0" }',
+        "",
+      ].join("\n"),
+    );
+
+    const updatedFiles = applyRustWorkspaceDependencyUpdates(cwd, {
+      "Cargo.toml": "0.2.0",
+    });
+
+    expect(updatedFiles).toEqual(["crates/util/Cargo.toml"]);
+    expect(read(cwd, "crates/util/Cargo.toml")).toContain(
+      'core-lib = { path = "../core", version = "0.2.0" }',
+    );
+  });
+
   it("throws actionable error when workspace root has no resolvable members", () => {
     const cwd = makeTempDir("workspace-empty-members");
     write(cwd, "Cargo.toml", ["[workspace]", "members = []", ""].join("\n"));
