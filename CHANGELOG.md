@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.20.1](https://github.com/jolars/versionary/compare/v0.20.0...v0.20.1) (2026-04-25)
+
+### Bug Fixes
+- improve empty root rust workspace handling ([`4a196fc`](https://github.com/jolars/versionary/commit/4a196fcee5063033e6a399908063c70f3051560c))
 ## [0.20.0](https://github.com/jolars/versionary/compare/v0.19.0...v0.20.0) (2026-04-25)
 
 ### Features
