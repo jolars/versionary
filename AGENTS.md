@@ -1,4 +1,4 @@
-# Copilot Instructions for `versionary`
+# Instructions for `versionary`
 
 ## Product intent (important context)
 
