@@ -14,7 +14,7 @@ inputs:
   versionary-version:
     description: Versionary npm version or dist-tag
     required: false
-    default: 0.19.0
+    default: 0.20.0
   working-directory:
     description: Working directory containing versionary.jsonc/json
     required: false
