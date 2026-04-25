@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.20.0](https://github.com/jolars/versionary/compare/v0.19.0...v0.20.0) (2026-04-25)
+
+### Features
+- handle single-crate rust projects with packages better ([`d2179da`](https://github.com/jolars/versionary/commit/d2179da8d5d4bf1b6253a450f9dcd744303cd633))
+- add general strategy for nix files ([`5abf48d`](https://github.com/jolars/versionary/commit/5abf48d272944a88e773cb77b3701bd6025a9427))
+
+### Bug Fixes
+- **changelog:** show correct dependency bumps ([`b562691`](https://github.com/jolars/versionary/commit/b562691ade90196341d056ee118f84dc86d098e1))
 ## [0.19.0](https://github.com/jolars/versionary/compare/v0.18.0...v0.19.0) (2026-04-22)
 
 ### Features
