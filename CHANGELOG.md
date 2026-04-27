@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.20.2](https://github.com/jolars/versionary/compare/v0.20.1...v0.20.2) (2026-04-27)
+
+### Bug Fixes
+- render `perf` commits under Performance Improvements ([`6fedda4`](https://github.com/jolars/versionary/commit/6fedda4b23a695dc32d7b0696407fe81a83cdd90))
 ## [0.20.1](https://github.com/jolars/versionary/compare/v0.20.0...v0.20.1) (2026-04-25)
 
 ### Bug Fixes
