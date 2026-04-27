@@ -64,6 +64,34 @@ describe("simple changelog rendering", () => {
     );
   });
 
+  it("renders perf commits under Performance Improvements, not Bug Fixes", () => {
+    const prevServer = process.env.GITHUB_SERVER_URL;
+    const prevRepo = process.env.GITHUB_REPOSITORY;
+    let changelog = "";
+    try {
+      process.env.GITHUB_SERVER_URL = "https://github.com";
+      process.env.GITHUB_REPOSITORY = "jolars/versionary";
+      const plan = makePlan();
+      plan.commits.push({
+        ...parseConventionalCommitMessage("perf: speed up parser"),
+        hash: "9999999",
+      });
+      changelog = renderSimpleChangelog(plan);
+    } finally {
+      process.env.GITHUB_SERVER_URL = prevServer;
+      process.env.GITHUB_REPOSITORY = prevRepo;
+    }
+
+    expect(changelog).toContain("### Performance Improvements");
+    const perfIdx = changelog.indexOf("### Performance Improvements");
+    expect(changelog.indexOf("- speed up parser")).toBeGreaterThan(perfIdx);
+    const fixesSection = changelog.slice(
+      changelog.indexOf("### Bug Fixes"),
+      perfIdx,
+    );
+    expect(fixesSection).not.toContain("speed up parser");
+  });
+
   it("includes revert commits in a dedicated section", () => {
     const prevServer = process.env.GITHUB_SERVER_URL;
     const prevRepo = process.env.GITHUB_REPOSITORY;

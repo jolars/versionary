@@ -90,11 +90,13 @@ function groupCommitLines(
   breaking: string[];
   features: string[];
   fixes: string[];
+  performance: string[];
   reverts: string[];
 } {
   const breaking: string[] = [];
   const features: string[] = [];
   const fixes: string[] = [];
+  const performance: string[] = [];
   const reverts: string[] = [];
   const effectiveCommits = applyRevertSuppression(commits);
 
@@ -156,16 +158,16 @@ function groupCommitLines(
       features.push(line);
       continue;
     }
-    if (
-      commitType === "fix" ||
-      commitType === "perf" ||
-      (!isBreaking && type === "patch")
-    ) {
+    if (commitType === "perf") {
+      performance.push(line);
+      continue;
+    }
+    if (commitType === "fix" || (!isBreaking && type === "patch")) {
       fixes.push(line);
     }
   }
 
-  return { breaking, features, fixes, reverts };
+  return { breaking, features, fixes, performance, reverts };
 }
 
 export function renderSimpleReleaseNotes(
@@ -200,6 +202,9 @@ export function renderSimpleReleaseNotes(
   }
   if (grouped.fixes.length > 0) {
     sections.push("### Bug Fixes", ...grouped.fixes, "");
+  }
+  if (grouped.performance.length > 0) {
+    sections.push("### Performance Improvements", ...grouped.performance, "");
   }
   if (grouped.reverts.length > 0) {
     sections.push("### Reverts", ...grouped.reverts, "");
@@ -328,6 +333,9 @@ export function renderPackageChangelogSection(input: {
   if (grouped.fixes.length > 0) {
     sections.push("### Bug Fixes", ...grouped.fixes, "");
   }
+  if (grouped.performance.length > 0) {
+    sections.push("### Performance Improvements", ...grouped.performance, "");
+  }
   if (grouped.reverts.length > 0) {
     sections.push("### Reverts", ...grouped.reverts, "");
   }
@@ -379,6 +387,14 @@ export function renderRNewsReleaseNotes(input: {
   }
   if (grouped.fixes.length > 0) {
     sections.push("## Bug fixes", "", ...grouped.fixes, "");
+  }
+  if (grouped.performance.length > 0) {
+    sections.push(
+      "## Performance improvements",
+      "",
+      ...grouped.performance,
+      "",
+    );
   }
   if (grouped.reverts.length > 0) {
     sections.push("## Reverts", "", ...grouped.reverts, "");
