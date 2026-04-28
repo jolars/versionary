@@ -172,6 +172,77 @@ describe("artifact rules", () => {
     expect(read(cwd, "pkg/meta.json")).toContain('"version": "1.2.3"');
   });
 
+  it("expands wildcard json field-paths to every key in an object", () => {
+    const cwd = makeTempDir();
+    write(
+      cwd,
+      "pkg/package.json",
+      JSON.stringify(
+        {
+          name: "panache-cli",
+          version: "1.2.2",
+          optionalDependencies: {
+            "@panache-cli/linux-x64-gnu": "1.2.2",
+            "@panache-cli/darwin-arm64": "1.2.2",
+            "@panache-cli/win32-x64": "1.2.2",
+          },
+        },
+        null,
+        2,
+      ) + "\n",
+    );
+
+    const config: VersionaryConfig = {
+      version: 1,
+      packages: {
+        pkg: {
+          "extra-files": [
+            { type: "json", path: "package.json", "field-path": "$.version" },
+            {
+              type: "json",
+              path: "package.json",
+              "field-path": "$.optionalDependencies.*",
+            },
+          ],
+        },
+      },
+    };
+
+    applyConfiguredArtifactRules(cwd, config, basePlan());
+    const updated = JSON.parse(read(cwd, "pkg/package.json")) as {
+      version: string;
+      optionalDependencies: Record<string, string>;
+    };
+    expect(updated.version).toBe("1.2.3");
+    expect(updated.optionalDependencies["@panache-cli/linux-x64-gnu"]).toBe(
+      "1.2.3",
+    );
+    expect(updated.optionalDependencies["@panache-cli/darwin-arm64"]).toBe(
+      "1.2.3",
+    );
+    expect(updated.optionalDependencies["@panache-cli/win32-x64"]).toBe(
+      "1.2.3",
+    );
+  });
+
+  it("rejects wildcard field-paths for nix rules", () => {
+    const cwd = makeTempDir();
+    write(cwd, "pkg/flake.nix", '{ version = "1.2.2"; }\n');
+    const config: VersionaryConfig = {
+      version: 1,
+      packages: {
+        pkg: {
+          "extra-files": [
+            { type: "nix", path: "flake.nix", "field-path": "$.*" },
+          ],
+        },
+      },
+    };
+    expect(() => applyConfiguredArtifactRules(cwd, config, basePlan())).toThrow(
+      /do not support wildcard/u,
+    );
+  });
+
   it("throws actionable errors on invalid paths and matches", () => {
     const cwd = makeTempDir();
     write(cwd, "pkg/file.txt", "v1.2.2 v1.2.2");

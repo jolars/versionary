@@ -9,7 +9,8 @@ import type {
 } from "../types/config.js";
 import type { SimplePlan } from "./plan.js";
 
-type FieldPathToken = string | number;
+const WILDCARD = Symbol("wildcard");
+type FieldPathToken = string | number | typeof WILDCARD;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -25,6 +26,11 @@ function parseFieldPath(fieldPath: string): FieldPathToken[] {
   while (index < fieldPath.length) {
     const current = fieldPath[index];
     if (current === ".") {
+      if (fieldPath[index + 1] === "*") {
+        tokens.push(WILDCARD);
+        index += 2;
+        continue;
+      }
       const keyMatch = fieldPath.slice(index + 1).match(/^[A-Za-z0-9_-]+/u);
       if (!keyMatch) {
         throw new Error(
@@ -37,6 +43,11 @@ function parseFieldPath(fieldPath: string): FieldPathToken[] {
     }
     if (current === "[") {
       const rest = fieldPath.slice(index + 1);
+      if (rest.startsWith("*]")) {
+        tokens.push(WILDCARD);
+        index += 3;
+        continue;
+      }
       const numberMatch = rest.match(/^(\d+)\]/u);
       if (numberMatch) {
         tokens.push(Number(numberMatch[1]));
@@ -68,72 +79,125 @@ function parseFieldPath(fieldPath: string): FieldPathToken[] {
   return tokens;
 }
 
+function assignLeaf(
+  container: unknown,
+  key: string | number,
+  fieldPath: string,
+  version: string,
+): void {
+  if (typeof key === "number") {
+    if (!Array.isArray(container) || key >= container.length) {
+      throw new Error(
+        `field-path "${fieldPath}" does not resolve to an existing field.`,
+      );
+    }
+    const current = container[key];
+    if (typeof current !== "string" && typeof current !== "number") {
+      throw new Error(
+        `field-path "${fieldPath}" must point to a string or number field for version updates.`,
+      );
+    }
+    container[key] = version;
+    return;
+  }
+  if (!isRecord(container) || !(key in container)) {
+    throw new Error(
+      `field-path "${fieldPath}" does not resolve to an existing field.`,
+    );
+  }
+  const current = container[key];
+  if (typeof current !== "string" && typeof current !== "number") {
+    throw new Error(
+      `field-path "${fieldPath}" must point to a string or number field for version updates.`,
+    );
+  }
+  container[key] = version;
+}
+
+function applyTokens(
+  cursor: unknown,
+  tokens: FieldPathToken[],
+  position: number,
+  fieldPath: string,
+  version: string,
+): boolean {
+  const token = tokens[position];
+  const isLeaf = position === tokens.length - 1;
+
+  if (token === WILDCARD) {
+    let matched = false;
+    if (isRecord(cursor)) {
+      for (const key of Object.keys(cursor)) {
+        if (isLeaf) {
+          assignLeaf(cursor, key, fieldPath, version);
+          matched = true;
+        } else if (
+          applyTokens(cursor[key], tokens, position + 1, fieldPath, version)
+        ) {
+          matched = true;
+        }
+      }
+      return matched;
+    }
+    if (Array.isArray(cursor)) {
+      for (let i = 0; i < cursor.length; i += 1) {
+        if (isLeaf) {
+          assignLeaf(cursor, i, fieldPath, version);
+          matched = true;
+        } else if (
+          applyTokens(cursor[i], tokens, position + 1, fieldPath, version)
+        ) {
+          matched = true;
+        }
+      }
+      return matched;
+    }
+    throw new Error(
+      `field-path "${fieldPath}" wildcard segment does not target an object or array.`,
+    );
+  }
+
+  if (typeof token === "number") {
+    if (!Array.isArray(cursor) || token >= cursor.length) {
+      throw new Error(
+        `field-path "${fieldPath}" does not resolve to an existing field.`,
+      );
+    }
+    if (isLeaf) {
+      assignLeaf(cursor, token, fieldPath, version);
+      return true;
+    }
+    return applyTokens(cursor[token], tokens, position + 1, fieldPath, version);
+  }
+
+  if (typeof token === "string") {
+    if (!isRecord(cursor) || !(token in cursor)) {
+      throw new Error(
+        `field-path "${fieldPath}" does not resolve to an existing field.`,
+      );
+    }
+    if (isLeaf) {
+      assignLeaf(cursor, token, fieldPath, version);
+      return true;
+    }
+    return applyTokens(cursor[token], tokens, position + 1, fieldPath, version);
+  }
+
+  throw new Error(
+    `field-path "${fieldPath}" does not resolve to an existing field.`,
+  );
+}
+
 function setVersionAtJsonPath(
   document: unknown,
   fieldPath: string,
   version: string,
 ): void {
   const tokens = parseFieldPath(fieldPath);
-  let cursor: unknown = document;
-
-  for (let index = 0; index < tokens.length - 1; index += 1) {
-    const token = tokens[index];
-    if (token === undefined) {
-      throw new Error(
-        `field-path "${fieldPath}" does not resolve to an existing field.`,
-      );
-    }
-    if (typeof token === "number") {
-      if (!Array.isArray(cursor) || token >= cursor.length) {
-        throw new Error(
-          `field-path "${fieldPath}" does not resolve to an existing field.`,
-        );
-      }
-      cursor = cursor[token];
-      continue;
-    }
-    if (!isRecord(cursor) || !(token in cursor)) {
-      throw new Error(
-        `field-path "${fieldPath}" does not resolve to an existing field.`,
-      );
-    }
-    cursor = cursor[token];
+  const matched = applyTokens(document, tokens, 0, fieldPath, version);
+  if (!matched) {
+    throw new Error(`field-path "${fieldPath}" did not match any fields.`);
   }
-
-  const leaf = tokens.at(-1);
-  if (leaf === undefined) {
-    throw new Error(
-      `field-path "${fieldPath}" does not resolve to an existing field.`,
-    );
-  }
-  if (typeof leaf === "number") {
-    if (!Array.isArray(cursor) || leaf >= cursor.length) {
-      throw new Error(
-        `field-path "${fieldPath}" does not resolve to an existing field.`,
-      );
-    }
-    const current = cursor[leaf];
-    if (typeof current !== "string" && typeof current !== "number") {
-      throw new Error(
-        `field-path "${fieldPath}" must point to a string or number field for version updates.`,
-      );
-    }
-    cursor[leaf] = version;
-    return;
-  }
-
-  if (!isRecord(cursor) || !(leaf in cursor)) {
-    throw new Error(
-      `field-path "${fieldPath}" does not resolve to an existing field.`,
-    );
-  }
-  const current = cursor[leaf];
-  if (typeof current !== "string" && typeof current !== "number") {
-    throw new Error(
-      `field-path "${fieldPath}" must point to a string or number field for version updates.`,
-    );
-  }
-  cursor[leaf] = version;
 }
 
 function resolveFieldPath(rule: VersionaryArtifactRule): string {
@@ -314,6 +378,11 @@ function findMatchingBrace(
 
 function resolveNixPathTokens(fieldPath: string): string[] {
   const tokens = parseFieldPath(fieldPath);
+  if (tokens.some((token) => token === WILDCARD)) {
+    throw new Error(
+      `Nix artifact rules do not support wildcard segments in field-path "${fieldPath}".`,
+    );
+  }
   if (tokens.some((token) => typeof token === "number")) {
     throw new Error(
       `Nix artifact rules do not support array index segments in field-path "${fieldPath}".`,
