@@ -172,6 +172,49 @@ describe("artifact rules", () => {
     expect(read(cwd, "pkg/meta.json")).toContain('"version": "1.2.3"');
   });
 
+  it("supports scoped npm package keys in dot notation", () => {
+    const cwd = makeTempDir();
+    write(
+      cwd,
+      "pkg/package.json",
+      JSON.stringify(
+        {
+          name: "panache-pre-commit",
+          version: "1.2.2",
+          dependencies: {
+            "@panache-cli/panache": "1.2.2",
+          },
+        },
+        null,
+        2,
+      ) + "\n",
+    );
+
+    const config: VersionaryConfig = {
+      version: 1,
+      packages: {
+        pkg: {
+          "extra-files": [
+            { type: "json", path: "package.json", "field-path": "$.version" },
+            {
+              type: "json",
+              path: "package.json",
+              "field-path": "$.dependencies.@panache-cli/panache",
+            },
+          ],
+        },
+      },
+    };
+
+    applyConfiguredArtifactRules(cwd, config, basePlan());
+    const updated = JSON.parse(read(cwd, "pkg/package.json")) as {
+      version: string;
+      dependencies: Record<string, string>;
+    };
+    expect(updated.version).toBe("1.2.3");
+    expect(updated.dependencies["@panache-cli/panache"]).toBe("1.2.3");
+  });
+
   it("expands wildcard json field-paths to every key in an object", () => {
     const cwd = makeTempDir();
     write(

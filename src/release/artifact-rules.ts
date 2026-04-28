@@ -31,7 +31,7 @@ function parseFieldPath(fieldPath: string): FieldPathToken[] {
         index += 2;
         continue;
       }
-      const keyMatch = fieldPath.slice(index + 1).match(/^[A-Za-z0-9_-]+/u);
+      const keyMatch = fieldPath.slice(index + 1).match(/^[A-Za-z0-9_@/-]+/u);
       if (!keyMatch) {
         throw new Error(
           `Invalid field-path "${fieldPath}" near index ${index}.`,
