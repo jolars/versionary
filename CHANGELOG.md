@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.21.0](https://github.com/jolars/versionary/compare/v0.20.2...v0.21.0) (2026-04-28)
+
+### Features
+- allow wildcards in json updater ([`e7a65d7`](https://github.com/jolars/versionary/commit/e7a65d796a9cb0df8e68f2ef0b8226f907bc390e))
 ## [0.20.2](https://github.com/jolars/versionary/compare/v0.20.1...v0.20.2) (2026-04-27)
 
 ### Bug Fixes
