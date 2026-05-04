@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.22.0](https://github.com/jolars/versionary/compare/v0.21.0...v0.22.0) (2026-05-04)
+
+### Features
+- add manual release notes through `NEXT_RELEASE.md` ([`d976edd`](https://github.com/jolars/versionary/commit/d976edd29758d1193b47885aa7d3a33badd6b033))
+- allow `@` in json path ([`b7b1eef`](https://github.com/jolars/versionary/commit/b7b1eef804dae062642c03d17cf4d27836537b2e))
 ## [0.21.0](https://github.com/jolars/versionary/compare/v0.20.2...v0.21.0) (2026-04-28)
 
 ### Features
