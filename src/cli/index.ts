@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
+import { loadConfig } from "../config/load-config.js";
 import {
   prependChangelog,
   renderReleasePlanChangelog,
@@ -8,10 +9,12 @@ import {
 import { createReleasePlan } from "../release/plan.js";
 import {
   closeStaleReviewRequestIfExists,
+  consumeNextReleaseFile,
   isReleaseCommitMessage,
   openOrUpdateReviewRequest,
   prepareReleasePr,
   pushReleaseBranch,
+  readNextReleaseHighlights,
 } from "../release/pr.js";
 import { runRelease, runReleaseDetailed } from "../release/release.js";
 import { verifyProject } from "../release/verify-project.js";
@@ -222,7 +225,7 @@ async function main(): Promise<number> {
       pr.previousVersion,
       pr.commits,
       pr.plan,
-      { logger },
+      { logger, highlights: pr.highlights },
     );
     const message = `Prepared release PR branch ${pr.branch}`;
     if (flags.json) {
@@ -261,7 +264,13 @@ async function main(): Promise<number> {
       return 0;
     }
 
-    const section = renderReleasePlanChangelog(plan);
+    const loaded = loadConfig();
+    const highlightsRead = readNextReleaseHighlights(
+      process.cwd(),
+      loaded.config,
+    );
+    const highlights = highlightsRead?.content ?? "";
+    const section = renderReleasePlanChangelog(plan, { highlights });
     if (!write) {
       console.log(section);
       return 0;
@@ -273,6 +282,9 @@ async function main(): Promise<number> {
       section,
       plan.changelogFormat,
     );
+    if (highlightsRead) {
+      consumeNextReleaseFile(process.cwd(), highlightsRead.filePath);
+    }
     console.log(`Updated ${plan.changelogFile}`);
     return 0;
   }
@@ -310,6 +322,7 @@ async function main(): Promise<number> {
       pr.previousVersion,
       pr.commits,
       pr.plan,
+      { highlights: pr.highlights },
     );
     console.log(`Prepared release PR branch ${pr.branch}`);
     console.log(`Title: ${pr.title}`);

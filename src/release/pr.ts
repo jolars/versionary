@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 import { loadConfig } from "../config/load-config.js";
 import type { ParsedCommit } from "../git/commits.js";
@@ -9,7 +10,7 @@ import type {
   StrategyVersionWriteContext,
   VersionStrategy,
 } from "../strategy/types.js";
-import type { VersionaryPackage } from "../types/config.js";
+import type { VersionaryConfig, VersionaryPackage } from "../types/config.js";
 import type { VersionaryPluginContext } from "../types/plugins.js";
 import { applyConfiguredArtifactRules } from "./artifact-rules.js";
 import {
@@ -39,6 +40,47 @@ const SAFE_DIRTY_FILES = new Set([
   "npm-shrinkwrap.json",
 ]);
 const VERSIONARY_RELEASE_TRAILER = "Versionary-Release: true";
+
+export function getNextReleaseFile(config: VersionaryConfig): string {
+  return config["next-release-file"] ?? "NEXT_RELEASE.md";
+}
+
+export function readNextReleaseHighlights(
+  cwd: string,
+  config: VersionaryConfig,
+): { content: string; filePath: string } | null {
+  const filePath = getNextReleaseFile(config);
+  const fullPath = path.join(cwd, filePath);
+  if (!fs.existsSync(fullPath)) {
+    return null;
+  }
+  const content = fs.readFileSync(fullPath, "utf8").trim();
+  return { content, filePath };
+}
+
+function isTrackedFile(cwd: string, filePath: string): boolean {
+  try {
+    execFileSync("git", ["ls-files", "--error-unmatch", "--", filePath], {
+      cwd,
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function consumeNextReleaseFile(
+  cwd: string,
+  filePath: string,
+): { tracked: boolean } {
+  const tracked = isTrackedFile(cwd, filePath);
+  const fullPath = path.join(cwd, filePath);
+  if (fs.existsSync(fullPath)) {
+    fs.rmSync(fullPath);
+  }
+  return { tracked };
+}
 
 function listTrackedDirtyFiles(cwd: string): string[] {
   const status = execFileSync(
@@ -297,6 +339,7 @@ export function prepareReleasePr(
   commits: ParsedCommit[];
   plan: ReleasePlan;
   updated: boolean;
+  highlights: string;
 } {
   const plan = createReleasePlan(cwd);
   const loaded = loadConfig(cwd);
@@ -392,9 +435,18 @@ export function prepareReleasePr(
     plan,
     loaded.config,
   );
-  const section = renderReleasePlanChangelog(plan);
+  const nextReleaseRead = readNextReleaseHighlights(cwd, loaded.config);
+  const highlights = nextReleaseRead?.content ?? "";
+  const section = renderReleasePlanChangelog(plan, { highlights, cwd });
   prependChangelog(cwd, plan.changelogFile, section, plan.changelogFormat);
   const updatedChangelogFiles = [plan.changelogFile];
+  let consumedHighlightsPath: string | null = null;
+  if (nextReleaseRead) {
+    const { tracked } = consumeNextReleaseFile(cwd, nextReleaseRead.filePath);
+    if (tracked) {
+      consumedHighlightsPath = nextReleaseRead.filePath;
+    }
+  }
   for (const packagePlan of plan.packages ?? []) {
     if (!packagePlan.nextVersion || packagePlan.path === ".") {
       continue;
@@ -454,6 +506,7 @@ export function prepareReleasePr(
       ...updatedVersionFiles,
       ...updatedArtifactFiles,
       ...updatedChangelogFiles,
+      ...(consumedHighlightsPath ? [consumedHighlightsPath] : []),
     ]),
   ];
   execFileSync("git", ["add", ...filesToAdd], {
@@ -489,6 +542,7 @@ export function prepareReleasePr(
     commits: plan.commits,
     plan,
     updated,
+    highlights,
   };
 }
 
@@ -498,6 +552,7 @@ export function renderSimpleReviewRequestBody(
   commits: ParsedCommit[],
   plan: SimplePlan | null = null,
   cwd = process.cwd(),
+  highlights = "",
 ): string {
   const rootPackageLabel = path.basename(cwd);
   const formatPackageLabel = (packagePath: string): string =>
@@ -549,6 +604,7 @@ export function renderSimpleReviewRequestBody(
       const rootNotes = renderReleasePlanChangelog(plan, {
         headerLabel: `${formatPackageLabel(".")}: ${rootPackage.nextVersion}`,
         cwd,
+        highlights,
       });
       sections.push(rootNotes);
     }
@@ -589,6 +645,7 @@ export function renderSimpleReviewRequestBody(
       nextVersion: version,
       commits,
       cwd,
+      highlights,
     },
     { includeFooter: true },
   );
@@ -602,7 +659,10 @@ export async function openOrUpdateReviewRequest(
   previousVersion: string,
   commits: ParsedCommit[],
   plan: SimplePlan | null = null,
-  options: { logger?: VersionaryPluginContext["logger"] } = {},
+  options: {
+    logger?: VersionaryPluginContext["logger"];
+    highlights?: string;
+  } = {},
 ): Promise<string> {
   const loaded = loadConfig(cwd);
   const releaseFlow = loaded.config["review-mode"] ?? "pr";
@@ -622,6 +682,7 @@ export async function openOrUpdateReviewRequest(
         commits,
         plan,
         cwd,
+        options.highlights ?? "",
       ),
       labels: ["release"],
     },
@@ -690,7 +751,10 @@ export async function openOrUpdateSimpleReviewRequest(
   previousVersion: string,
   commits: ParsedCommit[],
   plan: SimplePlan | null = null,
-  options: { logger?: VersionaryPluginContext["logger"] } = {},
+  options: {
+    logger?: VersionaryPluginContext["logger"];
+    highlights?: string;
+  } = {},
 ): Promise<string> {
   return openOrUpdateReviewRequest(
     cwd,

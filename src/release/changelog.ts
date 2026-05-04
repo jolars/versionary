@@ -180,6 +180,7 @@ export function renderSimpleReleaseNotes(
       name: string;
       version: string;
     }>;
+    highlights?: string;
   },
   options: {
     includeFooter?: boolean;
@@ -194,6 +195,10 @@ export function renderSimpleReleaseNotes(
   const grouped = groupCommitLines(input.commits, repoUrl);
 
   const sections: string[] = [];
+  const trimmedHighlights = input.highlights?.trim() ?? "";
+  if (trimmedHighlights.length > 0) {
+    sections.push(trimmedHighlights, "");
+  }
   if (grouped.breaking.length > 0) {
     sections.push("### Breaking changes", ...grouped.breaking, "");
   }
@@ -236,6 +241,7 @@ export function renderReleasePlanChangelog(
     headerLabel?: string;
     includeFooter?: boolean;
     cwd?: string;
+    highlights?: string;
   } = {},
 ): string {
   if (!plan.nextVersion) {
@@ -289,6 +295,7 @@ export function renderReleasePlanChangelog(
       nextVersion: plan.nextVersion,
       commits: dedupedCommits,
       cwd: process.cwd(),
+      highlights: options.highlights,
     });
   }
   return renderSimpleReleaseNotes(
@@ -298,6 +305,7 @@ export function renderReleasePlanChangelog(
       commits: dedupedCommits,
       cwd: options.cwd ?? process.cwd(),
       dependencies,
+      highlights: options.highlights,
     },
     {
       includeFooter: options.includeFooter,
@@ -374,11 +382,16 @@ export function renderRNewsReleaseNotes(input: {
   nextVersion: string;
   commits: ParsedCommit[];
   cwd?: string;
+  highlights?: string;
 }): string {
   const repoUrl = resolveRepositoryWebBaseUrl(input.cwd ?? process.cwd());
   const grouped = groupCommitLines(input.commits, repoUrl);
   const normalizedVersion = input.nextVersion.replace(/\.\d+$/u, "");
   const sections: string[] = [];
+  const trimmedHighlights = input.highlights?.trim() ?? "";
+  if (trimmedHighlights.length > 0) {
+    sections.push(trimmedHighlights, "");
+  }
   if (grouped.breaking.length > 0) {
     sections.push("## Breaking changes", "", ...grouped.breaking, "");
   }

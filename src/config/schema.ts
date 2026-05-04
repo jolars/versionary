@@ -78,6 +78,7 @@ export const configSchema = z
       .optional(),
     "release-branch": z.string().optional(),
     "baseline-file": z.string().optional(),
+    "next-release-file": z.string().optional(),
     "bootstrap-sha": z.string().optional(),
     "monorepo-mode": z.enum(["independent", "fixed"]).optional(),
     "bump-minor-pre-major": z.boolean().optional(),

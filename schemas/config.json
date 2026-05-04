@@ -32,6 +32,9 @@
     "baseline-file": {
       "type": "string"
     },
+    "next-release-file": {
+      "type": "string"
+    },
     "bootstrap-sha": {
       "type": "string"
     },
