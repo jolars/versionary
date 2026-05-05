@@ -15,15 +15,15 @@ import type { VersionaryPluginContext } from "../types/plugins.js";
 import { applyConfiguredArtifactRules } from "./artifact-rules.js";
 import {
   prependChangelog,
-  renderPackageChangelogSection,
+  renderReleaseNotesSection,
   renderReleasePlanChangelog,
   renderReviewRequestFooter,
-  renderSimpleReleaseNotes,
 } from "./changelog.js";
 import {
   createReleasePlan,
   getChangelogDefaults,
   type ReleasePlan,
+  resolvePackageDependencies,
   type SimplePlan,
 } from "./plan.js";
 import {
@@ -471,28 +471,13 @@ export function prepareReleasePr(
     if (!packageMetadata) {
       continue;
     }
-    const dependencySourcePaths = packagePlan.dependencySourcePaths ?? [];
-    const packageDependencies = dependencySourcePaths
-      .map((sourcePath) =>
-        plan.packages?.find(
-          (pkg) => pkg.path === sourcePath && pkg.nextVersion,
-        ),
-      )
-      .filter(
-        (sourcePackage): sourcePackage is NonNullable<typeof sourcePackage> =>
-          Boolean(sourcePackage),
-      )
-      .map((pkg) => ({
-        name: pkg.path,
-        version: pkg.nextVersion as string,
-      }));
-    const packageSection = renderPackageChangelogSection({
+    const packageSection = renderReleaseNotesSection({
       currentVersion: packagePlan.currentVersion,
       nextVersion: packagePlan.nextVersion,
       commits: packagePlan.commits,
       tagPrefix: packageMetadata.tagPrefix,
       cwd,
-      dependencies: packageDependencies,
+      dependencies: resolvePackageDependencies(plan, packagePlan.path),
     });
     prependChangelog(
       cwd,
@@ -569,47 +554,32 @@ export function renderSimpleReviewRequestBody(
   plan: SimplePlan | null = null,
   cwd = process.cwd(),
   highlights = "",
+  loadedConfig?: VersionaryConfig,
 ): string {
   const rootPackageLabel = path.basename(cwd);
   const formatPackageLabel = (packagePath: string): string =>
     packagePath === "." ? rootPackageLabel : packagePath;
-  const isDirectBump = (
-    pkg: NonNullable<SimplePlan["packages"]>[number],
-  ): boolean =>
-    pkg.bumpReason === "direct" ||
-    (pkg.bumpReason === undefined &&
-      Boolean(pkg.nextVersion) &&
-      pkg.commits.length > 0);
-  const findPropagatedDependencies = (
-    packagePath: string,
-    packages: NonNullable<SimplePlan["packages"]>,
-  ): Array<{ name: string; version: string }> => {
-    const target = packages.find((pkg) => pkg.path === packagePath);
-    if (!target) {
-      return [];
+  const resolveTagPrefix = (packagePath: string): string | undefined => {
+    if (packagePath === ".") {
+      return undefined;
     }
-
-    const sourcePaths =
-      target.dependencySourcePaths && target.dependencySourcePaths.length > 0
-        ? target.dependencySourcePaths
-        : target.bumpReason === "dependency-propagation"
-          ? packages.filter((pkg) => isDirectBump(pkg)).map((pkg) => pkg.path)
-          : [];
-
-    return sourcePaths
-      .map((sourcePath) => packages.find((pkg) => pkg.path === sourcePath))
-      .filter(
-        (
-          sourcePackage,
-        ): sourcePackage is NonNullable<SimplePlan["packages"]>[number] =>
-          Boolean(sourcePackage),
-      )
-      .map((pkg) => ({
-        name: formatPackageLabel(pkg.path),
-        version: pkg.nextVersion ?? "",
-      }))
-      .filter((dependency) => dependency.version.length > 0)
-      .sort((a, b) => a.name.localeCompare(b.name));
+    if (!loadedConfig) {
+      return normalizeReleaseNameForTag(packagePath);
+    }
+    const packageConfig = loadedConfig.packages?.[packagePath] ?? {};
+    const packageContext = resolvePackageStrategyContext(
+      loadedConfig,
+      packagePath,
+      packageConfig,
+    );
+    const releaseName = resolveReleaseName(
+      cwd,
+      packagePath,
+      packageConfig,
+      packageContext.strategy,
+      packageContext.config,
+    );
+    return normalizeReleaseNameForTag(releaseName);
   };
   if (plan?.packages && plan.packages.length > 1) {
     const sections: string[] = [];
@@ -626,27 +596,17 @@ export function renderSimpleReviewRequestBody(
     }
     const packageSections = plan.packages
       .filter((pkg) => pkg.path !== "." && pkg.nextVersion)
-      .map((pkg) => {
-        const packageLabel = formatPackageLabel(pkg.path);
-        const propagatedDependencies = findPropagatedDependencies(
-          pkg.path,
-          plan.packages ?? [],
-        );
-        const notes = renderSimpleReleaseNotes(
-          {
-            currentVersion: pkg.currentVersion,
-            nextVersion: pkg.nextVersion ?? "",
-            commits: pkg.commits,
-            cwd,
-            dependencies: propagatedDependencies,
-          },
-          {
-            includeFooter: false,
-            headerLabel: `${packageLabel}: ${pkg.nextVersion ?? ""}`,
-          },
-        );
-        return notes;
-      });
+      .map((pkg) =>
+        renderReleaseNotesSection({
+          currentVersion: pkg.currentVersion,
+          nextVersion: pkg.nextVersion ?? "",
+          commits: pkg.commits,
+          cwd,
+          dependencies: resolvePackageDependencies(plan, pkg.path),
+          tagPrefix: resolveTagPrefix(pkg.path),
+          headerLabel: `${formatPackageLabel(pkg.path)}: ${pkg.nextVersion ?? ""}`,
+        }),
+      );
     sections.push(...packageSections);
     const bodySections = sections.join("\n\n");
     if (bodySections.length === 0) {
@@ -655,7 +615,7 @@ export function renderSimpleReviewRequestBody(
     return `${bodySections}\n\n${renderReviewRequestFooter()}`;
   }
 
-  return renderSimpleReleaseNotes(
+  return renderReleaseNotesSection(
     {
       currentVersion: previousVersion,
       nextVersion: version,
@@ -699,6 +659,7 @@ export async function openOrUpdateReviewRequest(
         plan,
         cwd,
         options.highlights ?? "",
+        loaded.config,
       ),
       labels: ["release"],
     },

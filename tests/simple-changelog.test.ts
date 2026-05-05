@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseConventionalCommitMessage } from "../src/git/commits.js";
 import {
-  renderPackageChangelogSection,
+  renderReleaseNotesSection,
   renderSimpleChangelog,
 } from "../src/release/changelog.js";
 import type { SimplePlan } from "../src/release/plan.js";
@@ -190,6 +190,7 @@ describe("simple changelog rendering", () => {
           currentVersion: "0.1.0",
           nextVersion: "0.1.1",
           bumpReason: "dependency-propagation",
+          dependencySourcePaths: ["crates/panache-parser"],
           commits: [],
         },
         {
@@ -372,7 +373,7 @@ describe("simple changelog rendering", () => {
   });
 
   it("renders Dependencies section in per-package changelog when followed source bumped", () => {
-    const section = renderPackageChangelogSection({
+    const section = renderReleaseNotesSection({
       currentVersion: "1.0.0",
       nextVersion: "1.1.0",
       commits: [],
