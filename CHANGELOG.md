@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.23.0](https://github.com/jolars/versionary/compare/v0.22.0...v0.23.0) (2026-05-05)
+
+### Features
+- add `follows` option for declaring package-deps ([`4b4482c`](https://github.com/jolars/versionary/commit/4b4482cd798c56ec2c16c527ad9d583b6d4138f3))
 ## [0.22.0](https://github.com/jolars/versionary/compare/v0.21.0...v0.22.0) (2026-05-04)
 
 ### Features
