@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.23.1](https://github.com/jolars/versionary/compare/v0.23.0...v0.23.1) (2026-05-05)
+
+### Bug Fixes
+- render dependency section in changelog ([`8962560`](https://github.com/jolars/versionary/commit/8962560d78644b4b64560e5f8af1777d5add1e65))
 ## [0.23.0](https://github.com/jolars/versionary/compare/v0.22.0...v0.23.0) (2026-05-05)
 
 ### Features
