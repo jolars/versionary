@@ -1,5 +1,18 @@
 export type ReleaseType = "major" | "minor" | "patch" | null;
 
+export function maxReleaseType(types: ReleaseType[]): ReleaseType {
+  if (types.includes("major")) {
+    return "major";
+  }
+  if (types.includes("minor")) {
+    return "minor";
+  }
+  if (types.includes("patch")) {
+    return "patch";
+  }
+  return null;
+}
+
 export interface ParsedVersion {
   major: number;
   minor: number;

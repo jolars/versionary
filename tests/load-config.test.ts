@@ -313,6 +313,106 @@ describe("config loading", () => {
     expect(loadConfig(dir).config["review-mode"]).toBe("review");
   });
 
+  it("accepts package follows referencing existing packages", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        packages: {
+          ".": {},
+          "editors/code": {
+            "release-type": "node",
+            follows: ["."],
+          },
+        },
+      }),
+      "utf8",
+    );
+    expect(() => loadConfig(dir)).not.toThrow();
+  });
+
+  it("rejects follows pointing at unknown package paths", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        packages: {
+          ".": {},
+          "editors/code": {
+            "release-type": "node",
+            follows: ["packages/missing"],
+          },
+        },
+      }),
+      "utf8",
+    );
+    expect(() => loadConfig(dir)).toThrow(/follows unknown package/i);
+  });
+
+  it("rejects packages following themselves", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        packages: {
+          "editors/code": {
+            "release-type": "node",
+            follows: ["editors/code"],
+          },
+        },
+      }),
+      "utf8",
+    );
+    expect(() => loadConfig(dir)).toThrow(/cannot follow itself/i);
+  });
+
+  it("rejects follows cycles between packages", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        packages: {
+          "packages/a": {
+            "release-type": "node",
+            follows: ["packages/b"],
+          },
+          "packages/b": {
+            "release-type": "node",
+            follows: ["packages/a"],
+          },
+        },
+      }),
+      "utf8",
+    );
+    expect(() => loadConfig(dir)).toThrow(/cycle detected/i);
+  });
+
+  it("rejects follows combined with monorepo-mode fixed", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        "monorepo-mode": "fixed",
+        packages: {
+          ".": {},
+          "editors/code": {
+            "release-type": "node",
+            follows: ["."],
+          },
+        },
+      }),
+      "utf8",
+    );
+    expect(() => loadConfig(dir)).toThrow(
+      /follows.*cannot be combined.*fixed/i,
+    );
+  });
+
   it("rejects removed plugins config key with actionable guidance", () => {
     const dir = makeTempDir();
     fs.writeFileSync(

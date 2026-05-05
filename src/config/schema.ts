@@ -61,6 +61,7 @@ const packageSchema = z
     "changelog-format": z.enum(["markdown-changelog", "r-news"]).optional(),
     "exclude-paths": z.array(z.string()).optional(),
     "extra-files": z.array(artifactRuleSchema).optional(),
+    follows: z.array(z.string().min(1)).optional(),
   })
   .strict();
 
@@ -87,6 +88,91 @@ export const configSchema = z
     "release-type": z.string().optional(),
     packages: z.record(z.string().min(1), packageSchema).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, ctx) => {
+    const packages = value.packages;
+    if (!packages) {
+      return;
+    }
+    const knownPaths = new Set(Object.keys(packages));
+    const followsByPath = new Map<string, string[]>();
+    for (const [packagePath, packageConfig] of Object.entries(packages)) {
+      const follows = packageConfig.follows;
+      if (!follows || follows.length === 0) {
+        continue;
+      }
+      followsByPath.set(packagePath, follows);
+      for (const sourcePath of follows) {
+        if (sourcePath === packagePath) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Package "${packagePath}" cannot follow itself.`,
+            path: ["packages", packagePath, "follows"],
+          });
+          continue;
+        }
+        if (!knownPaths.has(sourcePath)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Package "${packagePath}" follows unknown package "${sourcePath}".`,
+            path: ["packages", packagePath, "follows"],
+          });
+        }
+      }
+    }
+    if (followsByPath.size > 0 && value["monorepo-mode"] === "fixed") {
+      for (const followerPath of followsByPath.keys()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            'Package "follows" cannot be combined with monorepo-mode "fixed" (fixed mode already pins all package versions together).',
+          path: ["packages", followerPath, "follows"],
+        });
+      }
+    }
+    const reportedCycles = new Set<string>();
+    const findCycleFrom = (start: string): string[] | null => {
+      const trail: string[] = [];
+      const visit = (node: string): string[] | null => {
+        const trailIndex = trail.indexOf(node);
+        if (trailIndex !== -1) {
+          return [...trail.slice(trailIndex), node];
+        }
+        const sources = followsByPath.get(node);
+        if (!sources || sources.length === 0) {
+          return null;
+        }
+        trail.push(node);
+        for (const source of sources) {
+          if (!knownPaths.has(source)) {
+            continue;
+          }
+          const cycle = visit(source);
+          if (cycle) {
+            return cycle;
+          }
+        }
+        trail.pop();
+        return null;
+      };
+      return visit(start);
+    };
+    for (const followerPath of followsByPath.keys()) {
+      const cycle = findCycleFrom(followerPath);
+      if (!cycle) {
+        continue;
+      }
+      const key = [...cycle].sort().join("->");
+      if (reportedCycles.has(key)) {
+        continue;
+      }
+      reportedCycles.add(key);
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Package "follows" cycle detected: ${cycle.join(" -> ")}.`,
+        path: ["packages", cycle[0] ?? followerPath, "follows"],
+      });
+    }
+  });
 
 export type ConfigSchema = z.infer<typeof configSchema>;

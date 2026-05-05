@@ -513,6 +513,331 @@ describe("simple monorepo planning", () => {
     expect(zed?.nextVersion).toBeNull();
   });
 
+  it("bumps follower when followed source bumps", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "version.txt", "1.0.0\n");
+    write(
+      cwd,
+      "Cargo.toml",
+      ["[package]", 'name = "root"', 'version = "1.0.0"', ""].join("\n"),
+    );
+    write(
+      cwd,
+      "editors/code/package.json",
+      `${JSON.stringify(
+        { name: "panache-code", version: "1.0.0", private: true },
+        null,
+        2,
+      )}\n`,
+    );
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "release-type": "rust",
+        "version-file": "Cargo.toml",
+        "monorepo-mode": "independent",
+        "allow-stable-major": true,
+        packages: {
+          ".": {
+            "exclude-paths": ["editors"],
+          },
+          "editors/code": {
+            "release-type": "node",
+            "package-name": "panache-code",
+            follows: ["."],
+          },
+        },
+      }),
+    );
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v1.0.0");
+
+    write(cwd, "src/lib.rs", "pub fn root_v2() {}\n");
+    git(cwd, "add", "src/lib.rs");
+    git(cwd, "commit", "-m", "feat: add root feature");
+
+    const plan = createSimplePlan(cwd);
+    const root = plan.packages?.find((pkg) => pkg.path === ".");
+    const editor = plan.packages?.find((pkg) => pkg.path === "editors/code");
+    expect(root?.releaseType).toBe("minor");
+    expect(root?.nextVersion).toBe("1.1.0");
+    expect(editor?.releaseType).toBe("minor");
+    expect(editor?.nextVersion).toBe("1.1.0");
+    expect(editor?.bumpReason).toBe("follows");
+    expect(editor?.dependencySourcePaths).toEqual(["."]);
+    expect(editor?.commits).toHaveLength(0);
+  });
+
+  it("leaves follower untouched when followed source does not bump", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "version.txt", "1.0.0\n");
+    write(
+      cwd,
+      "Cargo.toml",
+      ["[package]", 'name = "root"', 'version = "1.0.0"', ""].join("\n"),
+    );
+    write(
+      cwd,
+      "editors/code/package.json",
+      `${JSON.stringify(
+        { name: "panache-code", version: "1.0.0", private: true },
+        null,
+        2,
+      )}\n`,
+    );
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "release-type": "rust",
+        "version-file": "Cargo.toml",
+        "monorepo-mode": "independent",
+        "allow-stable-major": true,
+        packages: {
+          ".": {
+            "exclude-paths": ["editors"],
+          },
+          "editors/code": {
+            "release-type": "node",
+            "package-name": "panache-code",
+            follows: ["."],
+          },
+        },
+      }),
+    );
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v1.0.0");
+
+    const plan = createSimplePlan(cwd);
+    const root = plan.packages?.find((pkg) => pkg.path === ".");
+    const editor = plan.packages?.find((pkg) => pkg.path === "editors/code");
+    expect(root?.nextVersion).toBeNull();
+    expect(editor?.nextVersion).toBeNull();
+    expect(editor?.bumpReason).toBeUndefined();
+  });
+
+  it("keeps follower's stronger own bump but lists source in dependencies", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "version.txt", "1.0.0\n");
+    write(
+      cwd,
+      "Cargo.toml",
+      ["[package]", 'name = "root"', 'version = "1.0.0"', ""].join("\n"),
+    );
+    write(
+      cwd,
+      "editors/code/package.json",
+      `${JSON.stringify(
+        { name: "panache-code", version: "1.0.0", private: true },
+        null,
+        2,
+      )}\n`,
+    );
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "release-type": "rust",
+        "version-file": "Cargo.toml",
+        "monorepo-mode": "independent",
+        "allow-stable-major": true,
+        packages: {
+          ".": {
+            "exclude-paths": ["editors"],
+          },
+          "editors/code": {
+            "release-type": "node",
+            "package-name": "panache-code",
+            follows: ["."],
+          },
+        },
+      }),
+    );
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v1.0.0");
+
+    write(cwd, "src/lib.rs", "pub fn root_v2() {}\n");
+    git(cwd, "add", "src/lib.rs");
+    git(cwd, "commit", "-m", "fix: small root fix");
+
+    write(cwd, "editors/code/src/index.ts", "export const v = 1;\n");
+    git(cwd, "add", "editors/code/src/index.ts");
+    git(cwd, "commit", "-m", "feat(editors): editor feature");
+
+    const plan = createSimplePlan(cwd);
+    const editor = plan.packages?.find((pkg) => pkg.path === "editors/code");
+    expect(editor?.releaseType).toBe("minor");
+    expect(editor?.nextVersion).toBe("1.1.0");
+    expect(editor?.bumpReason).toBe("direct");
+    expect(editor?.dependencySourcePaths).toEqual(["."]);
+  });
+
+  it("upgrades follower's bump when source bumps stronger than own", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "version.txt", "1.0.0\n");
+    write(
+      cwd,
+      "Cargo.toml",
+      ["[package]", 'name = "root"', 'version = "1.0.0"', ""].join("\n"),
+    );
+    write(
+      cwd,
+      "editors/code/package.json",
+      `${JSON.stringify(
+        { name: "panache-code", version: "1.0.0", private: true },
+        null,
+        2,
+      )}\n`,
+    );
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "release-type": "rust",
+        "version-file": "Cargo.toml",
+        "monorepo-mode": "independent",
+        "allow-stable-major": true,
+        packages: {
+          ".": {
+            "exclude-paths": ["editors"],
+          },
+          "editors/code": {
+            "release-type": "node",
+            "package-name": "panache-code",
+            follows: ["."],
+          },
+        },
+      }),
+    );
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v1.0.0");
+
+    write(cwd, "src/lib.rs", "pub fn root_v2() {}\n");
+    git(cwd, "add", "src/lib.rs");
+    git(cwd, "commit", "-m", "feat!: breaking root change");
+
+    write(cwd, "editors/code/src/index.ts", "export const v = 1;\n");
+    git(cwd, "add", "editors/code/src/index.ts");
+    git(cwd, "commit", "-m", "fix(editors): tiny editor fix");
+
+    const plan = createSimplePlan(cwd);
+    const editor = plan.packages?.find((pkg) => pkg.path === "editors/code");
+    expect(editor?.releaseType).toBe("major");
+    expect(editor?.nextVersion).toBe("2.0.0");
+    expect(editor?.bumpReason).toBe("follows");
+  });
+
+  it("takes the strongest bump across multiple followed sources", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "version.txt", "1.0.0\n");
+    write(
+      cwd,
+      "Cargo.toml",
+      ["[package]", 'name = "root"', 'version = "1.0.0"', ""].join("\n"),
+    );
+    write(
+      cwd,
+      "packages/a/package.json",
+      `${JSON.stringify(
+        { name: "pkg-a", version: "1.0.0", private: true },
+        null,
+        2,
+      )}\n`,
+    );
+    write(
+      cwd,
+      "packages/b/package.json",
+      `${JSON.stringify(
+        { name: "pkg-b", version: "1.0.0", private: true },
+        null,
+        2,
+      )}\n`,
+    );
+    write(
+      cwd,
+      "packages/follower/package.json",
+      `${JSON.stringify(
+        { name: "pkg-follower", version: "1.0.0", private: true },
+        null,
+        2,
+      )}\n`,
+    );
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "release-type": "rust",
+        "version-file": "Cargo.toml",
+        "monorepo-mode": "independent",
+        "allow-stable-major": true,
+        packages: {
+          ".": {
+            "exclude-paths": ["packages"],
+          },
+          "packages/a": { "release-type": "node" },
+          "packages/b": { "release-type": "node" },
+          "packages/follower": {
+            "release-type": "node",
+            follows: ["packages/a", "packages/b"],
+          },
+        },
+      }),
+    );
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v1.0.0");
+
+    write(cwd, "packages/a/index.ts", "export const a = 1;\n");
+    git(cwd, "add", "packages/a/index.ts");
+    git(cwd, "commit", "-m", "fix: patch a");
+
+    write(cwd, "packages/b/index.ts", "export const b = 1;\n");
+    git(cwd, "add", "packages/b/index.ts");
+    git(cwd, "commit", "-m", "feat: minor b feature");
+
+    const plan = createSimplePlan(cwd);
+    const follower = plan.packages?.find(
+      (pkg) => pkg.path === "packages/follower",
+    );
+    expect(follower?.releaseType).toBe("minor");
+    expect(follower?.nextVersion).toBe("1.1.0");
+    expect(follower?.bumpReason).toBe("follows");
+    expect(follower?.dependencySourcePaths).toEqual([
+      "packages/a",
+      "packages/b",
+    ]);
+  });
+
   it("excludes nested paths for root package commit collection", () => {
     const cwd = makeTempDir();
     git(cwd, "init");

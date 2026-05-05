@@ -19,7 +19,7 @@ import type {
   VersionaryConfig,
   VersionaryPackage,
 } from "../types/config.js";
-import { bumpVersion, type ReleaseType } from "./semver.js";
+import { bumpVersion, maxReleaseType, type ReleaseType } from "./semver.js";
 import { readBaselineSha, readReleaseTargets } from "./state.js";
 
 export interface ReleasePlan {
@@ -39,7 +39,7 @@ export interface ReleasePlan {
     releaseType: ReleaseType;
     currentVersion: string;
     nextVersion: string | null;
-    bumpReason?: "direct" | "dependency-propagation";
+    bumpReason?: "direct" | "dependency-propagation" | "follows";
     dependencySourcePaths?: string[];
     commits: ParsedCommit[];
   }>;
@@ -129,7 +129,8 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
     releaseType: ReleaseType;
     currentVersion: string;
     nextVersion: string | null;
-    bumpReason?: "direct";
+    bumpReason?: "direct" | "dependency-propagation" | "follows";
+    dependencySourcePaths?: string[];
     commits: ParsedCommit[];
     parsedCommits: ParsedCommit[];
     resolvedVersionFile: string;
@@ -181,18 +182,21 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
     .filter((pkg) => !pkg.implicitRoot)
     .map((pkg) => buildPackagePlan(pkg));
   const implicitRoot = normalizedPackages.find((pkg) => pkg.implicitRoot);
-  const implicitRootPlan = implicitRoot
-    ? {
-        path: ".",
-        implicitRoot: true,
-        releaseType: null as ReleaseType,
-        currentVersion: explicitPackagePlans[0]?.currentVersion ?? "0.0.0",
-        nextVersion: null,
-        commits: [] as ParsedCommit[],
-        parsedCommits: [] as ParsedCommit[],
-        resolvedVersionFile: versionFile,
-      }
-    : null;
+  const implicitRootPlan: ReturnType<typeof buildPackagePlan> | null =
+    implicitRoot
+      ? {
+          path: ".",
+          implicitRoot: true,
+          releaseType: null,
+          currentVersion: explicitPackagePlans[0]?.currentVersion ?? "0.0.0",
+          nextVersion: null,
+          bumpReason: undefined,
+          dependencySourcePaths: undefined,
+          commits: [],
+          parsedCommits: [],
+          resolvedVersionFile: versionFile,
+        }
+      : null;
   const packagePlans = [
     ...explicitPackagePlans,
     ...(implicitRootPlan ? [implicitRootPlan] : []),
@@ -287,7 +291,7 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
       }
     }
   }
-  const adjustedPackages = packagePlans.map((pkgPlan) => {
+  const propagatedPackages = packagePlans.map((pkgPlan) => {
     const dependencySourcePaths = [
       ...(dependencySourcePathsByPackage.get(pkgPlan.path) ??
         new Set<string>()),
@@ -312,6 +316,56 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
       nextVersion: bumpVersion(current, "patch", { allowStableMajor }),
       bumpReason: "dependency-propagation" as const,
       dependencySourcePaths,
+    };
+  });
+
+  const followsByPath = new Map<string, string[]>();
+  for (const [packagePath, packageConfig] of Object.entries(
+    loaded.config.packages ?? {},
+  )) {
+    const follows = packageConfig.follows ?? [];
+    if (follows.length > 0) {
+      followsByPath.set(packagePath, follows);
+    }
+  }
+  const adjustedPackages = propagatedPackages.map((pkgPlan) => {
+    const followsSources = followsByPath.get(pkgPlan.path) ?? [];
+    const bumpingSources = followsSources
+      .map((sourcePath) =>
+        propagatedPackages.find((pkg) => pkg.path === sourcePath),
+      )
+      .filter((sourcePlan): sourcePlan is (typeof propagatedPackages)[number] =>
+        Boolean(sourcePlan?.nextVersion),
+      );
+    if (bumpingSources.length === 0) {
+      return pkgPlan;
+    }
+    const ownReleaseType = pkgPlan.releaseType;
+    const combinedReleaseType = maxReleaseType([
+      ownReleaseType,
+      ...bumpingSources.map((sourcePlan) => sourcePlan.releaseType),
+    ]);
+    const mergedDependencySourcePaths = [
+      ...new Set([
+        ...(pkgPlan.dependencySourcePaths ?? []),
+        ...bumpingSources.map((sourcePlan) => sourcePlan.path),
+      ]),
+    ].sort((a, b) => a.localeCompare(b));
+    const sourceDrove =
+      combinedReleaseType !== ownReleaseType ||
+      pkgPlan.bumpReason === "dependency-propagation" ||
+      pkgPlan.bumpReason === undefined;
+    const baseVersion =
+      packageCurrentVersionByPath[pkgPlan.path] ?? pkgPlan.currentVersion;
+    const nextVersion = combinedReleaseType
+      ? bumpVersion(baseVersion, combinedReleaseType, { allowStableMajor })
+      : null;
+    return {
+      ...pkgPlan,
+      releaseType: combinedReleaseType,
+      nextVersion,
+      bumpReason: sourceDrove ? ("follows" as const) : pkgPlan.bumpReason,
+      dependencySourcePaths: mergedDependencySourcePaths,
     };
   });
   const visiblePackages = adjustedPackages.filter(

@@ -17,6 +17,7 @@ export interface VersionaryPackage {
   "changelog-format"?: VersionaryChangelogFormat;
   "exclude-paths"?: string[];
   "extra-files"?: VersionaryArtifactRule[];
+  follows?: string[];
 }
 
 export interface VersionaryConfig {

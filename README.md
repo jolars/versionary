@@ -157,6 +157,32 @@ For a quick trial, use:
   - per-package `package-name` can override release identity (labels + tag base)
   - per-package `changelog-file` writes package release notes to
     `<package-path>/<changelog-file>`
+  - per-package `follows` declares an asymmetric version link to one or more
+    source packages: when any source bumps, the follower releases too, with
+    bump = `max(own bump, max(source bumps))`. The follower's changelog gets a
+    `### Dependencies` section listing the followed sources. Use it when one
+    package bundles another's artifact (e.g. an editor extension that ships
+    the CLI binary). Cycles, self-references, unknown source paths, and
+    combining `follows` with `monorepo-mode: "fixed"` are config errors.
+    `follows` is non-transitive: A follows B does not imply A follows what B
+    follows.
+
+```jsonc
+// Editor extension that bundles the root CLI artifact
+{
+  "version": 1,
+  "release-type": "rust",
+  "monorepo-mode": "independent",
+  "packages": {
+    ".": { "exclude-paths": ["editors"] },
+    "editors/code": {
+      "release-type": "node",
+      "package-name": "panache-code",
+      "follows": ["."]
+    }
+  }
+}
+```
 
 Rust strategy examples:
 
