@@ -471,12 +471,28 @@ export function prepareReleasePr(
     if (!packageMetadata) {
       continue;
     }
+    const dependencySourcePaths = packagePlan.dependencySourcePaths ?? [];
+    const packageDependencies = dependencySourcePaths
+      .map((sourcePath) =>
+        plan.packages?.find(
+          (pkg) => pkg.path === sourcePath && pkg.nextVersion,
+        ),
+      )
+      .filter(
+        (sourcePackage): sourcePackage is NonNullable<typeof sourcePackage> =>
+          Boolean(sourcePackage),
+      )
+      .map((pkg) => ({
+        name: pkg.path,
+        version: pkg.nextVersion as string,
+      }));
     const packageSection = renderPackageChangelogSection({
       currentVersion: packagePlan.currentVersion,
       nextVersion: packagePlan.nextVersion,
       commits: packagePlan.commits,
       tagPrefix: packageMetadata.tagPrefix,
       cwd,
+      dependencies: packageDependencies,
     });
     prependChangelog(
       cwd,

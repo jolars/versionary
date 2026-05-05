@@ -325,6 +325,7 @@ export function renderPackageChangelogSection(input: {
   commits: ParsedCommit[];
   tagPrefix: string;
   cwd?: string;
+  dependencies?: Array<{ name: string; version: string }>;
 }): string {
   const repoUrl = resolveRepositoryWebBaseUrl(input.cwd ?? process.cwd());
   const header = repoUrl
@@ -346,6 +347,16 @@ export function renderPackageChangelogSection(input: {
   }
   if (grouped.reverts.length > 0) {
     sections.push("### Reverts", ...grouped.reverts, "");
+  }
+  if (input.dependencies && input.dependencies.length > 0) {
+    sections.push(
+      "### Dependencies",
+      ...input.dependencies.map(
+        (dependency) =>
+          `- updated ${dependency.name} to v${dependency.version}`,
+      ),
+      "",
+    );
   }
   return [header, "", ...sections].join("\n");
 }

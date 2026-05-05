@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { parseConventionalCommitMessage } from "../src/git/commits.js";
-import { renderSimpleChangelog } from "../src/release/changelog.js";
+import {
+  renderPackageChangelogSection,
+  renderSimpleChangelog,
+} from "../src/release/changelog.js";
 import type { SimplePlan } from "../src/release/plan.js";
 
 function makePlan(): SimplePlan {
@@ -366,5 +369,18 @@ describe("simple changelog rendering", () => {
     expect(changelog).toContain(
       "fixes [#188](https://github.com/jolars/panache/issues/188), [#190](https://github.com/jolars/panache/issues/190), and [#201](https://github.com/jolars/panache/issues/201)",
     );
+  });
+
+  it("renders Dependencies section in per-package changelog when followed source bumped", () => {
+    const section = renderPackageChangelogSection({
+      currentVersion: "1.0.0",
+      nextVersion: "1.1.0",
+      commits: [],
+      tagPrefix: "panache-code",
+      dependencies: [{ name: ".", version: "1.1.0" }],
+    });
+
+    expect(section).toContain("### Dependencies");
+    expect(section).toContain("- updated . to v1.1.0");
   });
 });
