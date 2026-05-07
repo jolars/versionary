@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.0](https://github.com/jolars/versionary/compare/v0.25.0...v0.26.0) (2026-05-07)
+
+### Features
+- **python:** allow `__init__.py` in tandem ([`45daa9e`](https://github.com/jolars/versionary/commit/45daa9ea0d6ab8c38e7a48d3709ec942c561b122))
+
+### Bug Fixes
+- don't error on missing Cargo.toml in composite python+rust ([`6c00450`](https://github.com/jolars/versionary/commit/6c004503562b8fe24662aa6e5b0618ff3d71f33a))
 ## [0.25.0](https://github.com/jolars/versionary/compare/v0.24.0...v0.25.0) (2026-05-07)
 
 ### Features
