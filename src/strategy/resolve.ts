@@ -1,6 +1,7 @@
 import type { VersionaryConfig } from "../types/config.js";
 import { latexVersionStrategy } from "./latex.js";
 import { nodeVersionStrategy } from "./node.js";
+import { pythonVersionStrategy } from "./python.js";
 import { rVersionStrategy } from "./r.js";
 import { rustVersionStrategy } from "./rust.js";
 import { simpleVersionStrategy } from "./simple.js";
@@ -12,6 +13,7 @@ const strategyRegistry: Record<string, VersionStrategy> = {
   node: nodeVersionStrategy,
   rust: rustVersionStrategy,
   r: rVersionStrategy,
+  python: pythonVersionStrategy,
 };
 
 export function listKnownReleaseTypes(): string[] {

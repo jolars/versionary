@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { latexVersionStrategy } from "../src/strategy/latex.js";
 import { nodeVersionStrategy } from "../src/strategy/node.js";
+import { pythonVersionStrategy } from "../src/strategy/python.js";
 import { rVersionStrategy } from "../src/strategy/r.js";
 import {
   listKnownReleaseTypes,
@@ -52,6 +53,26 @@ describe("resolveVersionStrategy", () => {
     expect(strategy.name).toBe("node");
   });
 
+  it("routes release-type python to python strategy", () => {
+    const config: VersionaryConfig = {
+      version: 1,
+      "release-type": "python",
+    };
+
+    const strategy = resolveVersionStrategy(config);
+    expect(strategy).toBe(pythonVersionStrategy);
+    expect(strategy.name).toBe("python");
+  });
+
+  it("uses pyproject.toml as python strategy default version file", () => {
+    expect(
+      pythonVersionStrategy.getVersionFile({
+        version: 1,
+        "release-type": "python",
+      }),
+    ).toBe("pyproject.toml");
+  });
+
   it("routes release-type latex to latex strategy", () => {
     const config: VersionaryConfig = {
       version: 1,
@@ -78,6 +99,7 @@ describe("resolveVersionStrategy", () => {
     expect(listKnownReleaseTypes()).toEqual([
       "latex",
       "node",
+      "python",
       "r",
       "rust",
       "simple",

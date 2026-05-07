@@ -49,7 +49,8 @@ release/tag.
 
 Current implementation focuses on:
 
-- strategy-based version updates (`simple`, `node`, `rust`, `r`, `latex`)
+- strategy-based version updates (`simple`, `node`, `rust`, `r`, `latex`,
+  `python`)
 - release planning and changelog generation
 - review-mode vs direct-mode release flow
 - a static internal SCM client (`github` provider today)
@@ -64,7 +65,7 @@ changing release orchestration. A new strategy should implement the
 `VersionStrategy` contract in `src/strategy/types.ts` and be wired in
 `src/strategy/resolve.ts`.
 
-Checklist for new strategies (for example `python`):
+Checklist for new strategies:
 
 - define strategy `name`
 - define `getVersionFile(config)` defaults and config override behavior
@@ -94,6 +95,10 @@ Current ecosystem policy defaults:
   - Node strategy updates root `package-lock.json`/`npm-shrinkwrap.json` when
     present
   - Rust release PR prep refreshes all discovered `Cargo.lock` files
+  - Python strategy refreshes any `poetry.lock`/`uv.lock`/`pdm.lock` at the
+    package root by shelling out to the matching tool (`poetry lock
+    --no-update`, `uv lock`, `pdm lock --update-reuse`); the corresponding
+    binary must be on `PATH`
 - workspace/inheritance:
   - Rust supports `version.workspace = true` via `[workspace.package].version`
   - other strategies should document equivalent inheritance behavior explicitly
@@ -105,7 +110,7 @@ Current runtime code uses a flat `src/` layout with clear module boundaries:
 - `src/cli/`: command router (`run`, `verify`, `plan`, `changelog`, `pr`, `release`)
 - `src/release/`: release orchestration (plan/changelog/PR/release/state/recovery)
 - `src/strategy/`: strategy contracts, resolver, and built-in implementations
-  (`simple`, `node`, `rust`, `r`, `latex`)
+  (`simple`, `node`, `rust`, `r`, `latex`, `python`)
 - `src/scm/`: SCM client contracts and provider implementation(s)
 - `src/config/`: config loading and schema validation
 - `src/git/`: git commit/range and repository URL helpers
@@ -134,6 +139,11 @@ For a quick trial, use:
 - `release-type: "latex"` uses `build.lua` as version source and updates LaTeX
   `\ProvidesPackage{...}[YYYY-MM-DD vX.Y.Z ...]` metadata in `src/**/*.dtx`
   using the release commit date
+- `release-type: "python"` uses `pyproject.toml` (default) and updates
+  `[project].version` and/or `[tool.poetry].version`; point `version-file` at a
+  Python source file (e.g. `src/<pkg>/__init__.py`) to update a `__version__`
+  assignment instead. Refreshes `poetry.lock`/`uv.lock`/`pdm.lock` at the
+  package root if present
 - simple/default strategy keeps `version.txt` as source of truth and does not
   update `package.json`
 - stable release branch (`release-branch`, default: `versionary/release`) so

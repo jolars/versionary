@@ -3,6 +3,7 @@ import path from "node:path";
 import { afterEach, expect } from "vitest";
 import { latexVersionStrategy } from "../src/strategy/latex.js";
 import { nodeVersionStrategy } from "../src/strategy/node.js";
+import { pythonVersionStrategy } from "../src/strategy/python.js";
 import { rVersionStrategy } from "../src/strategy/r.js";
 import { rustVersionStrategy } from "../src/strategy/rust.js";
 import { simpleVersionStrategy } from "../src/strategy/simple.js";
@@ -120,6 +121,36 @@ defineVersionStrategyContractSuite({
       DESCRIPTION: ["Package: demo", "Type: Package", ""].join("\n"),
     },
     malformedReadError: /missing a valid "Version:" field/i,
+  },
+});
+
+defineVersionStrategyContractSuite({
+  name: "python",
+  strategy: pythonVersionStrategy,
+  config: { version: 1, "release-type": "python" },
+  initialVersion: "0.1.0",
+  nextVersion: "0.2.0",
+  fixture: {
+    files: {
+      "pyproject.toml": [
+        "[project]",
+        'name = "demo-py"',
+        'version = "0.1.0"',
+        "",
+      ].join("\n"),
+    },
+    expectedUpdatedFiles: ["pyproject.toml"],
+    malformedFiles: {
+      "pyproject.toml": ["[project]", 'name = "demo-py"', ""].join("\n"),
+    },
+    malformedReadError: /missing a valid "\[project\]\.version"/i,
+    assertAfterWrite: (cwd, nextVersion) => {
+      const pyproject = fs.readFileSync(
+        path.join(cwd, "pyproject.toml"),
+        "utf8",
+      );
+      expect(pyproject).toContain(`version = "${nextVersion}"`);
+    },
   },
 });
 

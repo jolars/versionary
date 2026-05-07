@@ -51,7 +51,7 @@ workflows.
       read/write/missing/malformed behavior.
 - [x] Document ecosystem policy defaults (lockfiles, changelog source,
       workspace/inheritance rules) to guide Python and future strategies.
-- [ ] Add first Python strategy (`release-type: "python"`) with pyproject and
+- [x] Add first Python strategy (`release-type: "python"`) with pyproject and
       fallback support.
 
 ## SCM integrations
