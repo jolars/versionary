@@ -84,6 +84,44 @@ describe("resolveVersionStrategy", () => {
     expect(strategy.name).toBe("latex");
   });
 
+  it("returns a composite strategy when release-type is an array", () => {
+    const config: VersionaryConfig = {
+      version: 1,
+      "release-type": ["python", "rust"],
+    };
+    const strategy = resolveVersionStrategy(config);
+    expect(strategy.name).toBe("python+rust");
+    expect(strategy.getVersionFile(config)).toBe("pyproject.toml");
+  });
+
+  it("returns the inner strategy directly when release-type is a single-element array", () => {
+    const config: VersionaryConfig = {
+      version: 1,
+      "release-type": ["python"],
+    };
+    expect(resolveVersionStrategy(config)).toBe(pythonVersionStrategy);
+  });
+
+  it("throws when release-type array contains an unknown strategy", () => {
+    const config: VersionaryConfig = {
+      version: 1,
+      "release-type": ["python", "not-real"],
+    };
+    expect(() => resolveVersionStrategy(config)).toThrow(
+      /Unsupported release-type "not-real"/u,
+    );
+  });
+
+  it("throws when release-type array contains duplicates", () => {
+    const config: VersionaryConfig = {
+      version: 1,
+      "release-type": ["python", "python"],
+    };
+    expect(() => resolveVersionStrategy(config)).toThrow(
+      /duplicate entry "python"/u,
+    );
+  });
+
   it("throws for unknown release type", () => {
     const config: VersionaryConfig = {
       version: 1,

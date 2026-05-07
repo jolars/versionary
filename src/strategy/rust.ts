@@ -1091,6 +1091,12 @@ export const rustVersionStrategy: VersionStrategy = {
   ): string[] {
     const manifestToVersion: Record<string, string> = {};
     for (const write of writes) {
+      if (
+        path.posix.basename(normalizeSlashPath(write.versionFile)) !==
+        "Cargo.toml"
+      ) {
+        continue;
+      }
       manifestToVersion[write.versionFile] = write.version;
     }
     return [

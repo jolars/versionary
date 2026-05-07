@@ -1,4 +1,5 @@
 import type { VersionaryConfig } from "../types/config.js";
+import { compositeVersionStrategy } from "./composite.js";
 import { latexVersionStrategy } from "./latex.js";
 import { nodeVersionStrategy } from "./node.js";
 import { pythonVersionStrategy } from "./python.js";
@@ -20,16 +21,39 @@ export function listKnownReleaseTypes(): string[] {
   return Object.keys(strategyRegistry).sort((a, b) => a.localeCompare(b));
 }
 
+function resolveSingle(name: string): VersionStrategy {
+  const strategy = strategyRegistry[name];
+  if (!strategy) {
+    const known = listKnownReleaseTypes().join(", ");
+    throw new Error(
+      `Unsupported release-type "${name}". Supported release types: ${known}.`,
+    );
+  }
+  return strategy;
+}
+
 export function resolveVersionStrategy(
   config: VersionaryConfig,
 ): VersionStrategy {
   const releaseType = config["release-type"] ?? "simple";
-  const strategy = strategyRegistry[releaseType];
-  if (!strategy) {
-    const known = listKnownReleaseTypes().join(", ");
-    throw new Error(
-      `Unsupported release-type "${releaseType}". Supported release types: ${known}.`,
-    );
+  if (Array.isArray(releaseType)) {
+    if (releaseType.length === 0) {
+      throw new Error(
+        "release-type array must contain at least one strategy name.",
+      );
+    }
+    const seen = new Set<string>();
+    const strategies: VersionStrategy[] = [];
+    for (const name of releaseType) {
+      if (seen.has(name)) {
+        throw new Error(
+          `release-type array contains duplicate entry "${name}".`,
+        );
+      }
+      seen.add(name);
+      strategies.push(resolveSingle(name));
+    }
+    return compositeVersionStrategy(strategies);
   }
-  return strategy;
+  return resolveSingle(releaseType);
 }

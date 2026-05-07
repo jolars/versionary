@@ -55,7 +55,9 @@ const artifactRuleSchema = z
 
 const packageSchema = z
   .object({
-    "release-type": z.string().optional(),
+    "release-type": z
+      .union([z.string().min(1), z.array(z.string().min(1)).min(1)])
+      .optional(),
     "package-name": z.string().optional(),
     "changelog-file": z.string().optional(),
     "changelog-format": z.enum(["markdown-changelog", "r-news"]).optional(),
@@ -85,7 +87,9 @@ export const configSchema = z
     "bump-minor-pre-major": z.boolean().optional(),
     "allow-stable-major": z.boolean().optional(),
     "include-commit-authors": z.boolean().optional(),
-    "release-type": z.string().optional(),
+    "release-type": z
+      .union([z.string().min(1), z.array(z.string().min(1)).min(1)])
+      .optional(),
     packages: z.record(z.string().min(1), packageSchema).optional(),
   })
   .strict()

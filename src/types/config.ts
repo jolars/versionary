@@ -11,7 +11,7 @@ export interface VersionaryArtifactRule {
 }
 
 export interface VersionaryPackage {
-  "release-type"?: string;
+  "release-type"?: string | string[];
   "package-name"?: string;
   "changelog-file"?: string;
   "changelog-format"?: VersionaryChangelogFormat;
@@ -36,7 +36,7 @@ export interface VersionaryConfig {
   "bump-minor-pre-major"?: boolean;
   "allow-stable-major"?: boolean;
   "include-commit-authors"?: boolean;
-  "release-type"?: string;
+  "release-type"?: string | string[];
   packages?: Record<string, VersionaryPackage>;
 }
 

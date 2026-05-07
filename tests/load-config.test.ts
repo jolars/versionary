@@ -270,6 +270,48 @@ describe("config loading", () => {
     );
   });
 
+  it("accepts an array release-type and resolves to a composite strategy", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        "release-type": ["python", "rust"],
+      }),
+      "utf8",
+    );
+    const loaded = loadConfig(dir);
+    expect(loaded.config["release-type"]).toEqual(["python", "rust"]);
+  });
+
+  it("rejects an empty release-type array", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        "release-type": [],
+      }),
+      "utf8",
+    );
+    expect(() => loadConfig(dir)).toThrow();
+  });
+
+  it("rejects an unknown entry in a release-type array", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        "release-type": ["python", "not-real"],
+      }),
+      "utf8",
+    );
+    expect(() => loadConfig(dir)).toThrow(
+      /Unsupported release-type "not-real"/u,
+    );
+  });
+
   it("rejects unknown package release-type", () => {
     const dir = makeTempDir();
     fs.writeFileSync(

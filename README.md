@@ -144,6 +144,17 @@ For a quick trial, use:
   Python source file (e.g. `src/<pkg>/__init__.py`) to update a `__version__`
   assignment instead. Refreshes `poetry.lock`/`uv.lock`/`pdm.lock` at the
   package root if present
+- `release-type` can also be an array of strategy names to compose them across
+  manifests, e.g. `["python", "rust"]` for a PyO3/maturin project: the first
+  entry is the *primary* (drives `readVersion`, `readPackageName`, and consumes
+  any `version-file` override); each *secondary* writes its default manifest
+  with the same target version. Common combinations:
+  - `["python", "rust"]` — PyO3/maturin (`pyproject.toml` + `Cargo.toml` +
+    `Cargo.lock`)
+  - `["node", "rust"]` — napi-rs (`package.json` + `Cargo.toml` + `Cargo.lock`)
+  - `["r", "rust"]` — R packages with embedded Rust crates (note: nested
+    `src/rust/Cargo.toml` layouts are not supported by the array form yet —
+    use a single strategy until per-strategy `version-file` overrides land)
 - simple/default strategy keeps `version.txt` as source of truth and does not
   update `package.json`
 - stable release branch (`release-branch`, default: `versionary/release`) so
