@@ -179,6 +179,141 @@ describe("pythonVersionStrategy pyproject.toml mode", () => {
       pythonVersionStrategy.writeVersion(cwd, baseConfig, "1.0.0"),
     ).toThrow(/Versionary requires pyproject\.toml to exist/u);
   });
+
+  it("also updates src/<pkg>/__init__.py when it has __version__", () => {
+    const cwd = makeTempDir("write-init-src");
+    writeFile(
+      cwd,
+      "pyproject.toml",
+      ["[project]", 'name = "demo"', 'version = "1.0.0"', ""].join("\n"),
+    );
+    writeFile(
+      cwd,
+      "src/demo/__init__.py",
+      ['"""docstring"""', '__version__ = "1.0.0"', ""].join("\n"),
+    );
+    const updated = pythonVersionStrategy.writeVersion(
+      cwd,
+      baseConfig,
+      "1.2.0",
+    );
+    expect(updated).toContain("pyproject.toml");
+    expect(updated).toContain(path.join("src", "demo", "__init__.py"));
+    expect(readFile(cwd, "pyproject.toml")).toContain('version = "1.2.0"');
+    expect(readFile(cwd, "src/demo/__init__.py")).toContain(
+      '__version__ = "1.2.0"',
+    );
+  });
+
+  it("also updates flat-layout <pkg>/__init__.py when it has __version__", () => {
+    const cwd = makeTempDir("write-init-flat");
+    writeFile(
+      cwd,
+      "pyproject.toml",
+      ["[project]", 'name = "demo"', 'version = "1.0.0"', ""].join("\n"),
+    );
+    writeFile(cwd, "demo/__init__.py", '__version__ = "1.0.0"\n');
+    const updated = pythonVersionStrategy.writeVersion(
+      cwd,
+      baseConfig,
+      "1.3.0",
+    );
+    expect(updated).toContain(path.join("demo", "__init__.py"));
+    expect(readFile(cwd, "demo/__init__.py")).toContain(
+      '__version__ = "1.3.0"',
+    );
+  });
+
+  it("normalizes hyphenated package names to underscored module dirs", () => {
+    const cwd = makeTempDir("write-init-hyphen");
+    writeFile(
+      cwd,
+      "pyproject.toml",
+      ["[project]", 'name = "my-cool-pkg"', 'version = "1.0.0"', ""].join("\n"),
+    );
+    writeFile(cwd, "src/my_cool_pkg/__init__.py", '__version__ = "1.0.0"\n');
+    const updated = pythonVersionStrategy.writeVersion(
+      cwd,
+      baseConfig,
+      "1.1.0",
+    );
+    expect(updated).toContain(path.join("src", "my_cool_pkg", "__init__.py"));
+    expect(readFile(cwd, "src/my_cool_pkg/__init__.py")).toContain(
+      '__version__ = "1.1.0"',
+    );
+  });
+
+  it("skips __init__.py when it has no __version__ assignment", () => {
+    const cwd = makeTempDir("write-init-no-version");
+    writeFile(
+      cwd,
+      "pyproject.toml",
+      ["[project]", 'name = "demo"', 'version = "1.0.0"', ""].join("\n"),
+    );
+    writeFile(cwd, "src/demo/__init__.py", '"""no version here"""\n');
+    const updated = pythonVersionStrategy.writeVersion(
+      cwd,
+      baseConfig,
+      "1.1.0",
+    );
+    expect(updated).toEqual(["pyproject.toml"]);
+    expect(readFile(cwd, "src/demo/__init__.py")).toBe(
+      '"""no version here"""\n',
+    );
+  });
+
+  it("skips auxiliary update when pyproject has no package name", () => {
+    const cwd = makeTempDir("write-init-no-name");
+    writeFile(
+      cwd,
+      "pyproject.toml",
+      ["[project]", 'version = "1.0.0"', ""].join("\n"),
+    );
+    writeFile(cwd, "src/demo/__init__.py", '__version__ = "1.0.0"\n');
+    const updated = pythonVersionStrategy.writeVersion(
+      cwd,
+      baseConfig,
+      "1.1.0",
+    );
+    expect(updated).toEqual(["pyproject.toml"]);
+    expect(readFile(cwd, "src/demo/__init__.py")).toBe(
+      '__version__ = "1.0.0"\n',
+    );
+  });
+
+  it("skips auxiliary update when no __init__.py exists at conventional paths", () => {
+    const cwd = makeTempDir("write-init-absent");
+    writeFile(
+      cwd,
+      "pyproject.toml",
+      ["[project]", 'name = "demo"', 'version = "1.0.0"', ""].join("\n"),
+    );
+    const updated = pythonVersionStrategy.writeVersion(
+      cwd,
+      baseConfig,
+      "1.1.0",
+    );
+    expect(updated).toEqual(["pyproject.toml"]);
+  });
+
+  it("falls back to [tool.poetry].name when [project].name is absent", () => {
+    const cwd = makeTempDir("write-init-poetry-name");
+    writeFile(
+      cwd,
+      "pyproject.toml",
+      ["[tool.poetry]", 'name = "demo"', 'version = "1.0.0"', ""].join("\n"),
+    );
+    writeFile(cwd, "src/demo/__init__.py", '__version__ = "1.0.0"\n');
+    const updated = pythonVersionStrategy.writeVersion(
+      cwd,
+      baseConfig,
+      "1.1.0",
+    );
+    expect(updated).toContain(path.join("src", "demo", "__init__.py"));
+    expect(readFile(cwd, "src/demo/__init__.py")).toContain(
+      '__version__ = "1.1.0"',
+    );
+  });
 });
 
 describe("pythonVersionStrategy source-file mode", () => {
@@ -244,6 +379,52 @@ describe("pythonVersionStrategy source-file mode", () => {
     expect(() => pythonVersionStrategy.readVersion(cwd, sourceConfig)).toThrow(
       /missing a valid `__version__/u,
     );
+  });
+
+  it("also updates pyproject.toml when it has a static [project].version", () => {
+    const cwd = makeTempDir("source-aux-project");
+    writeFile(cwd, "src/demo/__init__.py", '__version__ = "1.0.0"\n');
+    writeFile(
+      cwd,
+      "pyproject.toml",
+      ["[project]", 'name = "demo"', 'version = "1.0.0"', ""].join("\n"),
+    );
+    const updated = pythonVersionStrategy.writeVersion(
+      cwd,
+      sourceConfig,
+      "1.1.0",
+    );
+    expect(updated).toContain("src/demo/__init__.py");
+    expect(updated).toContain("pyproject.toml");
+    expect(readFile(cwd, "pyproject.toml")).toContain('version = "1.1.0"');
+  });
+
+  it("skips pyproject.toml when no static version field is present", () => {
+    const cwd = makeTempDir("source-aux-dynamic");
+    writeFile(cwd, "src/demo/__init__.py", '__version__ = "1.0.0"\n');
+    writeFile(
+      cwd,
+      "pyproject.toml",
+      ["[project]", 'name = "demo"', 'dynamic = ["version"]', ""].join("\n"),
+    );
+    const updated = pythonVersionStrategy.writeVersion(
+      cwd,
+      sourceConfig,
+      "1.1.0",
+    );
+    expect(updated).toEqual(["src/demo/__init__.py"]);
+    expect(readFile(cwd, "pyproject.toml")).not.toContain('version = "1.1.0"');
+  });
+
+  it("skips auxiliary update when pyproject.toml is absent", () => {
+    const cwd = makeTempDir("source-aux-absent");
+    writeFile(cwd, "src/demo/__init__.py", '__version__ = "1.0.0"\n');
+    const updated = pythonVersionStrategy.writeVersion(
+      cwd,
+      sourceConfig,
+      "1.1.0",
+    );
+    expect(updated).toEqual(["src/demo/__init__.py"]);
   });
 });
 

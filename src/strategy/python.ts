@@ -252,6 +252,82 @@ function readPyProjectFromCwd(
   return { parsed: parsePyProject(content, "pyproject.toml"), rawPath: target };
 }
 
+function packageNameFromParsed(parsed: ParsedPyProject): string | null {
+  const projectName = parsed.project?.name;
+  if (typeof projectName === "string" && projectName.trim().length > 0) {
+    return projectName.trim();
+  }
+  const poetryName = parsed.toolPoetry?.name;
+  if (typeof poetryName === "string" && poetryName.trim().length > 0) {
+    return poetryName.trim();
+  }
+  return null;
+}
+
+function normalizeModuleName(name: string): string {
+  return name.replace(/[-.]+/gu, "_");
+}
+
+function findAuxiliaryInitPy(
+  cwd: string,
+  parsed: ParsedPyProject,
+): string | null {
+  const packageName = packageNameFromParsed(parsed);
+  if (!packageName) {
+    return null;
+  }
+  const moduleName = normalizeModuleName(packageName);
+  const candidates = [
+    path.join("src", moduleName, "__init__.py"),
+    path.join(moduleName, "__init__.py"),
+  ];
+  for (const candidate of candidates) {
+    const absolute = path.join(cwd, candidate);
+    if (!fs.existsSync(absolute)) {
+      continue;
+    }
+    const content = fs.readFileSync(absolute, "utf8");
+    if (SOURCE_FILE_VERSION_PATTERN.test(content)) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+function tryUpdateInitPyVersion(
+  cwd: string,
+  relativePath: string,
+  version: string,
+): boolean {
+  const absolute = path.join(cwd, relativePath);
+  const existing = fs.readFileSync(absolute, "utf8");
+  if (!SOURCE_FILE_VERSION_PATTERN.test(existing)) {
+    return false;
+  }
+  const updated = writeSourceFileVersion(existing, relativePath, version);
+  fs.writeFileSync(absolute, updated, "utf8");
+  return true;
+}
+
+function tryUpdatePyProjectVersion(
+  cwd: string,
+  version: string,
+): string | null {
+  const target = path.join(cwd, "pyproject.toml");
+  if (!fs.existsSync(target)) {
+    return null;
+  }
+  const content = fs.readFileSync(target, "utf8");
+  const parsed = parsePyProject(content, "pyproject.toml");
+  const { projectVersion, poetryVersion } = lookupPyProjectVersions(parsed);
+  if (!projectVersion && !poetryVersion) {
+    return null;
+  }
+  const updated = writePyProjectVersion(content, "pyproject.toml", version);
+  fs.writeFileSync(target, updated, "utf8");
+  return "pyproject.toml";
+}
+
 export const pythonVersionStrategy: VersionStrategy = {
   name: "python",
   getVersionFile(config: VersionaryConfig): string {
@@ -297,11 +373,26 @@ export const pythonVersionStrategy: VersionStrategy = {
       throw new Error(`Versionary requires ${versionFile} to exist.`);
     }
     const existing = fs.readFileSync(versionPath, "utf8");
-    const updated = isSourceFileMode(versionFile)
-      ? writeSourceFileVersion(existing, versionFile, version)
-      : writePyProjectVersion(existing, versionFile, version);
-    fs.writeFileSync(versionPath, updated, "utf8");
-    return [versionFile];
+    const written: string[] = [];
+    if (isSourceFileMode(versionFile)) {
+      const updated = writeSourceFileVersion(existing, versionFile, version);
+      fs.writeFileSync(versionPath, updated, "utf8");
+      written.push(versionFile);
+      const auxiliary = tryUpdatePyProjectVersion(cwd, version);
+      if (auxiliary && auxiliary !== versionFile) {
+        written.push(auxiliary);
+      }
+    } else {
+      const updated = writePyProjectVersion(existing, versionFile, version);
+      fs.writeFileSync(versionPath, updated, "utf8");
+      written.push(versionFile);
+      const parsed = parsePyProject(updated, versionFile);
+      const initPy = findAuxiliaryInitPy(cwd, parsed);
+      if (initPy && tryUpdateInitPyVersion(cwd, initPy, version)) {
+        written.push(initPy);
+      }
+    }
+    return written;
   },
   readPackageName(cwd: string, _config: VersionaryConfig): string | null {
     const found = readPyProjectFromCwd(cwd);
