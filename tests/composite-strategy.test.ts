@@ -265,6 +265,34 @@ describe("compositeVersionStrategy", () => {
     ).toEqual(["pkg-a", "pkg-b", "shared"]);
   });
 
+  it("rust.propagateDependentPatchImpacts ignores non-Cargo.toml versionFiles when used as a secondary", () => {
+    const cwd = makeTempDir("rust-secondary-propagate");
+    writeFile(
+      cwd,
+      "pyproject.toml",
+      ["[project]", 'name = "demo"', 'version = "1.0.0"', ""].join("\n"),
+    );
+    writeFile(
+      cwd,
+      "Cargo.toml",
+      ["[package]", 'name = "demo"', 'version = "1.0.0"', ""].join("\n"),
+    );
+    const packages: StrategyPackagePlanContext[] = [
+      {
+        packagePath: ".",
+        versionFile: "pyproject.toml",
+        currentVersion: "1.0.0",
+        nextVersion: "1.1.0",
+      },
+    ];
+    expect(() =>
+      rustVersionStrategy.propagateDependentPatchImpacts?.(cwd, packages),
+    ).not.toThrow();
+    expect(
+      rustVersionStrategy.propagateDependentPatchImpacts?.(cwd, packages),
+    ).toEqual([]);
+  });
+
   it("does not expose optional hooks the underlying strategies do not implement", () => {
     const composite = compositeVersionStrategy([
       simpleVersionStrategy,

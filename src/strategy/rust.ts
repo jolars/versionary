@@ -1068,6 +1068,9 @@ export const rustVersionStrategy: VersionStrategy = {
     const manifestToPath = new Map<string, string>();
     for (const pkg of packages) {
       const manifest = pkg.versionFile;
+      if (path.posix.basename(normalizeSlashPath(manifest)) !== "Cargo.toml") {
+        continue;
+      }
       candidateManifests.push(manifest);
       manifestToPath.set(manifest, pkg.packagePath);
       if (pkg.nextVersion) {
