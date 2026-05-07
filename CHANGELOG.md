@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.25.0](https://github.com/jolars/versionary/compare/v0.24.0...v0.25.0) (2026-05-07)
+
+### Features
+- add composite composable strategies ([`4263eb2`](https://github.com/jolars/versionary/commit/4263eb2a73644d366066ac2ca2e4653a9091f4f2))
 ## [0.24.0](https://github.com/jolars/versionary/compare/v0.23.1...v0.24.0) (2026-05-07)
 
 ### Features
