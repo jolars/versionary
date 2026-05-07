@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.24.0](https://github.com/jolars/versionary/compare/v0.23.1...v0.24.0) (2026-05-07)
+
+### Features
+- add a python strategy ([`c4c5d78`](https://github.com/jolars/versionary/commit/c4c5d78524acd5fd330dfb6d3d5a724dc2b28cea))
 ## [0.23.1](https://github.com/jolars/versionary/compare/v0.23.0...v0.23.1) (2026-05-05)
 
 ### Bug Fixes
