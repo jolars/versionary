@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.26.1](https://github.com/jolars/versionary/compare/v0.26.0...v0.26.1) (2026-05-09)
+
+### Bug Fixes
+- don't use `.` for root package name ([`c070b60`](https://github.com/jolars/versionary/commit/c070b601f16e803560954715e2ad3651731b6b4e))
 ## [0.26.0](https://github.com/jolars/versionary/compare/v0.25.0...v0.26.0) (2026-05-07)
 
 ### Features
