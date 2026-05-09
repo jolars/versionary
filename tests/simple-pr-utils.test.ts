@@ -274,6 +274,72 @@ describe("review request body rendering", () => {
     expect(body).not.toContain("- updated panache to v2.38.0");
   });
 
+  it("renders root package name instead of '.' in follower dependency entries", () => {
+    const prevServer = process.env.GITHUB_SERVER_URL;
+    const prevRepo = process.env.GITHUB_REPOSITORY;
+    let body = "";
+    try {
+      process.env.GITHUB_SERVER_URL = "https://github.com";
+      process.env.GITHUB_REPOSITORY = "jolars/panache";
+      body = renderSimpleReviewRequestBody(
+        "2.45.0",
+        "2.44.0",
+        [],
+        {
+          mode: "simple",
+          releaseType: "minor",
+          currentVersion: "2.44.0",
+          nextVersion: "2.45.0",
+          packageName: "panache",
+          versionFile: "version.txt",
+          changelogFile: "CHANGELOG.md",
+          changelogFormat: "markdown-changelog",
+          releaseBranchPrefix: "versionary/release",
+          baselineSha: null,
+          commits: [
+            {
+              ...parseConventionalCommitMessage("feat: add root feature"),
+              hash: "aaaaaaa1",
+            },
+          ],
+          packages: [
+            {
+              path: ".",
+              releaseType: "minor",
+              currentVersion: "2.44.0",
+              nextVersion: "2.45.0",
+              bumpReason: "direct",
+              commits: [
+                {
+                  ...parseConventionalCommitMessage("feat: add root feature"),
+                  hash: "aaaaaaa1",
+                },
+              ],
+            },
+            {
+              path: "editors/code",
+              releaseType: "minor",
+              currentVersion: "2.44.0",
+              nextVersion: "2.45.0",
+              bumpReason: "follows",
+              dependencySourcePaths: ["."],
+              commits: [],
+            },
+          ],
+        },
+        "/tmp/panache",
+      );
+    } finally {
+      process.env.GITHUB_SERVER_URL = prevServer;
+      process.env.GITHUB_REPOSITORY = prevRepo;
+    }
+
+    expect(body).toContain("## [editors/code: 2.45.0]");
+    expect(body).toContain("### Dependencies");
+    expect(body).toContain("- updated panache to v2.45.0");
+    expect(body).not.toContain("- updated . to v2.45.0");
+  });
+
   it("uses repository directory name for root package section labels", () => {
     const prevServer = process.env.GITHUB_SERVER_URL;
     const prevRepo = process.env.GITHUB_REPOSITORY;

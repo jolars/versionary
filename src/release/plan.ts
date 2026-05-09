@@ -476,6 +476,9 @@ export function resolvePackageDependencies(
       (sourcePackage): sourcePackage is NonNullable<typeof sourcePackage> =>
         Boolean(sourcePackage),
     )
-    .map((pkg) => ({ name: pkg.path, version: pkg.nextVersion as string }))
+    .map((pkg) => ({
+      name: pkg.path === "." ? plan.packageName : pkg.path,
+      version: pkg.nextVersion as string,
+    }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
