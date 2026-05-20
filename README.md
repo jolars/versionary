@@ -172,6 +172,9 @@ For a quick trial, use:
   - `off` (default): do not post comments
   - `best-effort`: post comments and continue on API/permission failures
   - `strict`: fail release if comment posting fails
+  - comments are authored by the account that owns the configured token; see
+    [Comment and commit author identity](#comment-and-commit-author-identity)
+    to post them under a bot identity
 - optional monorepo planning with `monorepo-mode` and `packages`:
   - `independent` computes package bumps per path
   - `fixed` computes one shared bump across configured package paths
@@ -415,6 +418,26 @@ steps:
 the composite action. This means release-branch force-pushes are attributed to
 that token and can trigger downstream workflows when using a PAT/App token.
 (`github-token` remains as a deprecated alias for backward compatibility.)
+
+#### Comment and commit author identity
+
+Versionary never overrides the author of release-reference comments or release
+commits — GitHub attributes both to the account that owns the token you provide.
+There is no GitHub API to set a custom author independent of the token, so the
+displayed identity always follows the token's account:
+
+- the workflow's default `GITHUB_TOKEN` posts as `github-actions[bot]` — the
+  common case, and what most `semantic-release` setups show
+- a **personal access token (PAT)** posts under your own user
+- a **dedicated bot user account** posts under that account (for example
+  `semantic-release`'s own `@semantic-release-bot`): create a separate GitHub
+  user, generate a PAT for it, and store it as the release token
+- a **GitHub App installation token** (e.g. minted with
+  `actions/create-github-app-token`) posts under `<app-name>[bot]`
+
+All work without any Versionary config change; only the token's owning account
+differs. The release-reference comment body itself is signed by Versionary
+regardless of which account posts it.
 
 Action outputs:
 
