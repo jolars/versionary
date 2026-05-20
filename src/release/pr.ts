@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { loadConfig } from "../config/load-config.js";
 import type { ParsedCommit } from "../git/commits.js";
+import { ensureGitIdentity } from "../git/identity.js";
 import { getScmClient } from "../scm/client.js";
 import { resolvePackageStrategyContext } from "../strategy/package-context.js";
 import type {
@@ -514,6 +515,7 @@ export function prepareReleasePr(
     cwd,
     stdio: ["ignore", "pipe", "ignore"],
   });
+  ensureGitIdentity(cwd);
   execFileSync(
     "git",
     ["commit", "-m", title, "-m", VERSIONARY_RELEASE_TRAILER],

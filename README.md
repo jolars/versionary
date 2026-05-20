@@ -421,23 +421,30 @@ that token and can trigger downstream workflows when using a PAT/App token.
 
 #### Comment and commit author identity
 
-Versionary never overrides the author of release-reference comments or release
-commits — GitHub attributes both to the account that owns the token you provide.
-There is no GitHub API to set a custom author independent of the token, so the
-displayed identity always follows the token's account:
+Two distinct identities are at play; keep them apart.
 
-- the workflow's default `GITHUB_TOKEN` posts as `github-actions[bot]` — the
+**Release-reference comments, the GitHub Release, and the tag/branch push** are
+attributed to the account that owns the token you provide. There is no GitHub
+API to set a custom author independent of the token, so this identity always
+follows the token's account:
+
+- the workflow's default `GITHUB_TOKEN` acts as `github-actions[bot]` — the
   common case, and what most `semantic-release` setups show
-- a **personal access token (PAT)** posts under your own user
-- a **dedicated bot user account** posts under that account (for example
+- a **personal access token (PAT)** acts as your own user
+- a **dedicated bot user account** acts as that account (for example
   `semantic-release`'s own `@semantic-release-bot`): create a separate GitHub
   user, generate a PAT for it, and store it as the release token
 - a **GitHub App installation token** (e.g. minted with
-  `actions/create-github-app-token`) posts under `<app-name>[bot]`
+  `actions/create-github-app-token`) acts as `<app-name>[bot]`
 
-All work without any Versionary config change; only the token's owning account
-differs. The release-reference comment body itself is signed by Versionary
-regardless of which account posts it.
+**The release commit's committer** comes from git's `user.name`/`user.email`,
+not the token. When neither is configured (e.g. a bare CI runner), Versionary
+defaults it to `github-actions[bot]`, so no `git config` step is needed in your
+workflow; an existing identity (local, global, or the one the GitHub Action
+wrapper sets) is left untouched.
+
+The release-reference comment body itself is signed by Versionary regardless of
+which account posts it.
 
 Action outputs:
 
