@@ -374,10 +374,7 @@ export function createGitHubPlugin(): VersionaryPluginRuntime & ScmClient {
       const commented: number[] = [];
       const mode = input.mode ?? "best-effort";
       for (const reference of uniqueReferences) {
-        const body =
-          reference >= 1_000_000_000
-            ? `This pull request is included in [version ${input.version}](${input.releaseUrl}).`
-            : `This issue has been resolved in [version ${input.version}](${input.releaseUrl}).`;
+        const body = `This is included in [version ${input.version}](${input.releaseUrl}). :tada:\n\nReleased by [Versionary](https://github.com/jolars/versionary).`;
         try {
           await octokit.issues.createComment({
             owner: repo.owner,

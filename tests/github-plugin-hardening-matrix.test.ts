@@ -516,13 +516,13 @@ describe("github plugin hardening matrix", () => {
     expect(mockApi.issues.createComment).toHaveBeenCalledWith(
       expect.objectContaining({
         issue_number: 171,
-        body: "This issue has been resolved in [version 2.23.0](https://github.com/owner/repo/releases/tag/v2.23.0).",
+        body: "This is included in [version 2.23.0](https://github.com/owner/repo/releases/tag/v2.23.0). :tada:\n\nReleased by [Versionary](https://github.com/jolars/versionary).",
       }),
     );
     expect(mockApi.issues.createComment).toHaveBeenCalledWith(
       expect.objectContaining({
         issue_number: 2000000001,
-        body: "This pull request is included in [version 2.23.0](https://github.com/owner/repo/releases/tag/v2.23.0).",
+        body: "This is included in [version 2.23.0](https://github.com/owner/repo/releases/tag/v2.23.0). :tada:\n\nReleased by [Versionary](https://github.com/jolars/versionary).",
       }),
     );
   });
