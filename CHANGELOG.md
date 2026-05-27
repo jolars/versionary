@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.27.0](https://github.com/jolars/versionary/compare/v0.26.1...v0.27.0) (2026-05-27)
+
+### Features
+- use github actions as default committer ([`cd1aa88`](https://github.com/jolars/versionary/commit/cd1aa8896c28cc3fb3cc58ec6216c40986cc5ec7))
+- add versionary link in issue/pr comment ([`55a935f`](https://github.com/jolars/versionary/commit/55a935fadb4f561298769ebf970b43f5dc2f6f92))
 ## [0.26.1](https://github.com/jolars/versionary/compare/v0.26.0...v0.26.1) (2026-05-09)
 
 ### Bug Fixes
