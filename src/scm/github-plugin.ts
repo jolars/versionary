@@ -8,6 +8,7 @@ import type {
   ScmReleaseMetadataInput,
   ScmReleaseMetadataResult,
   ScmReleaseReferenceCommentsInput,
+  ScmReleaseReferenceCommentsRelease,
   ScmReleaseReferenceCommentsResult,
   ScmReviewRequestInput,
   ScmReviewRequestResult,
@@ -138,6 +139,52 @@ async function ensureLabels(
       `Failed applying labels to pull request #${pullNumber}: [${repoRef(repo)} base=${branchContext.baseBranch} head=${branchContext.headBranch}] ${message}`,
     );
   }
+}
+
+function groupReleasesByIssue(
+  releases: ScmReleaseReferenceCommentsRelease[],
+): Map<number, ScmReleaseReferenceCommentsRelease[]> {
+  const byIssue = new Map<number, ScmReleaseReferenceCommentsRelease[]>();
+  for (const release of releases) {
+    for (const reference of release.references) {
+      const bucket = byIssue.get(reference) ?? [];
+      if (!bucket.some((entry) => entry.tag === release.tag)) {
+        bucket.push(release);
+      }
+      byIssue.set(reference, bucket);
+    }
+  }
+  for (const bucket of byIssue.values()) {
+    bucket.sort((a, b) => a.tag.localeCompare(b.tag));
+  }
+  return new Map([...byIssue.entries()].sort(([a], [b]) => a - b));
+}
+
+function renderReleaseLink(
+  release: ScmReleaseReferenceCommentsRelease,
+): string {
+  if (release.name) {
+    return `[\`${release.name}\` v${release.version}](${release.releaseUrl})`;
+  }
+  return `[version ${release.version}](${release.releaseUrl})`;
+}
+
+function renderReleaseReferenceCommentBody(
+  releases: ScmReleaseReferenceCommentsRelease[],
+): string {
+  const footer =
+    "Released by [Versionary](https://github.com/jolars/versionary).";
+  if (releases.length === 1) {
+    const release = releases[0];
+    if (!release) {
+      throw new Error("Expected at least one release for comment body.");
+    }
+    return `This is included in ${renderReleaseLink(release)}. :tada:\n\n${footer}`;
+  }
+  const bullets = releases
+    .map((release) => `- ${renderReleaseLink(release)}`)
+    .join("\n");
+  return `This is included in the following releases: :tada:\n\n${bullets}\n\n${footer}`;
 }
 
 export function createGitHubPlugin(): VersionaryPluginRuntime & ScmClient {
@@ -368,13 +415,11 @@ export function createGitHubPlugin(): VersionaryPluginRuntime & ScmClient {
     ): Promise<ScmReleaseReferenceCommentsResult> {
       const repo = getRepoFromEnv();
       const octokit = new Octokit({ auth: getGitHubToken() });
-      const uniqueReferences = [...new Set(input.references)].sort(
-        (a, b) => a - b,
-      );
-      const commented: number[] = [];
       const mode = input.mode ?? "best-effort";
-      for (const reference of uniqueReferences) {
-        const body = `This is included in [version ${input.version}](${input.releaseUrl}). :tada:\n\nReleased by [Versionary](https://github.com/jolars/versionary).`;
+      const releasesByIssue = groupReleasesByIssue(input.releases);
+      const commented: number[] = [];
+      for (const [reference, releases] of releasesByIssue) {
+        const body = renderReleaseReferenceCommentBody(releases);
         try {
           await octokit.issues.createComment({
             owner: repo.owner,

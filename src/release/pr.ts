@@ -5,7 +5,10 @@ import { loadConfig } from "../config/load-config.js";
 import type { ParsedCommit } from "../git/commits.js";
 import { ensureGitIdentity } from "../git/identity.js";
 import { getScmClient } from "../scm/client.js";
-import { resolvePackageStrategyContext } from "../strategy/package-context.js";
+import {
+  resolvePackageStrategyContext,
+  resolveReleaseName,
+} from "../strategy/package-context.js";
 import type {
   StrategyFinalizeContext,
   StrategyVersionWriteContext,
@@ -206,21 +209,6 @@ function fetchRemoteReleaseBranch(cwd: string, branch: string): string {
     },
   );
   return remoteRef;
-}
-
-function resolveReleaseName(
-  cwd: string,
-  packagePath: string,
-  packageConfig: VersionaryPackage,
-  strategy: VersionStrategy,
-  strategyConfig: ReturnType<typeof loadConfig>["config"],
-): string {
-  const configuredName = packageConfig["package-name"]?.trim();
-  if (configuredName) {
-    return configuredName;
-  }
-
-  return strategy.readPackageName?.(cwd, strategyConfig) ?? packagePath;
 }
 
 function buildReleaseTargets(

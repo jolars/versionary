@@ -3,6 +3,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { loadConfig } from "../config/load-config.js";
 import { getScmClient } from "../scm/client.js";
+import {
+  resolvePackageStrategyContext,
+  resolveReleaseName,
+} from "../strategy/package-context.js";
 import { resolveVersionStrategy } from "../strategy/resolve.js";
 import type { VersionaryConfig } from "../types/config.js";
 import type { VersionaryPluginContext } from "../types/plugins.js";
@@ -13,6 +17,30 @@ import { readReleaseTargets } from "./state.js";
 
 function escapeRegExp(input: string): string {
   return input.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+}
+
+export function resolveTargetPackageName(
+  cwd: string,
+  config: VersionaryConfig,
+  targetPath: string,
+): string | undefined {
+  const packageConfig = config.packages?.[targetPath] ?? {};
+  const { strategy, config: strategyConfig } = resolvePackageStrategyContext(
+    config,
+    targetPath,
+    packageConfig,
+  );
+  const resolved = resolveReleaseName(
+    cwd,
+    targetPath,
+    packageConfig,
+    strategy,
+    strategyConfig,
+  );
+  if (!resolved || resolved === targetPath) {
+    return undefined;
+  }
+  return resolved;
 }
 
 export function extractReleaseNotes(
@@ -254,7 +282,13 @@ export async function runReleaseDetailed(
     tagStatus: "created" | "exists";
     metadataStatus: "created" | "exists";
   }[] = [];
-  const referencesByTag = new Map<string, number[]>();
+  const referenceReleases: {
+    name?: string;
+    tag: string;
+    version: string;
+    releaseUrl: string;
+    references: number[];
+  }[] = [];
   for (const target of targets) {
     const targetChangelogFile = resolveTargetChangelogFile(
       loaded.config,
@@ -271,10 +305,7 @@ export async function runReleaseDetailed(
       targetChangelogFile,
       targetChangelogFormat,
     );
-    referencesByTag.set(
-      target.tag,
-      extractClosingReferencesFromNotes(releaseNotes),
-    );
+    const references = extractClosingReferencesFromNotes(releaseNotes);
     const outcome = await executeIdempotentReleaseTarget(
       cwd,
       {
@@ -299,25 +330,32 @@ export async function runReleaseDetailed(
       tagStatus: outcome.tagStatus,
       metadataStatus: outcome.metadataStatus,
     });
-    const references = referencesByTag.get(outcome.tag) ?? [];
-    if (
-      references.length > 0 &&
-      referenceCommentMode !== "off" &&
-      scmClient.createReleaseReferenceComments
-    ) {
-      await scmClient.createReleaseReferenceComments(
-        {
-          version: target.version,
-          releaseUrl: outcome.url,
-          references,
-          mode: referenceCommentMode,
-        },
-        {
-          cwd,
-          logger: options.logger,
-        },
-      );
+    if (references.length > 0) {
+      referenceReleases.push({
+        name: resolveTargetPackageName(cwd, loaded.config, target.path),
+        tag: outcome.tag,
+        version: target.version,
+        releaseUrl: outcome.url,
+        references,
+      });
     }
+  }
+
+  if (
+    referenceReleases.length > 0 &&
+    referenceCommentMode !== "off" &&
+    scmClient.createReleaseReferenceComments
+  ) {
+    await scmClient.createReleaseReferenceComments(
+      {
+        releases: referenceReleases,
+        mode: referenceCommentMode,
+      },
+      {
+        cwd,
+        logger: options.logger,
+      },
+    );
   }
 
   const published = releases.map(

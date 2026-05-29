@@ -3,6 +3,21 @@ import type { VersionaryConfig, VersionaryPackage } from "../types/config.js";
 import { resolveVersionStrategy } from "./resolve.js";
 import type { VersionStrategy } from "./types.js";
 
+export function resolveReleaseName(
+  cwd: string,
+  packagePath: string,
+  packageConfig: VersionaryPackage,
+  strategy: VersionStrategy,
+  strategyConfig: VersionaryConfig,
+): string {
+  const configuredName = packageConfig["package-name"]?.trim();
+  if (configuredName) {
+    return configuredName;
+  }
+
+  return strategy.readPackageName?.(cwd, strategyConfig) ?? packagePath;
+}
+
 function withVersionFile(
   config: VersionaryConfig,
   versionFile: string,

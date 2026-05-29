@@ -504,9 +504,14 @@ describe("github plugin hardening matrix", () => {
 
     const result = await plugin.createReleaseReferenceComments?.(
       {
-        version: "2.23.0",
-        releaseUrl: "https://github.com/owner/repo/releases/tag/v2.23.0",
-        references: [171, 2000000001],
+        releases: [
+          {
+            tag: "v2.23.0",
+            version: "2.23.0",
+            releaseUrl: "https://github.com/owner/repo/releases/tag/v2.23.0",
+            references: [171, 2000000001],
+          },
+        ],
         mode: "best-effort",
       },
       { cwd: process.cwd() },
@@ -527,6 +532,112 @@ describe("github plugin hardening matrix", () => {
     );
   });
 
+  it("merges releases from multiple packages into one comment per issue", async () => {
+    process.env.GITHUB_REPOSITORY = "owner/repo";
+    process.env.GITHUB_TOKEN = "token";
+    const plugin = createGitHubPlugin();
+
+    const result = await plugin.createReleaseReferenceComments?.(
+      {
+        releases: [
+          {
+            tag: "v2.49.0",
+            version: "2.49.0",
+            releaseUrl: "https://github.com/owner/repo/releases/tag/v2.49.0",
+            references: [308],
+          },
+          {
+            name: "panache-formatter",
+            tag: "panache-formatter-v0.7.0",
+            version: "0.7.0",
+            releaseUrl:
+              "https://github.com/owner/repo/releases/tag/panache-formatter-v0.7.0",
+            references: [308],
+          },
+          {
+            name: "panache-parser",
+            tag: "panache-parser-v0.12.0",
+            version: "0.12.0",
+            releaseUrl:
+              "https://github.com/owner/repo/releases/tag/panache-parser-v0.12.0",
+            references: [308],
+          },
+        ],
+        mode: "best-effort",
+      },
+      { cwd: process.cwd() },
+    );
+
+    expect(result).toEqual({ commented: [308] });
+    expect(mockApi.issues.createComment).toHaveBeenCalledTimes(1);
+    expect(mockApi.issues.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        issue_number: 308,
+        body: [
+          "This is included in the following releases: :tada:",
+          "",
+          "- [`panache-formatter` v0.7.0](https://github.com/owner/repo/releases/tag/panache-formatter-v0.7.0)",
+          "- [`panache-parser` v0.12.0](https://github.com/owner/repo/releases/tag/panache-parser-v0.12.0)",
+          "- [version 2.49.0](https://github.com/owner/repo/releases/tag/v2.49.0)",
+          "",
+          "Released by [Versionary](https://github.com/jolars/versionary).",
+        ].join("\n"),
+      }),
+    );
+  });
+
+  it("only mentions releases that closed each issue", async () => {
+    process.env.GITHUB_REPOSITORY = "owner/repo";
+    process.env.GITHUB_TOKEN = "token";
+    const plugin = createGitHubPlugin();
+
+    await plugin.createReleaseReferenceComments?.(
+      {
+        releases: [
+          {
+            name: "alpha",
+            tag: "alpha-v1.0.0",
+            version: "1.0.0",
+            releaseUrl:
+              "https://github.com/owner/repo/releases/tag/alpha-v1.0.0",
+            references: [10, 11],
+          },
+          {
+            name: "beta",
+            tag: "beta-v2.0.0",
+            version: "2.0.0",
+            releaseUrl:
+              "https://github.com/owner/repo/releases/tag/beta-v2.0.0",
+            references: [11],
+          },
+        ],
+        mode: "best-effort",
+      },
+      { cwd: process.cwd() },
+    );
+
+    expect(mockApi.issues.createComment).toHaveBeenCalledTimes(2);
+    expect(mockApi.issues.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        issue_number: 10,
+        body: "This is included in [`alpha` v1.0.0](https://github.com/owner/repo/releases/tag/alpha-v1.0.0). :tada:\n\nReleased by [Versionary](https://github.com/jolars/versionary).",
+      }),
+    );
+    expect(mockApi.issues.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        issue_number: 11,
+        body: [
+          "This is included in the following releases: :tada:",
+          "",
+          "- [`alpha` v1.0.0](https://github.com/owner/repo/releases/tag/alpha-v1.0.0)",
+          "- [`beta` v2.0.0](https://github.com/owner/repo/releases/tag/beta-v2.0.0)",
+          "",
+          "Released by [Versionary](https://github.com/jolars/versionary).",
+        ].join("\n"),
+      }),
+    );
+  });
+
   it("treats release reference comment failures as best effort", async () => {
     process.env.GITHUB_REPOSITORY = "owner/repo";
     process.env.GITHUB_TOKEN = "token";
@@ -539,9 +650,14 @@ describe("github plugin hardening matrix", () => {
     await expect(
       plugin.createReleaseReferenceComments?.(
         {
-          version: "2.23.0",
-          releaseUrl: "https://github.com/owner/repo/releases/tag/v2.23.0",
-          references: [171, 172],
+          releases: [
+            {
+              tag: "v2.23.0",
+              version: "2.23.0",
+              releaseUrl: "https://github.com/owner/repo/releases/tag/v2.23.0",
+              references: [171, 172],
+            },
+          ],
           mode: "best-effort",
         },
         { cwd: process.cwd(), logger: console },
@@ -564,9 +680,14 @@ describe("github plugin hardening matrix", () => {
     await expect(
       plugin.createReleaseReferenceComments?.(
         {
-          version: "2.23.0",
-          releaseUrl: "https://github.com/owner/repo/releases/tag/v2.23.0",
-          references: [171],
+          releases: [
+            {
+              tag: "v2.23.0",
+              version: "2.23.0",
+              releaseUrl: "https://github.com/owner/repo/releases/tag/v2.23.0",
+              references: [171],
+            },
+          ],
           mode: "strict",
         },
         { cwd: process.cwd(), logger: console },

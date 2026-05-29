@@ -49,10 +49,16 @@ export interface ScmReleaseMetadataResult {
   status?: "created" | "exists";
 }
 
-export interface ScmReleaseReferenceCommentsInput {
+export interface ScmReleaseReferenceCommentsRelease {
+  name?: string;
+  tag: string;
   version: string;
   releaseUrl: string;
   references: number[];
+}
+
+export interface ScmReleaseReferenceCommentsInput {
+  releases: ScmReleaseReferenceCommentsRelease[];
   mode?: "best-effort" | "strict";
 }
 
