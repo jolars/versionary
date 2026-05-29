@@ -77,6 +77,27 @@ describe("release PR package version update", () => {
     expect(output.startsWith("# Changelog\n\n")).toBe(true);
   });
 
+  it("keeps a blank line between prepended markdown sections", () => {
+    const cwd = makeTempDir();
+    write(
+      cwd,
+      "CHANGELOG.md",
+      "# Changelog\n\n## [2.40.0] (2026-04-26)\n\n### Features\n\n- prior feature\n",
+    );
+
+    prependChangelog(
+      cwd,
+      "CHANGELOG.md",
+      "## [2.41.0] (2026-04-27)\n\n### Dependencies\n\n- updated crates/panache-parser to v0.6.0",
+      "markdown-changelog",
+    );
+
+    const output = fs.readFileSync(path.join(cwd, "CHANGELOG.md"), "utf8");
+    expect(output).toContain(
+      "- updated crates/panache-parser to v0.6.0\n\n## [2.40.0]",
+    );
+  });
+
   it("updates root package.json version for node release-type", () => {
     const cwd = makeTempDir();
     git(cwd, "init");

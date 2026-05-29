@@ -308,7 +308,7 @@ export function prependChangelog(
   }
   const heading = "# Changelog\n\n";
   const bodyWithoutHeading = existing.replace(/^# Changelog\s*/u, "");
-  const separator = existing.length > 0 ? "\n" : "";
+  const separator = bodyWithoutHeading.length > 0 ? "\n\n" : "";
   const next = `${`${heading}${section}${separator}${bodyWithoutHeading}`.trimEnd()}\n`;
   fs.writeFileSync(changelogPath, next, "utf8");
 }
