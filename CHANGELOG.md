@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.28.0](https://github.com/jolars/versionary/compare/v0.27.0...v0.28.0) (2026-06-01)
+
+### Features
+- merge issue and pr comments into one ([`dd2351e`](https://github.com/jolars/versionary/commit/dd2351e21c79cb527a1a85cb140c7fc3ea89d917))
+
+### Bug Fixes
+- enforce blankline before section headings in changelog ([`cf32fdd`](https://github.com/jolars/versionary/commit/cf32fddddecded2f3c0431b967e29b4b5be1f357))
+
 ## [0.27.0](https://github.com/jolars/versionary/compare/v0.26.1...v0.27.0) (2026-05-27)
 
 ### Features
