@@ -42,6 +42,14 @@ workflows.
 - [x] Support clearer per-package release previews in `plan` output.
 - [x] Handle complex inter-package dependency scenarios (e.g. A depends on B,
       both updated in same release). Like Cargo workspaces.
+- [ ] Normalize package paths in config and `.versionary-manifest.json` so
+      equivalent forms (e.g. `"ts/"` vs `"ts"`) don't accumulate stale
+      release-target entries when a config key is renamed
+      (`src/release/state.ts:133-143`).
+- [ ] Update `pnpm-lock.yaml` (and `yarn.lock`) on node version bumps. Shell
+      out to `pnpm install --lockfile-only --ignore-scripts`, mirroring the
+      cargo precedent in `src/strategy/rust.ts:146-167`. Otherwise pnpm
+      workspaces fail `pnpm install --frozen-lockfile` after a release.
 
 ## Strategy expansion readiness
 
