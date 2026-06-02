@@ -1,6 +1,6 @@
-const { execFileSync } = require("node:child_process");
-const { randomUUID } = require("node:crypto");
-const { appendFileSync } = require("node:fs");
+import { execFileSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { appendFileSync } from "node:fs";
 
 function getInput(name) {
   const canonical = `INPUT_${name.replace(/ /g, "_").toUpperCase()}`;
