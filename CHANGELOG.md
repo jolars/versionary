@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.28.1](https://github.com/jolars/versionary/compare/v0.28.0...v0.28.1) (2026-06-02)
+
+### Bug Fixes
+- switch to smol-toml to handle the TOML 1.0 spec ([`89de8c2`](https://github.com/jolars/versionary/commit/89de8c24b2fc5e30a750fb525c41a730bc005a91))
+
 ## [0.28.0](https://github.com/jolars/versionary/compare/v0.27.0...v0.28.0) (2026-06-01)
 
 ### Features
