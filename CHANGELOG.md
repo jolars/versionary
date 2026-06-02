@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.28.2](https://github.com/jolars/versionary/compare/v0.28.1...v0.28.2) (2026-06-02)
+
+### Bug Fixes
+- **action:** convert action entrypoint to ESM ([`1351401`](https://github.com/jolars/versionary/commit/1351401295e809e7f1180a8fb071a614a9f2dc7f))
+
 ## [0.28.1](https://github.com/jolars/versionary/compare/v0.28.0...v0.28.1) (2026-06-02)
 
 ### Bug Fixes
