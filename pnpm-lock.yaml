@@ -8,15 +8,15 @@ importers:
 
   .:
     dependencies:
-      '@iarna/toml':
-        specifier: ^2.2.5
-        version: 2.2.5
       '@octokit/rest':
         specifier: ^22.0.0
         version: 22.0.1
       jsonc-parser:
         specifier: ^3.3.1
         version: 3.3.1
+      smol-toml:
+        specifier: ^1.4.2
+        version: 1.6.1
       yaml:
         specifier: ^2.8.3
         version: 2.9.0
@@ -351,9 +351,6 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@iarna/toml@2.2.5':
-    resolution: {integrity: sha512-trnsAYxU3xnS1gPHPyU961coFyLkh4gAD/0zQ5mymY4yOZ+CYvsPqUbOFSw0aDM4y0tV7tiFxL/1XfXPNC6IPg==}
-
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
 
@@ -684,6 +681,10 @@ packages:
   siginfo@2.0.0:
     resolution: {integrity: sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g==}
 
+  smol-toml@1.6.1:
+    resolution: {integrity: sha512-dWUG8F5sIIARXih1DTaQAX4SsiTXhInKf1buxdY9DIg4ZYPZK5nGM1VRIYmEbDbsHt7USo99xSLFu5Q1IqTmsg==}
+    engines: {node: '>= 18'}
+
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
     engines: {node: '>=0.10.0'}
@@ -976,8 +977,6 @@ snapshots:
 
   '@esbuild/win32-x64@0.28.0':
     optional: true
-
-  '@iarna/toml@2.2.5': {}
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
 
@@ -1316,6 +1315,8 @@ snapshots:
       fsevents: 2.3.3
 
   siginfo@2.0.0: {}
+
+  smol-toml@1.6.1: {}
 
   source-map-js@1.2.1: {}
 

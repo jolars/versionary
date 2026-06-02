@@ -17,7 +17,7 @@
   },
   "license": "MIT",
   "author": "Johan Larsson",
-  "type": "commonjs",
+  "type": "module",
   "packageManager": "pnpm@10.33.0",
   "bin": {
     "versionary": "dist/cli/index.js"
@@ -40,7 +40,7 @@
     "release": "tsx src/cli/index.ts release"
   },
   "dependencies": {
-    "@iarna/toml": "^2.2.5",
+    "smol-toml": "^1.4.2",
     "@octokit/rest": "^22.0.0",
     "jsonc-parser": "^3.3.1",
     "yaml": "^2.8.3",

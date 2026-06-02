@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import TOML from "@iarna/toml";
+import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
 import YAML from "yaml";
 import type {
   VersionaryArtifactRule,
@@ -261,9 +261,9 @@ function applyTomlRulePreservingFormatting(
 ): string {
   const simplePath = fieldPath.match(/^\$\.([A-Za-z0-9_-]+)$/u);
   if (!simplePath) {
-    const parsed = TOML.parse(content) as unknown;
+    const parsed = parseToml(content) as unknown;
     setVersionAtJsonPath(parsed, fieldPath, version);
-    return `${TOML.stringify(parsed as TOML.JsonMap)}\n`;
+    return `${stringifyToml(parsed as Parameters<typeof stringifyToml>[0])}\n`;
   }
 
   const key = simplePath[1];

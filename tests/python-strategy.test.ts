@@ -91,6 +91,25 @@ describe("pythonVersionStrategy pyproject.toml mode", () => {
     );
   });
 
+  it("parses pyproject.toml with TOML 1.0 mixed-type arrays (e.g. PEP 735 dependency-groups)", () => {
+    const cwd = makeTempDir("read-mixed-array");
+    writeFile(
+      cwd,
+      "pyproject.toml",
+      [
+        "[project]",
+        'name = "demo"',
+        'version = "1.10.0"',
+        "",
+        "[dependency-groups]",
+        'plots = ["matplotlib>=3.5.0"]',
+        'tests = [{ include-group = "plots" }, "pytest", "sphinx"]',
+        "",
+      ].join("\n"),
+    );
+    expect(pythonVersionStrategy.readVersion(cwd, baseConfig)).toBe("1.10.0");
+  });
+
   it("throws actionable error when pyproject.toml has invalid TOML syntax", () => {
     const cwd = makeTempDir("read-invalid");
     writeFile(cwd, "pyproject.toml", "[project\nname = broken");

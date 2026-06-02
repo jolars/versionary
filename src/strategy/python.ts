@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import TOML from "@iarna/toml";
+import { parse as parseToml } from "smol-toml";
 import type { VersionaryConfig } from "../types/config.js";
 import type {
   StrategyFinalizeContext,
@@ -29,7 +29,7 @@ function isSourceFileMode(versionFile: string): boolean {
 function parsePyProject(content: string, versionFile: string): ParsedPyProject {
   let parsed: unknown;
   try {
-    parsed = TOML.parse(content);
+    parsed = parseToml(content);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to parse ${versionFile}: ${message}`);
