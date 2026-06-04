@@ -14,10 +14,14 @@ import type {
   StrategyVersionWriteContext,
   VersionStrategy,
 } from "../strategy/types.js";
-import type { VersionaryConfig, VersionaryPackage } from "../types/config.js";
+import type {
+  VersionaryChangelogFormat,
+  VersionaryConfig,
+} from "../types/config.js";
 import type { VersionaryPluginContext } from "../types/plugins.js";
 import { applyConfiguredArtifactRules } from "./artifact-rules.js";
 import {
+  extractUnreleasedNotes,
   prependChangelog,
   renderReleaseNotesSection,
   renderReleasePlanChangelog,
@@ -84,6 +88,61 @@ export function consumeNextReleaseFile(
     fs.rmSync(fullPath);
   }
   return { tracked };
+}
+
+/**
+ * Read the manual-notes ("Unreleased") prose from the top of a changelog file.
+ * Returns an empty string when the file is absent or has no notes block.
+ */
+export function readChangelogHighlights(
+  cwd: string,
+  changelogFile: string,
+  format: VersionaryChangelogFormat,
+): string {
+  const changelogPath = path.join(cwd, changelogFile);
+  if (!fs.existsSync(changelogPath)) {
+    return "";
+  }
+  const existing = fs.readFileSync(changelogPath, "utf8");
+  return extractUnreleasedNotes(existing, format).highlights;
+}
+
+export interface ResolvedReleaseHighlights {
+  highlights: string;
+  source: "changelog" | "file" | "none";
+  filePath?: string;
+}
+
+/**
+ * Resolve release highlights, preferring an editable "Unreleased" section at the
+ * top of the changelog. Falls back to the deprecated `NEXT_RELEASE.md` file
+ * (emitting a warning) so existing setups keep working.
+ */
+export function resolveReleaseHighlights(
+  cwd: string,
+  config: VersionaryConfig,
+  changelogFile: string,
+  format: VersionaryChangelogFormat,
+  logger?: VersionaryPluginContext["logger"],
+): ResolvedReleaseHighlights {
+  const fromChangelog = readChangelogHighlights(cwd, changelogFile, format);
+  if (fromChangelog.length > 0) {
+    return { highlights: fromChangelog, source: "changelog" };
+  }
+
+  const fromFile = readNextReleaseHighlights(cwd, config);
+  if (fromFile) {
+    logger?.warn(
+      `${fromFile.filePath} is deprecated; add release notes under an "Unreleased" heading at the top of ${changelogFile} instead.`,
+    );
+    return {
+      highlights: fromFile.content,
+      source: "file",
+      filePath: fromFile.filePath,
+    };
+  }
+
+  return { highlights: "", source: "none" };
 }
 
 function listTrackedDirtyFiles(cwd: string): string[] {
@@ -424,16 +483,24 @@ export function prepareReleasePr(
     plan,
     loaded.config,
   );
-  const nextReleaseRead = readNextReleaseHighlights(cwd, loaded.config);
-  const highlights = nextReleaseRead?.content ?? "";
+  const highlightsResult = resolveReleaseHighlights(
+    cwd,
+    loaded.config,
+    plan.changelogFile,
+    plan.changelogFormat,
+    options.logger,
+  );
+  const highlights = highlightsResult.highlights;
   const section = renderReleasePlanChangelog(plan, { highlights, cwd });
   prependChangelog(cwd, plan.changelogFile, section, plan.changelogFormat);
   const updatedChangelogFiles = [plan.changelogFile];
   let consumedHighlightsPath: string | null = null;
-  if (nextReleaseRead) {
-    const { tracked } = consumeNextReleaseFile(cwd, nextReleaseRead.filePath);
+  // The changelog "Unreleased" block is stripped in-place by prependChangelog;
+  // only the legacy side file needs explicit consumption and staging.
+  if (highlightsResult.source === "file" && highlightsResult.filePath) {
+    const { tracked } = consumeNextReleaseFile(cwd, highlightsResult.filePath);
     if (tracked) {
-      consumedHighlightsPath = nextReleaseRead.filePath;
+      consumedHighlightsPath = highlightsResult.filePath;
     }
   }
   for (const packagePlan of plan.packages ?? []) {
@@ -460,6 +527,15 @@ export function prepareReleasePr(
     if (!packageMetadata) {
       continue;
     }
+    const packageChangelogPath = path.posix.join(
+      packagePlan.path,
+      packageChangelogFile,
+    );
+    const packageHighlights = readChangelogHighlights(
+      cwd,
+      packageChangelogPath,
+      "markdown-changelog",
+    );
     const packageSection = renderReleaseNotesSection({
       currentVersion: packagePlan.currentVersion,
       nextVersion: packagePlan.nextVersion,
@@ -467,16 +543,15 @@ export function prepareReleasePr(
       tagPrefix: packageMetadata.tagPrefix,
       cwd,
       dependencies: resolvePackageDependencies(plan, packagePlan.path),
+      highlights: packageHighlights,
     });
     prependChangelog(
       cwd,
-      path.posix.join(packagePlan.path, packageChangelogFile),
+      packageChangelogPath,
       packageSection,
       "markdown-changelog",
     );
-    updatedChangelogFiles.push(
-      path.posix.join(packagePlan.path, packageChangelogFile),
-    );
+    updatedChangelogFiles.push(packageChangelogPath);
   }
   const releaseTargets = buildReleaseTargets(cwd, plan, loaded.config);
 

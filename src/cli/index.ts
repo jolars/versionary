@@ -14,7 +14,7 @@ import {
   openOrUpdateReviewRequest,
   prepareReleasePr,
   pushReleaseBranch,
-  readNextReleaseHighlights,
+  resolveReleaseHighlights,
 } from "../release/pr.js";
 import { runRelease, runReleaseDetailed } from "../release/release.js";
 import { verifyProject } from "../release/verify-project.js";
@@ -265,12 +265,16 @@ async function main(): Promise<number> {
     }
 
     const loaded = loadConfig();
-    const highlightsRead = readNextReleaseHighlights(
+    const highlightsResult = resolveReleaseHighlights(
       process.cwd(),
       loaded.config,
+      plan.changelogFile,
+      plan.changelogFormat,
+      logger,
     );
-    const highlights = highlightsRead?.content ?? "";
-    const section = renderReleasePlanChangelog(plan, { highlights });
+    const section = renderReleasePlanChangelog(plan, {
+      highlights: highlightsResult.highlights,
+    });
     if (!write) {
       console.log(section);
       return 0;
@@ -282,8 +286,8 @@ async function main(): Promise<number> {
       section,
       plan.changelogFormat,
     );
-    if (highlightsRead) {
-      consumeNextReleaseFile(process.cwd(), highlightsRead.filePath);
+    if (highlightsResult.source === "file" && highlightsResult.filePath) {
+      consumeNextReleaseFile(process.cwd(), highlightsResult.filePath);
     }
     console.log(`Updated ${plan.changelogFile}`);
     return 0;

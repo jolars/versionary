@@ -5,12 +5,14 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { parseConventionalCommitMessage } from "../src/git/commits.js";
 import {
+  extractUnreleasedNotes,
   renderReleasePlanChangelog,
   renderRNewsReleaseNotes,
   renderSimpleChangelog,
 } from "../src/release/changelog.js";
 import type { SimplePlan } from "../src/release/plan.js";
 import { prepareSimpleReleasePr } from "../src/release/pr.js";
+import { isVersionHeading } from "../src/release/semver.js";
 
 const tempDirs: string[] = [];
 
@@ -117,6 +119,95 @@ describe("next-release highlights rendering", () => {
     expect(headerIdx).toBeGreaterThanOrEqual(0);
     expect(highlightsIdx).toBeGreaterThan(headerIdx);
     expect(featuresIdx).toBeGreaterThan(highlightsIdx);
+  });
+});
+
+describe("isVersionHeading", () => {
+  it.each([
+    "## [0.28.2](https://example.com/compare/v0.28.1...v0.28.2) (2026-06-02)",
+    "## 1.2.3",
+    "## v1.2.3",
+    "## 0.28.2.9000",
+    "# demo 1.0.0",
+  ])("recognizes %s as a version heading", (heading) => {
+    expect(isVersionHeading(heading)).toBe(true);
+  });
+
+  it.each([
+    "## Unreleased",
+    "## Upcoming",
+    "## [Unreleased]",
+    "# demo (development version)",
+    "## Notes for 2.0 milestone",
+  ])("treats %s as a notes heading", (heading) => {
+    expect(isVersionHeading(heading)).toBe(false);
+  });
+
+  it("does not misread an ISO date as a version", () => {
+    expect(isVersionHeading("## Released on 2026-06-02")).toBe(false);
+  });
+});
+
+describe("extractUnreleasedNotes", () => {
+  it("captures prose under an Unreleased heading and removes the block", () => {
+    const existing = [
+      "# Changelog",
+      "",
+      "## Unreleased",
+      "",
+      "Big things this release.",
+      "",
+      "- One",
+      "",
+      "## [0.1.0](https://example.com) (2026-01-01)",
+      "",
+      "### Features",
+      "- old ([`abc1234`](https://example.com))",
+      "",
+    ].join("\n");
+
+    const { highlights, body } = extractUnreleasedNotes(existing);
+    expect(highlights).toBe("Big things this release.\n\n- One");
+    expect(body).not.toContain("## Unreleased");
+    expect(body).not.toContain("Big things this release.");
+    expect(body).toContain("## [0.1.0]");
+  });
+
+  it("accepts any heading text for the notes block", () => {
+    const existing =
+      "# Changelog\n\n## Upcoming\n\nWords.\n\n## 1.0.0\n\nold\n";
+    expect(extractUnreleasedNotes(existing).highlights).toBe("Words.");
+  });
+
+  it("does nothing when the first heading is already a version (steady state)", () => {
+    const existing = "# Changelog\n\n## 1.0.0\n\n### Features\n- a\n";
+    const { highlights, body } = extractUnreleasedNotes(existing);
+    expect(highlights).toBe("");
+    expect(body).toBe(existing);
+  });
+
+  it("ignores a non-version heading that appears after a version", () => {
+    const existing =
+      "# Changelog\n\n## 1.0.0\n\n### Features\n- a\n\n## Acknowledgements\n\nThanks.\n";
+    const { highlights, body } = extractUnreleasedNotes(existing);
+    expect(highlights).toBe("");
+    expect(body).toBe(existing);
+  });
+
+  it("handles a first-ever release with no prior version below", () => {
+    const existing = "# Changelog\n\n## Unreleased\n\nFirst notes.\n";
+    const { highlights, body } = extractUnreleasedNotes(existing);
+    expect(highlights).toBe("First notes.");
+    expect(body).not.toContain("Unreleased");
+  });
+
+  it("captures the r-news development-version body", () => {
+    const existing =
+      "# demo (development version)\n\n* Did a thing\n\n# demo 1.0.0\n\n* old\n";
+    const { highlights, body } = extractUnreleasedNotes(existing, "r-news");
+    expect(highlights).toBe("* Did a thing");
+    expect(body).not.toContain("development version");
+    expect(body).toContain("# demo 1.0.0");
   });
 });
 
@@ -238,5 +329,62 @@ describe("prepareReleasePr highlights consumption", () => {
     expect(fs.existsSync(path.join(cwd, "RELEASE_DRAFT.md"))).toBe(false);
     const showOutput = git(cwd, "show", "--name-status", "--pretty=", "HEAD");
     expect(showOutput).toMatch(/^D\s+RELEASE_DRAFT\.md$/mu);
+  });
+
+  it("reads highlights from an Unreleased section and strips the block", () => {
+    const cwd = setupRepo();
+    write(
+      cwd,
+      "CHANGELOG.md",
+      "# Changelog\n\n## Unreleased\n\nBig release.\n\n- shiny item\n",
+    );
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v1.0.0");
+
+    write(cwd, "src/index.ts", "export const value = 1;\n");
+    git(cwd, "add", "src/index.ts");
+    git(cwd, "commit", "-m", "feat: add value");
+
+    const result = prepareSimpleReleasePr(cwd);
+    expect(result.version).toBe("1.1.0");
+    expect(result.highlights).toBe("Big release.\n\n- shiny item");
+
+    const changelog = fs.readFileSync(path.join(cwd, "CHANGELOG.md"), "utf8");
+    // Prose appears exactly once, folded into the new version section.
+    expect(changelog.match(/Big release\./gu)?.length).toBe(1);
+    expect(changelog).not.toContain("## Unreleased");
+    const highlightsIdx = changelog.indexOf("Big release.");
+    const featuresIdx = changelog.indexOf("### Features");
+    expect(highlightsIdx).toBeGreaterThan(0);
+    expect(featuresIdx).toBeGreaterThan(highlightsIdx);
+    // No legacy side file should be involved.
+    expect(fs.existsSync(path.join(cwd, "NEXT_RELEASE.md"))).toBe(false);
+  });
+
+  it("prefers the Unreleased section over a NEXT_RELEASE.md fallback", () => {
+    const cwd = setupRepo();
+    write(
+      cwd,
+      "CHANGELOG.md",
+      "# Changelog\n\n## Unreleased\n\nFrom changelog.\n",
+    );
+    write(cwd, "NEXT_RELEASE.md", "From side file.\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v1.0.0");
+
+    write(cwd, "src/index.ts", "export const value = 1;\n");
+    git(cwd, "add", "src/index.ts");
+    git(cwd, "commit", "-m", "feat: add value");
+
+    const result = prepareSimpleReleasePr(cwd);
+    expect(result.highlights).toBe("From changelog.");
+
+    const changelog = fs.readFileSync(path.join(cwd, "CHANGELOG.md"), "utf8");
+    expect(changelog).toContain("From changelog.");
+    expect(changelog).not.toContain("From side file.");
+    // The side file is untouched when the changelog wins.
+    expect(fs.existsSync(path.join(cwd, "NEXT_RELEASE.md"))).toBe(true);
   });
 });

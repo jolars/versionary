@@ -62,6 +62,27 @@ export function isValidVersion(version: string): boolean {
   return SEMVER_PATTERN.test(normalizeVersionInput(version));
 }
 
+const VERSION_TOKEN_PATTERN = /v?(\d+\.\d+\.\d+(?:\.\d+)?)/u;
+
+/**
+ * Decide whether a changelog heading denotes a released version (e.g.
+ * `## [0.28.2](url) (2026-06-02)`, `## 1.2.3`, `## v1.2.3`, `## 0.28.2.9000`)
+ * rather than a manual-notes heading (e.g. `## Unreleased`, `## Upcoming`).
+ *
+ * Intentionally liberal: a heading counts as a version if it contains any
+ * version-like token that {@link isValidVersion} accepts. This errs toward
+ * "it's a version", so a real release heading is never mistaken for a notes
+ * block (and therefore never stripped). Dates such as `2026-06-02` use dashes,
+ * not dots, so they never match the three-component token.
+ */
+export function isVersionHeading(heading: string): boolean {
+  const match = heading.match(VERSION_TOKEN_PATTERN);
+  if (!match?.[1]) {
+    return false;
+  }
+  return isValidVersion(match[1]);
+}
+
 function isNumericIdentifier(identifier: string): boolean {
   return /^(0|[1-9]\d*)$/u.test(identifier);
 }
