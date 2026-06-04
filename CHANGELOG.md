@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## [0.29.0](https://github.com/jolars/versionary/compare/v0.28.2...v0.29.0) (2026-06-04)
 
 This release features a redesign of the manual changelog entries, deprecating
 the use of `NEXT_RELEASE.md` in favor of directly writing these changelogs into
@@ -8,6 +8,8 @@ the `CHANGELOG.md` file (or whatever file name is configured). This makes
 versionary compatible with keep-a-changelog style changelogs, and allows users
 to highlight important changes in the changelog itself.
 
+### Features
+- redesign manual changelog entries ([`5c32e52`](https://github.com/jolars/versionary/commit/5c32e52c75d65424681a234ff1743d491dd46b74))
 
 ## [0.28.2](https://github.com/jolars/versionary/compare/v0.28.1...v0.28.2) (2026-06-02)
 
