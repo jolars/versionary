@@ -13,7 +13,7 @@ import type { VersionaryPluginContext } from "../types/plugins.js";
 import { getChangelogDefaults } from "./plan.js";
 import { isReleaseCommitMessage } from "./pr.js";
 import { executeIdempotentReleaseTarget } from "./recovery.js";
-import { readReleaseTargets } from "./state.js";
+import { readPendingReleaseTargets } from "./state.js";
 
 function escapeRegExp(input: string): string {
   return input.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
@@ -248,7 +248,7 @@ export async function runReleaseDetailed(
   const version = strategy.readVersion(cwd, loaded.config);
   const defaultTag = `v${version}`;
 
-  const releaseTargets = readReleaseTargets(cwd);
+  const releaseTargets = readPendingReleaseTargets(cwd);
   const targets =
     releaseTargets.length > 0
       ? releaseTargets

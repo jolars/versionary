@@ -4,6 +4,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   readBaselineSha,
+  readPendingReleaseTargets,
   readReleaseTargets,
   writeBaselineSha,
 } from "../src/release/state.js";
@@ -107,6 +108,87 @@ describe("simple baseline state", () => {
         tag: "panache-code-v2.34.2",
       },
       { path: "editors/zed", version: "2.34.1", tag: "panache-zed-v2.34.1" },
+    ]);
+    expect(readBaselineSha(dir)).toBe("bbb222");
+  });
+
+  it("scopes pending release targets to the latest write only", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({ version: 1 }),
+      "utf8",
+    );
+    writeBaselineSha(dir, "aaa111", [
+      { path: ".", version: "2.35.0", tag: "v2.35.0" },
+      {
+        path: "crates/panache-parser",
+        version: "0.3.1",
+        tag: "panache-parser-v0.3.1",
+      },
+    ]);
+
+    writeBaselineSha(dir, "bbb222", [
+      {
+        path: "editors/code",
+        version: "2.34.2",
+        tag: "panache-code-v2.34.2",
+      },
+    ]);
+
+    // Accumulated baseline keeps every released package for planning...
+    expect(readReleaseTargets(dir)).toHaveLength(3);
+    // ...but the pending publish set is only what the latest PR introduced.
+    expect(readPendingReleaseTargets(dir)).toEqual([
+      {
+        path: "editors/code",
+        version: "2.34.2",
+        tag: "panache-code-v2.34.2",
+      },
+    ]);
+  });
+
+  it("falls back to accumulated targets for manifests without a pending key", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({ version: 1 }),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(dir, ".versionary-manifest.json"),
+      JSON.stringify({
+        "manifest-version": 1,
+        "baseline-sha": "legacy",
+        "release-targets": [
+          { path: ".", version: "1.0.0", tag: "v1.0.0" },
+          { path: "pkg/a", version: "0.1.0", tag: "a-v0.1.0" },
+        ],
+      }),
+      "utf8",
+    );
+
+    expect(readPendingReleaseTargets(dir)).toEqual([
+      { path: ".", version: "1.0.0", tag: "v1.0.0" },
+      { path: "pkg/a", version: "0.1.0", tag: "a-v0.1.0" },
+    ]);
+  });
+
+  it("retains the pending set across baseline-only writes", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({ version: 1 }),
+      "utf8",
+    );
+    writeBaselineSha(dir, "aaa111", [
+      { path: "pkg/a", version: "0.1.0", tag: "a-v0.1.0" },
+    ]);
+
+    writeBaselineSha(dir, "bbb222");
+
+    expect(readPendingReleaseTargets(dir)).toEqual([
+      { path: "pkg/a", version: "0.1.0", tag: "a-v0.1.0" },
     ]);
     expect(readBaselineSha(dir)).toBe("bbb222");
   });
