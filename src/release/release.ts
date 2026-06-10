@@ -330,7 +330,9 @@ export async function runReleaseDetailed(
       tagStatus: outcome.tagStatus,
       metadataStatus: outcome.metadataStatus,
     });
-    if (references.length > 0) {
+    const releaseWasCreated =
+      outcome.tagStatus === "created" || outcome.metadataStatus === "created";
+    if (references.length > 0 && releaseWasCreated) {
       referenceReleases.push({
         name: resolveTargetPackageName(cwd, loaded.config, target.path),
         tag: outcome.tag,

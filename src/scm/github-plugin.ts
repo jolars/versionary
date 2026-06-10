@@ -160,6 +160,9 @@ function groupReleasesByIssue(
   return new Map([...byIssue.entries()].sort(([a], [b]) => a - b));
 }
 
+const RELEASE_REFERENCE_COMMENT_FOOTER =
+  "Released by [Versionary](https://github.com/jolars/versionary).";
+
 function renderReleaseLink(
   release: ScmReleaseReferenceCommentsRelease,
 ): string {
@@ -169,11 +172,30 @@ function renderReleaseLink(
   return `[version ${release.version}](${release.releaseUrl})`;
 }
 
+// Reads bodies of prior Versionary release-reference comments on an issue so we
+// can avoid re-announcing a release that has already been posted (e.g. when an
+// already-published target is re-processed on a later release run).
+async function readExistingReferenceComments(
+  octokit: Octokit,
+  repo: { owner: string; repo: string },
+  issueNumber: number,
+): Promise<string> {
+  const response = await octokit.issues.listComments({
+    owner: repo.owner,
+    repo: repo.repo,
+    issue_number: issueNumber,
+    per_page: 100,
+  });
+  return response.data
+    .map((comment) => comment.body ?? "")
+    .filter((body) => body.includes(RELEASE_REFERENCE_COMMENT_FOOTER))
+    .join("\n");
+}
+
 function renderReleaseReferenceCommentBody(
   releases: ScmReleaseReferenceCommentsRelease[],
 ): string {
-  const footer =
-    "Released by [Versionary](https://github.com/jolars/versionary).";
+  const footer = RELEASE_REFERENCE_COMMENT_FOOTER;
   if (releases.length === 1) {
     const release = releases[0];
     if (!release) {
@@ -419,7 +441,37 @@ export function createGitHubPlugin(): VersionaryPluginRuntime & ScmClient {
       const releasesByIssue = groupReleasesByIssue(input.releases);
       const commented: number[] = [];
       for (const [reference, releases] of releasesByIssue) {
-        const body = renderReleaseReferenceCommentBody(releases);
+        let announcedText: string;
+        try {
+          announcedText = await readExistingReferenceComments(
+            octokit,
+            repo,
+            reference,
+          );
+        } catch (error: unknown) {
+          const { message } = parseGitHubError(error);
+          if (mode === "strict") {
+            throw new Error(
+              `Failed listing existing comments on #${reference}: [${repoRef(repo)}] ${message}`,
+            );
+          }
+          context.logger?.warn(
+            `Could not check existing comments on #${reference}, posting anyway: [${repoRef(repo)}] ${message}`,
+          );
+          announcedText = "";
+        }
+
+        const pendingReleases = releases.filter(
+          (release) => !announcedText.includes(release.releaseUrl),
+        );
+        if (pendingReleases.length === 0) {
+          context.logger?.info(
+            `Skipping release reference comment on #${reference}: already announced.`,
+          );
+          continue;
+        }
+
+        const body = renderReleaseReferenceCommentBody(pendingReleases);
         try {
           await octokit.issues.createComment({
             owner: repo.owner,

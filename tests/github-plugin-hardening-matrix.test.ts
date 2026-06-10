@@ -17,6 +17,7 @@ interface MockGitHubApi {
   issues: {
     addLabels: ReturnType<typeof vi.fn>;
     createComment: ReturnType<typeof vi.fn>;
+    listComments: ReturnType<typeof vi.fn>;
   };
   repos: {
     getReleaseByTag: ReturnType<typeof vi.fn>;
@@ -39,6 +40,8 @@ vi.mock("@octokit/rest", () => {
       addLabels: (...args: unknown[]) => mockApi.issues.addLabels(...args),
       createComment: (...args: unknown[]) =>
         mockApi.issues.createComment(...args),
+      listComments: (...args: unknown[]) =>
+        mockApi.issues.listComments(...args),
     };
 
     repos = {
@@ -92,6 +95,7 @@ function createDefaultMockApi(): MockGitHubApi {
     issues: {
       addLabels: vi.fn(async () => ({ data: {} })),
       createComment: vi.fn(async () => ({ data: {} })),
+      listComments: vi.fn(async () => ({ data: [] })),
     },
     repos: {
       getReleaseByTag: vi.fn(async () => ({
@@ -528,6 +532,86 @@ describe("github plugin hardening matrix", () => {
       expect.objectContaining({
         issue_number: 2000000001,
         body: "This is included in [version 2.23.0](https://github.com/owner/repo/releases/tag/v2.23.0). :tada:\n\nReleased by [Versionary](https://github.com/jolars/versionary).",
+      }),
+    );
+  });
+
+  it("skips issues already announcing the same release", async () => {
+    process.env.GITHUB_REPOSITORY = "owner/repo";
+    process.env.GITHUB_TOKEN = "token";
+    mockApi.issues.listComments.mockResolvedValueOnce({
+      data: [
+        {
+          body: "This is included in [`dprint-plugin-panache` v0.2.0](https://github.com/owner/repo/releases/tag/dprint-plugin-panache-v0.2.0). :tada:\n\nReleased by [Versionary](https://github.com/jolars/versionary).",
+        },
+      ],
+    });
+    const plugin = createGitHubPlugin();
+
+    const result = await plugin.createReleaseReferenceComments?.(
+      {
+        releases: [
+          {
+            name: "dprint-plugin-panache",
+            tag: "dprint-plugin-panache-v0.2.0",
+            version: "0.2.0",
+            releaseUrl:
+              "https://github.com/owner/repo/releases/tag/dprint-plugin-panache-v0.2.0",
+            references: [313],
+          },
+        ],
+        mode: "best-effort",
+      },
+      { cwd: process.cwd() },
+    );
+
+    expect(result).toEqual({ commented: [] });
+    expect(mockApi.issues.createComment).not.toHaveBeenCalled();
+  });
+
+  it("only announces releases not already mentioned on the issue", async () => {
+    process.env.GITHUB_REPOSITORY = "owner/repo";
+    process.env.GITHUB_TOKEN = "token";
+    mockApi.issues.listComments.mockResolvedValueOnce({
+      data: [
+        {
+          body: "This is included in [`alpha` v1.0.0](https://github.com/owner/repo/releases/tag/alpha-v1.0.0). :tada:\n\nReleased by [Versionary](https://github.com/jolars/versionary).",
+        },
+      ],
+    });
+    const plugin = createGitHubPlugin();
+
+    const result = await plugin.createReleaseReferenceComments?.(
+      {
+        releases: [
+          {
+            name: "alpha",
+            tag: "alpha-v1.0.0",
+            version: "1.0.0",
+            releaseUrl:
+              "https://github.com/owner/repo/releases/tag/alpha-v1.0.0",
+            references: [42],
+          },
+          {
+            name: "beta",
+            tag: "beta-v2.0.0",
+            version: "2.0.0",
+            releaseUrl:
+              "https://github.com/owner/repo/releases/tag/beta-v2.0.0",
+            references: [42],
+          },
+        ],
+        mode: "best-effort",
+      },
+      { cwd: process.cwd() },
+    );
+
+    expect(result).toEqual({ commented: [42] });
+    expect(mockApi.issues.createComment).toHaveBeenCalledTimes(1);
+    expect(mockApi.issues.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        issue_number: 42,
+        body: "This is included in [`beta` v2.0.0](https://github.com/owner/repo/releases/tag/beta-v2.0.0). :tada:\n\nReleased by [Versionary](https://github.com/jolars/versionary).",
       }),
     );
   });
