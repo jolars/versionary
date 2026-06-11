@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.30.0](https://github.com/jolars/versionary/compare/v0.29.0...v0.30.0) (2026-06-11)
+
+### Features
+- add top-level `exclude-paths` ([`9ef29fe`](https://github.com/jolars/versionary/commit/9ef29fec8f1ba485f475afa58e2079ed8ed81b9f))
+
+### Bug Fixes
+- **release:** publish only the current PR's targets, not the full baseline ([`6030fcb`](https://github.com/jolars/versionary/commit/6030fcbe42d5010b473b365466d38790e59e4881))
+- **release:** stop re-posting reference comments for existing releases ([`8aa37e5`](https://github.com/jolars/versionary/commit/8aa37e5db7fb560827f3a085689b903b7da1d3fb))
+
 ## [0.29.0](https://github.com/jolars/versionary/compare/v0.28.2...v0.29.0) (2026-06-04)
 
 This release features a redesign of the manual changelog entries, deprecating
