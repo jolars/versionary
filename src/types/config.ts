@@ -36,6 +36,7 @@ export interface VersionaryConfig {
   "bump-minor-pre-major"?: boolean;
   "allow-stable-major"?: boolean;
   "include-commit-authors"?: boolean;
+  "exclude-paths"?: string[];
   "release-type"?: string | string[];
   packages?: Record<string, VersionaryPackage>;
 }

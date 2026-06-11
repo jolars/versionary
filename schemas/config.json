@@ -51,6 +51,12 @@
     "include-commit-authors": {
       "type": "boolean"
     },
+    "exclude-paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "release-type": {
       "type": "string"
     },

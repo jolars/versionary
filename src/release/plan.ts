@@ -150,15 +150,26 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
       cwd,
       packageContext.config,
     );
-    const parsedCommits =
-      !hasPackages && pkg.path === "."
-        ? getParsedCommitsSinceLastTag(cwd, baselineSha)
-        : getParsedCommitsForPath(
-            cwd,
-            releaseTargetByPath.get(pkg.path)?.tag ?? baselineSha,
-            pkg.path,
-            pkg.config["exclude-paths"] ?? [],
-          );
+    const excludePaths = [
+      ...new Set([
+        ...(loaded.config["exclude-paths"] ?? []),
+        ...(pkg.config["exclude-paths"] ?? []),
+      ]),
+    ];
+    const isImplicitRoot = !hasPackages && pkg.path === ".";
+    let parsedCommits: ParsedCommit[];
+    if (isImplicitRoot && excludePaths.length === 0) {
+      parsedCommits = getParsedCommitsSinceLastTag(cwd, baselineSha);
+    } else {
+      parsedCommits = getParsedCommitsForPath(
+        cwd,
+        isImplicitRoot
+          ? baselineSha
+          : (releaseTargetByPath.get(pkg.path)?.tag ?? baselineSha),
+        pkg.path,
+        excludePaths,
+      );
+    }
     const effectiveCommits = applyRevertSuppression(parsedCommits);
     const commits = effectiveCommits;
     const releaseType = analyzeParsedCommits(parsedCommits);

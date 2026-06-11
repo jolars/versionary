@@ -190,6 +190,12 @@ For a quick trial, use:
     combining `follows` with `monorepo-mode: "fixed"` are config errors.
     `follows` is non-transitive: A follows B does not imply A follows what B
     follows.
+  - per-package `exclude-paths` drops commits that only touch the listed paths
+    (relative to the package) from that package's bump and changelog. A
+    top-level `exclude-paths` applies to every package; the effective excludes
+    for a package are the union of the top-level list and the package's own
+    list. The top-level list also applies to a single-package (non-`packages`)
+    repository.
 
 ```jsonc
 // Editor extension that bundles the root CLI artifact

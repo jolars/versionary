@@ -87,6 +87,7 @@ export const configSchema = z
     "bump-minor-pre-major": z.boolean().optional(),
     "allow-stable-major": z.boolean().optional(),
     "include-commit-authors": z.boolean().optional(),
+    "exclude-paths": z.array(z.string()).optional(),
     "release-type": z
       .union([z.string().min(1), z.array(z.string().min(1)).min(1)])
       .optional(),

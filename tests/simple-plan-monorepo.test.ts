@@ -356,6 +356,92 @@ describe("simple monorepo planning", () => {
     ]);
   });
 
+  it("unions top-level exclude-paths with per-package exclude-paths", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "version.txt", "1.0.0\n");
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "monorepo-mode": "independent",
+        "exclude-paths": ["docs"],
+        packages: {
+          "packages/a": {
+            "exclude-paths": ["generated"],
+          },
+        },
+      }),
+    );
+    write(cwd, "packages/a/index.ts", "export const a = 1;\n");
+    write(cwd, "packages/a/docs/readme.md", "# docs\n");
+    write(cwd, "packages/a/generated/data.json", '{ "ok": true }\n');
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v1.0.0");
+
+    // Excluded by the top-level list.
+    write(cwd, "packages/a/docs/readme.md", "# docs updated\n");
+    git(cwd, "add", "packages/a/docs/readme.md");
+    git(cwd, "commit", "-m", "feat: docs update");
+
+    // Excluded by the package's own list.
+    write(cwd, "packages/a/generated/data.json", '{ "ok": false }\n');
+    git(cwd, "add", "packages/a/generated/data.json");
+    git(cwd, "commit", "-m", "feat: generated update");
+
+    write(cwd, "packages/a/index.ts", "export const a = 2;\n");
+    git(cwd, "add", "packages/a/index.ts");
+    git(cwd, "commit", "-m", "fix: package source update");
+
+    const plan = createSimplePlan(cwd);
+    const packageA = plan.packages?.find((pkg) => pkg.path === "packages/a");
+    expect(packageA?.releaseType).toBe("patch");
+    expect(packageA?.commits.map((commit) => commit.subject)).toEqual([
+      "fix: package source update",
+    ]);
+  });
+
+  it("applies top-level exclude-paths to a single-package repository", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "version.txt", "1.0.0\n");
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "exclude-paths": ["docs"],
+      }),
+    );
+    write(cwd, "src/index.ts", "export const a = 1;\n");
+    write(cwd, "docs/readme.md", "# docs\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v1.0.0");
+
+    write(cwd, "docs/readme.md", "# docs updated\n");
+    git(cwd, "add", "docs/readme.md");
+    git(cwd, "commit", "-m", "feat: docs update");
+
+    write(cwd, "src/index.ts", "export const a = 2;\n");
+    git(cwd, "add", "src/index.ts");
+    git(cwd, "commit", "-m", "fix: source update");
+
+    const plan = createSimplePlan(cwd);
+    expect(plan.releaseType).toBe("patch");
+    expect(plan.commits.map((commit) => commit.subject)).toEqual([
+      "fix: source update",
+    ]);
+  });
+
   it("marks dependent rust packages for patch bumps on dependency propagation", () => {
     const cwd = makeTempDir();
     git(cwd, "init");
