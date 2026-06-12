@@ -31,6 +31,7 @@
     "prepare": "pnpm run build",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "gen:schema": "tsx scripts/generate-schema.ts && biome format --write schemas/config.json",
     "test": "vitest run",
     "verify": "tsx src/cli/index.ts verify",
     "run": "tsx src/cli/index.ts run",

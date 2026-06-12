@@ -3,13 +3,12 @@
   "$id": "https://raw.githubusercontent.com/jolars/versionary/main/schemas/config.json",
   "title": "Versionary configuration",
   "type": "object",
-  "required": ["version"],
-  "additionalProperties": false,
   "properties": {
     "$schema": {
       "type": "string"
     },
     "version": {
+      "type": "number",
       "const": 1
     },
     "review-mode": {
@@ -22,12 +21,19 @@
     "changelog-file": {
       "type": "string"
     },
-    "release-branch": {
-      "type": "string"
+    "changelog-format": {
+      "type": "string",
+      "enum": ["markdown-changelog", "r-news"]
+    },
+    "release-draft": {
+      "type": "boolean"
     },
     "release-reference-comments": {
       "type": "string",
       "enum": ["off", "best-effort", "strict"]
+    },
+    "release-branch": {
+      "type": "string"
     },
     "baseline-file": {
       "type": "string"
@@ -58,19 +64,55 @@
       }
     },
     "release-type": {
-      "type": "string"
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
     },
     "packages": {
       "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
       "additionalProperties": {
         "type": "object",
-        "additionalProperties": false,
         "properties": {
           "release-type": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            ]
           },
           "package-name": {
             "type": "string"
+          },
+          "changelog-file": {
+            "type": "string"
+          },
+          "changelog-format": {
+            "type": "string",
+            "enum": ["markdown-changelog", "r-news"]
           },
           "allow-stable-major": {
             "type": "boolean"
@@ -79,13 +121,6 @@
             "type": "array",
             "items": {
               "type": "string"
-            }
-          },
-          "follows": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
             }
           },
           "extra-files": {
@@ -97,10 +132,11 @@
                   "properties": {
                     "type": {
                       "type": "string",
-                      "enum": ["json", "toml", "yaml"]
+                      "enum": ["json", "toml", "yaml", "nix"]
                     },
                     "path": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "field-path": {
                       "type": "string"
@@ -109,9 +145,14 @@
                       "type": "string"
                     }
                   },
+                  "required": ["type", "path"],
                   "anyOf": [
-                    { "required": ["field-path"] },
-                    { "required": ["jsonpath"] }
+                    {
+                      "required": ["field-path"]
+                    },
+                    {
+                      "required": ["jsonpath"]
+                    }
                   ],
                   "not": {
                     "required": ["field-path", "jsonpath"]
@@ -126,7 +167,8 @@
                       "const": "regex"
                     },
                     "path": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "pattern": {
                       "type": "string"
@@ -137,9 +179,19 @@
                 }
               ]
             }
+          },
+          "follows": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
           }
-        }
+        },
+        "additionalProperties": false
       }
     }
-  }
+  },
+  "required": ["version"],
+  "additionalProperties": false
 }

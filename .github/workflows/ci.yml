@@ -48,6 +48,11 @@ jobs:
       - name: Run Biome
         run: biome ci .
 
+      - name: Verify generated config schema is up to date
+        run: |
+          pnpm gen:schema
+          git diff --exit-code schemas/config.json
+
   versionary:
     name: Versionary integration
     runs-on: ubuntu-latest
