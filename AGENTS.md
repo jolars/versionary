@@ -83,8 +83,8 @@ a strategy model:
 - `src/release/`: release modules (`plan`, `changelog`, `semver`, `pr`,
   `release`, `verify-project`, `state`, `recovery`, `artifact-rules`)
 - `src/strategy/`: strategy contracts + implementations (`simple`, `node`,
-  `rust`, `r`, `python`, `latex`), the `composite` composer for combining
-  strategies, and the resolver
+  `rust`, `r`, `python`, `latex`, `julia`), the `composite` composer for
+  combining strategies, and the resolver
 - `src/git/`: git commit/range analysis and repository URL resolution
 - `src/scm/`: SCM integration boundary (`types`, static client resolver,
   provider implementations like `github-plugin`)

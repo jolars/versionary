@@ -135,6 +135,7 @@ describe("resolveVersionStrategy", () => {
 
   it("lists known release types from internal strategy registry", () => {
     expect(listKnownReleaseTypes()).toEqual([
+      "julia",
       "latex",
       "node",
       "python",

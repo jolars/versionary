@@ -50,7 +50,7 @@ release/tag.
 Current implementation focuses on:
 
 - strategy-based version updates (`simple`, `node`, `rust`, `r`, `latex`,
-  `python`)
+  `python`, `julia`)
 - release planning and changelog generation
 - review-mode vs direct-mode release flow
 - a static internal SCM client (`github` provider today)
@@ -110,7 +110,7 @@ Current runtime code uses a flat `src/` layout with clear module boundaries:
 - `src/cli/`: command router (`run`, `verify`, `plan`, `changelog`, `pr`, `release`)
 - `src/release/`: release orchestration (plan/changelog/PR/release/state/recovery)
 - `src/strategy/`: strategy contracts, resolver, and built-in implementations
-  (`simple`, `node`, `rust`, `r`, `latex`, `python`)
+  (`simple`, `node`, `rust`, `r`, `latex`, `python`, `julia`)
 - `src/scm/`: SCM client contracts and provider implementation(s)
 - `src/config/`: config loading and schema validation
 - `src/git/`: git commit/range and repository URL helpers
@@ -144,6 +144,9 @@ For a quick trial, use:
   Python source file (e.g. `src/<pkg>/__init__.py`) to update a `__version__`
   assignment instead. Refreshes `poetry.lock`/`uv.lock`/`pdm.lock` at the
   package root if present
+- `release-type: "julia"` uses `Project.toml` (default) as version source and
+  updates the top-level `version` field (Julia keeps `version`/`name` as root
+  keys, not under a section)
 - `release-type` can also be an array of strategy names to compose them across
   manifests, e.g. `["python", "rust"]` for a PyO3/maturin project: the first
   entry is the *primary* (drives `readVersion`, `readPackageName`, and consumes

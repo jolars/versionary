@@ -1,5 +1,6 @@
 import type { VersionaryConfig } from "../types/config.js";
 import { compositeVersionStrategy } from "./composite.js";
+import { juliaVersionStrategy } from "./julia.js";
 import { latexVersionStrategy } from "./latex.js";
 import { nodeVersionStrategy } from "./node.js";
 import { pythonVersionStrategy } from "./python.js";
@@ -9,6 +10,7 @@ import { simpleVersionStrategy } from "./simple.js";
 import type { VersionStrategy } from "./types.js";
 
 const strategyRegistry: Record<string, VersionStrategy> = {
+  julia: juliaVersionStrategy,
   latex: latexVersionStrategy,
   simple: simpleVersionStrategy,
   node: nodeVersionStrategy,
