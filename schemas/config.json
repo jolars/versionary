@@ -81,6 +81,13 @@
               "type": "string"
             }
           },
+          "follows": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
           "extra-files": {
             "type": "array",
             "items": {
