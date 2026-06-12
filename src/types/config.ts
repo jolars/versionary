@@ -15,6 +15,7 @@ export interface VersionaryPackage {
   "package-name"?: string;
   "changelog-file"?: string;
   "changelog-format"?: VersionaryChangelogFormat;
+  "allow-stable-major"?: boolean;
   "exclude-paths"?: string[];
   "extra-files"?: VersionaryArtifactRule[];
   follows?: string[];

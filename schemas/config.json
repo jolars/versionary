@@ -72,6 +72,9 @@
           "package-name": {
             "type": "string"
           },
+          "allow-stable-major": {
+            "type": "boolean"
+          },
           "exclude-paths": {
             "type": "array",
             "items": {

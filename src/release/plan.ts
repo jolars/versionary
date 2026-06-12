@@ -117,6 +117,9 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
     readReleaseTargets(cwd).map((target) => [target.path, target]),
   );
   const allowStableMajor = loaded.config["allow-stable-major"] ?? false;
+  const allowStableMajorForPath = (packagePath: string): boolean =>
+    loaded.config.packages?.[packagePath]?.["allow-stable-major"] ??
+    allowStableMajor;
   const monorepoMode = getMode(loaded.config["monorepo-mode"]);
 
   const buildPackagePlan = (pkg: {
@@ -174,7 +177,9 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
     const commits = effectiveCommits;
     const releaseType = analyzeParsedCommits(parsedCommits);
     const nextVersion = releaseType
-      ? bumpVersion(packageCurrentVersion, releaseType, { allowStableMajor })
+      ? bumpVersion(packageCurrentVersion, releaseType, {
+          allowStableMajor: allowStableMajorForPath(pkg.path),
+        })
       : null;
     return {
       path: pkg.path,
@@ -324,7 +329,9 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
     return {
       ...pkgPlan,
       releaseType: "patch" as ReleaseType,
-      nextVersion: bumpVersion(current, "patch", { allowStableMajor }),
+      nextVersion: bumpVersion(current, "patch", {
+        allowStableMajor: allowStableMajorForPath(pkgPlan.path),
+      }),
       bumpReason: "dependency-propagation" as const,
       dependencySourcePaths,
     };
@@ -369,7 +376,9 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
     const baseVersion =
       packageCurrentVersionByPath[pkgPlan.path] ?? pkgPlan.currentVersion;
     const nextVersion = combinedReleaseType
-      ? bumpVersion(baseVersion, combinedReleaseType, { allowStableMajor })
+      ? bumpVersion(baseVersion, combinedReleaseType, {
+          allowStableMajor: allowStableMajorForPath(pkgPlan.path),
+        })
       : null;
     return {
       ...pkgPlan,

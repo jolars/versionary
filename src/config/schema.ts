@@ -61,6 +61,7 @@ const packageSchema = z
     "package-name": z.string().optional(),
     "changelog-file": z.string().optional(),
     "changelog-format": z.enum(["markdown-changelog", "r-news"]).optional(),
+    "allow-stable-major": z.boolean().optional(),
     "exclude-paths": z.array(z.string()).optional(),
     "extra-files": z.array(artifactRuleSchema).optional(),
     follows: z.array(z.string().min(1)).optional(),

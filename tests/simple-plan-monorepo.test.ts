@@ -82,6 +82,50 @@ describe("simple monorepo planning", () => {
     expect(packageB?.nextVersion).toBe("1.0.1");
   });
 
+  it("honors per-package allow-stable-major override on breaking bumps", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "version.txt", "0.1.0\n");
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "monorepo-mode": "independent",
+        packages: {
+          "packages/a": {
+            "allow-stable-major": true,
+          },
+          "packages/b": {},
+        },
+      }),
+    );
+    write(cwd, "packages/a/index.ts", "export const a = 1;\n");
+    write(cwd, "packages/b/index.ts", "export const b = 1;\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v0.1.0");
+
+    write(cwd, "packages/a/index.ts", "export const a = 2;\n");
+    git(cwd, "add", "packages/a/index.ts");
+    git(cwd, "commit", "-m", "feat!: break package a");
+
+    write(cwd, "packages/b/index.ts", "export const b = 2;\n");
+    git(cwd, "add", "packages/b/index.ts");
+    git(cwd, "commit", "-m", "feat!: break package b");
+
+    const plan = createSimplePlan(cwd);
+    const packageA = plan.packages?.find((pkg) => pkg.path === "packages/a");
+    const packageB = plan.packages?.find((pkg) => pkg.path === "packages/b");
+    expect(packageA?.releaseType).toBe("major");
+    expect(packageA?.nextVersion).toBe("1.0.0");
+    expect(packageB?.releaseType).toBe("major");
+    expect(packageB?.nextVersion).toBe("0.2.0");
+  });
+
   it("uses one shared bump in fixed monorepo mode", () => {
     const cwd = makeTempDir();
     git(cwd, "init");

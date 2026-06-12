@@ -196,6 +196,11 @@ For a quick trial, use:
     for a package are the union of the top-level list and the package's own
     list. The top-level list also applies to a single-package (non-`packages`)
     repository.
+  - per-package `allow-stable-major` overrides the top-level setting for that
+    package's own bump (including dependency-propagation and `follows`-driven
+    bumps), so a `0.y.z` package can transition to `1.0.0` on a breaking release
+    independently of its siblings. In `fixed` mode the single shared version is
+    governed by the top-level `allow-stable-major` only.
 
 ```jsonc
 // Editor extension that bundles the root CLI artifact
