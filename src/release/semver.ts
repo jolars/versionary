@@ -63,24 +63,31 @@ export function isValidVersion(version: string): boolean {
 }
 
 const VERSION_TOKEN_PATTERN = /v?(\d+\.\d+\.\d+(?:\.\d+)?)/u;
+// R `NEWS.md` headings conventionally abbreviate to `major.minor` (e.g.
+// `# pkg 8.0`). Accept a bare two-component token only when it is the trailing
+// token of the heading, so genuine R release headings register as versions
+// while prose like `## Notes for 2.0 milestone` does not.
+const TRAILING_MAJOR_MINOR_PATTERN = /\bv?\d+\.\d+\s*$/u;
 
 /**
  * Decide whether a changelog heading denotes a released version (e.g.
- * `## [0.28.2](url) (2026-06-02)`, `## 1.2.3`, `## v1.2.3`, `## 0.28.2.9000`)
- * rather than a manual-notes heading (e.g. `## Unreleased`, `## Upcoming`).
+ * `## [0.28.2](url) (2026-06-02)`, `## 1.2.3`, `## v1.2.3`, `## 0.28.2.9000`,
+ * `# pkg 8.0`) rather than a manual-notes heading (e.g. `## Unreleased`,
+ * `## Upcoming`).
  *
  * Intentionally liberal: a heading counts as a version if it contains any
- * version-like token that {@link isValidVersion} accepts. This errs toward
- * "it's a version", so a real release heading is never mistaken for a notes
- * block (and therefore never stripped). Dates such as `2026-06-02` use dashes,
- * not dots, so they never match the three-component token.
+ * version-like token that {@link isValidVersion} accepts, or ends with a bare
+ * `major.minor` token (the R `NEWS.md` convention). This errs toward "it's a
+ * version", so a real release heading is never mistaken for a notes block (and
+ * therefore never stripped). Dates such as `2026-06-02` use dashes, not dots,
+ * so they never match either token.
  */
 export function isVersionHeading(heading: string): boolean {
   const match = heading.match(VERSION_TOKEN_PATTERN);
-  if (!match?.[1]) {
-    return false;
+  if (match?.[1] && isValidVersion(match[1])) {
+    return true;
   }
-  return isValidVersion(match[1]);
+  return TRAILING_MAJOR_MINOR_PATTERN.test(heading);
 }
 
 function isNumericIdentifier(identifier: string): boolean {

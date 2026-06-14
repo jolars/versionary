@@ -129,6 +129,9 @@ describe("isVersionHeading", () => {
     "## v1.2.3",
     "## 0.28.2.9000",
     "# demo 1.0.0",
+    "# eulerr 8.0",
+    "# eulerr 7.1",
+    "# pkg v2.0",
   ])("recognizes %s as a version heading", (heading) => {
     expect(isVersionHeading(heading)).toBe(true);
   });
@@ -208,6 +211,37 @@ describe("extractUnreleasedNotes", () => {
     expect(highlights).toBe("* Did a thing");
     expect(body).not.toContain("development version");
     expect(body).toContain("# demo 1.0.0");
+  });
+
+  it("stops at a two-component r-news version heading (eulerr regression)", () => {
+    const existing = [
+      "# eulerr (development version)",
+      "",
+      "# eulerr 8.0",
+      "",
+      "A major milestone.",
+      "",
+      "## Features",
+      "- a thing",
+      "",
+      "# eulerr 7.1",
+      "",
+      "## Features",
+      "- older thing",
+      "",
+      "# eulerr 7.0.4",
+      "",
+      "## Bug Fixes",
+      "- a fix",
+      "",
+    ].join("\n");
+    const { highlights, body } = extractUnreleasedNotes(existing, "r-news");
+    // The empty development-version block yields no highlights; the released
+    // 8.0 and 7.1 sections must not be swallowed.
+    expect(highlights).toBe("");
+    expect(body).toContain("# eulerr 8.0");
+    expect(body).toContain("# eulerr 7.1");
+    expect(body).toContain("A major milestone.");
   });
 });
 
