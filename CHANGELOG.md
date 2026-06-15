@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.31.0](https://github.com/jolars/versionary/compare/v0.30.0...v0.31.0) (2026-06-14)
+
+### Features
+- **strategies:** add julia strategy ([`3d55271`](https://github.com/jolars/versionary/commit/3d552712d39615098bf937809efd87fb681f3f0d))
+- add `allow-stable-major` to package-level options ([`73eab63`](https://github.com/jolars/versionary/commit/73eab63d5c405df1445c51596c49dc19c094a50e))
+
+### Bug Fixes
+- handle R NEWS.md convention for manual releases ([`7aced72`](https://github.com/jolars/versionary/commit/7aced726d85a959d886915eac182cf6a7a61978b))
+- add missing follows entry in schema ([`9244e49`](https://github.com/jolars/versionary/commit/9244e49a20c97469f3fcfaf67c0c8a0abb7d7685))
+
 ## [0.30.0](https://github.com/jolars/versionary/compare/v0.29.0...v0.30.0) (2026-06-11)
 
 ### Features
