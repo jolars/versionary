@@ -8,6 +8,9 @@ export default defineConfig({
   base: "/",
   cleanUrls: true,
   lastUpdated: true,
+  sitemap: {
+    hostname: "https://versionary.dev",
+  },
   head: [["link", { rel: "icon", href: "/favicon.svg" }]],
   themeConfig: {
     nav: [
