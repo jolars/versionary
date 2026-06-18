@@ -1,0 +1,219 @@
+# GitHub Actions
+
+Versionary ships a composite GitHub Action that runs the [`run`](./workflows)
+command and exposes machine-readable outputs. This page covers a complete
+workflow, the permissions and token you need, and how to wire downstream
+registry publishing.
+
+GitHub is currently the only built-in SCM provider.
+
+## Quick start
+
+```yaml
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - id: versionary
+        uses: jolars/versionary@v1
+        with:
+          token: ${{ secrets.RELEASE_TOKEN }}
+```
+
+Two details matter regardless of the rest of your setup:
+
+- **`fetch-depth: 0` and `fetch-tags: true`.** Versionary analyzes the full
+  commit history and existing tags. A shallow checkout will give wrong results.
+- **A token with the right permissions** (see [below](#choosing-a-token)).
+
+Because `run` auto-dispatches, this single job handles both halves of the
+release PR workflow: on a normal push it opens/updates the release PR, and on
+the release commit (after the PR merges) it publishes the release.
+
+## Permissions
+
+Set `permissions` at the workflow or job level to the minimum the flow needs:
+
+| Flow                                  | Required permissions                      |
+| ------------------------------------- | ----------------------------------------- |
+| Release PR create/update              | `contents: write`, `pull-requests: write` |
+| Release publish (tag + GitHub Release)| `contents: write`                         |
+| Release-reference comments (optional) | add `issues: write`                       |
+
+A single job that does everything (the quick-start above) needs
+`contents: write` and `pull-requests: write`, plus `issues: write` if you enable
+[`release-reference-comments`](/reference/configuration#release-reference-comments).
+
+## Choosing a token
+
+The action needs a token for two things: **GitHub API calls** (PRs, releases,
+comments) and **git push authentication** for the release branch and tags.
+Whatever you pass becomes the author of those actions—there is no API to set a
+separate author—so pick a token based on the identity you want releases
+attributed to.
+
+::: warning The default `GITHUB_TOKEN` has a catch
+Pushes and tags created with the workflow's built-in `GITHUB_TOKEN` **do not
+trigger other workflows**. If you rely on a separate `release.published` (or tag
+`push`) workflow to publish to a registry, that downstream workflow **will not
+fire**. Use a PAT, a bot account, or a GitHub App token if you need to trigger
+downstream automation.
+:::
+
+### Option 1 — built-in `GITHUB_TOKEN`
+
+Simplest, attributed to `github-actions[bot]`. Fine when you do not need to
+trigger downstream workflows.
+
+```yaml
+permissions:
+  contents: write
+  pull-requests: write
+steps:
+  - uses: actions/checkout@v6
+    with:
+      fetch-depth: 0
+      fetch-tags: true
+  - uses: jolars/versionary@v1
+    with:
+      token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+### Option 2 — Personal Access Token (PAT)
+
+Attributed to **your** user account, and—crucially—**does** trigger downstream
+workflows.
+
+- **Fine-grained PAT** (recommended): scope it to the repository (or org) and
+  grant repository permissions **Contents: Read and write** and **Pull requests:
+  Read and write** (add **Issues: Read and write** for reference comments).
+- **Classic PAT**: grant the `repo` scope.
+
+Store it as a repository or organization secret (e.g. `RELEASE_TOKEN`) and pass
+it as `token`:
+
+```yaml
+with:
+  token: ${{ secrets.RELEASE_TOKEN }}
+```
+
+### Option 3 — dedicated bot account
+
+For a clean, non-personal identity (like `semantic-release`'s
+`@semantic-release-bot`): create a separate GitHub user, give it write access to
+the repository, generate a PAT for it, and store that as your release token.
+Releases are then attributed to the bot account and trigger downstream
+workflows.
+
+### Option 4 — GitHub App installation token
+
+Attributed to `<app-name>[bot]`, scoped per installation, and triggers
+downstream workflows. Mint a short-lived token at runtime:
+
+```yaml
+steps:
+  - uses: actions/create-github-app-token@v2
+    id: app-token
+    with:
+      app-id: ${{ vars.RELEASE_APP_ID }}
+      private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+  - uses: actions/checkout@v6
+    with:
+      fetch-depth: 0
+      fetch-tags: true
+      token: ${{ steps.app-token.outputs.token }}
+  - uses: jolars/versionary@v1
+    with:
+      token: ${{ steps.app-token.outputs.token }}
+```
+
+### Token resolution
+
+When you run the CLI directly (outside the action), the GitHub provider reads
+the token from environment variables, in precedence order:
+
+```
+VERSIONARY_PR_TOKEN > GH_TOKEN > GITHUB_TOKEN
+```
+
+The action wraps this for you: it takes the `token` input (or the deprecated
+`github-token` alias) and exposes it to the CLI. It also configures the `origin`
+remote and a default git identity if none is set.
+
+## Committer identity
+
+The release commit's committer comes from git config, not the token. On a bare
+runner where neither `user.name` nor `user.email` is set, the action defaults
+the committer to `github-actions[bot]` so you don't need a `git config` step. An
+existing identity (local, global, or one set by another action) is left
+untouched.
+
+## Action reference
+
+### Inputs
+
+| Input               | Required | Default  | Description                                            |
+| ------------------- | -------- | -------- | ------------------------------------------------------ |
+| `token`             | no\*     | —        | GitHub token for SCM integration and git push.         |
+| `github-token`      | no       | —        | **Deprecated** alias for `token`.                      |
+| `versionary-version`| no       | pinned   | npm version or dist-tag of Versionary to run.          |
+| `working-directory` | no       | `.`      | Directory containing `versionary.jsonc`/`.json`.       |
+
+\* A token must be supplied via `token` or `github-token`, or the action fails.
+
+### Outputs
+
+| Output            | Description                                                   |
+| ----------------- | ------------------------------------------------------------- |
+| `action`          | `noop`, `pr-prepared`, `release-published`, `release-skipped`, … |
+| `message`         | Human-readable result summary.                                |
+| `release_created` | `"true"` when at least one release was published.             |
+| `tag_name`        | First published tag (single-target flows).                    |
+| `tag_names`       | JSON array of all published tags.                             |
+| `review_url`      | Release PR URL when a PR was prepared.                         |
+| `branch`          | Release branch name when a PR was prepared.                   |
+| `title`           | Release PR title when a PR was prepared.                       |
+
+## Publishing to a registry
+
+Versionary does **not** publish to npm, crates.io, PyPI, CRAN, etc. It creates
+the tag and the GitHub Release; your CI publishes from that event. Trigger a
+separate workflow on `release.published`:
+
+```yaml
+name: Publish
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      # … build and publish to your registry …
+```
+
+Remember the [`GITHUB_TOKEN` caveat](#choosing-a-token): for this workflow to
+fire, Versionary must have created the release with a PAT, bot, or App token.
+
+## Keeping `@v1` current
+
+Publish immutable tags (`v1.2.3`) and maintain a moving major tag (`v1`) that
+points at the latest `v1.x.y`. A small release-triggered workflow can update
+`v1` so `uses: jolars/versionary@v1` stays current without breaking major
+compatibility.

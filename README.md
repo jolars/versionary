@@ -1,69 +1,118 @@
 # Versionary
 
 Versionary is a software-agnostic automated release tool focused on SemVer,
-conventional commits, release PR workflows, and extensibility.
+Conventional Commits, release-PR workflows, and extensibility.
+
+📖 **Documentation: <https://jolars.github.io/versionary/>**
 
 ## Why this exists
 
-Versionary is designed as a practical middle ground between `semantic-release`
-and `release-please`.
+Versionary is a practical middle ground between
+[`semantic-release`](https://github.com/semantic-release/semantic-release) and
+[`release-please`](https://github.com/googleapis/release-please):
 
-- Like `semantic-release`, it supports direct release execution.
-- Like `release-please`, it supports a release PR workflow so maintainers can
-  preview and review changes before publication.
+- like `semantic-release`, it supports **direct release execution**;
+- like `release-please`, it supports a **release PR workflow** so maintainers
+  can preview and review changes before publication.
 
-The core idea is to keep versioning, changelog generation, tagging, and SCM
-release metadata in one tool, while leaving package publication (npm, crates.io,
-etc.) to dedicated CI workflows triggered by tags or releases.
+It keeps versioning, changelog generation, tagging, and SCM release metadata in
+one tool, while leaving package publication (npm, crates.io, etc.) to dedicated
+CI workflows triggered by tags or releases.
 
-## Product direction
-
-Versionary is being built to:
+It is built to:
 
 - support both direct releases and release-PR-gated releases
-- work across repository types (Node, Rust, docs/LaTeX, etc.)
-- stay SCM-agnostic at the core with built-in integration adapters
-  (GitHub first; GitLab/Codeberg later)
-- keep a small, stable core with explicit extension points
+- work across ecosystems (Node, Rust, Python, R, Julia, LaTeX, …)
+- stay SCM-agnostic at the core with built-in integration (GitHub first)
+- keep a small, stable core with clear extension points
 - handle trunk-based development and monorepo workflows cleanly
+
+> **Status:** early, alpha-stage development. Breaking changes are expected
+> before `1.0.0`.
+
+## Quick start
+
+Install:
+
+```bash
+pnpm add -D versionary    # or npm install --save-dev versionary
+```
+
+Add a `versionary.jsonc` at the repo root:
+
+```jsonc
+{
+  "$schema": "https://raw.githubusercontent.com/jolars/versionary/main/schemas/config.json",
+  "version": 1,
+  "release-type": "node"
+}
+```
+
+Check it and preview the next release:
+
+```bash
+npx versionary verify
+npx versionary plan
+```
+
+Then automate it in CI—see the
+[Getting started](https://jolars.github.io/versionary/guide/getting-started) and
+[GitHub Actions](https://jolars.github.io/versionary/guide/github-actions)
+guides.
+
+## Documentation
+
+The full documentation lives at <https://jolars.github.io/versionary/>:
+
+- [Getting started](https://jolars.github.io/versionary/guide/getting-started)
+- [GitHub Actions setup](https://jolars.github.io/versionary/guide/github-actions)
+  (including tokens and permissions)
+- [Release workflows](https://jolars.github.io/versionary/guide/workflows)
+- [Monorepos](https://jolars.github.io/versionary/guide/monorepos)
+- [Conventional Commits](https://jolars.github.io/versionary/guide/conventional-commits)
+  and [Versioning](https://jolars.github.io/versionary/guide/versioning)
+- Reference:
+  [CLI](https://jolars.github.io/versionary/reference/cli),
+  [Configuration](https://jolars.github.io/versionary/reference/configuration),
+  [Strategies](https://jolars.github.io/versionary/reference/strategies)
 
 ## Scope and non-goals
 
-In scope:
+In scope: semantic version planning from commits, changelog generation, release
+PR automation, and tags + SCM release metadata (e.g. GitHub Releases).
 
-- semantic version planning from commits
-- changelog generation
-- release PR automation
-- tags + SCM release metadata (e.g. GitHub Releases)
+Out of scope (intentional): publishing artifacts to language registries,
+replacing package-specific publish tooling, and external/user-provided plugin
+loading. Use your CI/CD platform for registry publishing, triggered from a
+created release/tag.
 
-Out of scope (intentional):
+## Contributing
 
-- publishing artifacts to language registries
-- replacing package-specific publish tooling
-- external/user-provided plugin loading
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, commands, and
+commit conventions.
 
-Use your CI/CD platform for registry publishing, triggered from a created
-release/tag.
+## Architecture layout (canonical)
 
-## Current status vs roadmap
+Runtime code uses a flat `src/` layout with clear module boundaries:
 
-Current implementation focuses on:
+- `src/cli/`: command router (`run`, `verify`, `plan`, `changelog`, `pr`, `release`)
+- `src/release/`: release orchestration (plan/changelog/PR/release/state/recovery)
+- `src/strategy/`: strategy contracts, resolver, and built-in implementations
+  (`simple`, `node`, `rust`, `r`, `latex`, `python`, `julia`)
+- `src/scm/`: SCM client contracts and provider implementation(s)
+- `src/config/`: config loading and schema validation
+- `src/git/`: git commit/range and repository URL helpers
+- `src/types/`: shared config/plugin-facing types
 
-- strategy-based version updates (`simple`, `node`, `rust`, `r`, `latex`,
-  `python`, `julia`)
-- release planning and changelog generation
-- review-mode vs direct-mode release flow
-- a static internal SCM client (`github` provider today)
-
-Planned/harder areas include deeper monorepo ergonomics, broader SCM coverage,
-and stronger failure recovery around release steps.
+Configuration is loaded from `versionary.jsonc` by default (or
+`versionary.json`). The config schema lives in `src/config/schema.ts`; the
+editor-facing `schemas/config.json` is generated via `pnpm gen:schema`.
 
 ## Adding a new release strategy
 
-Versionary is set up so new language strategies can be added internally without
-changing release orchestration. A new strategy should implement the
-`VersionStrategy` contract in `src/strategy/types.ts` and be wired in
-`src/strategy/resolve.ts`.
+New language strategies can be added internally without changing release
+orchestration. A new strategy should implement the `VersionStrategy` contract in
+`src/strategy/types.ts` and be wired in `src/strategy/resolve.ts`.
 
 Checklist for new strategies:
 
@@ -83,401 +132,6 @@ Checklist for new strategies:
 - add/extend strategy contract tests in `tests/strategy-contract.test.ts`
 - update schema/docs for new `release-type` behavior and defaults
 
-Current ecosystem policy defaults:
-
-- changelog source for publish:
-  - root target uses root `changelog-file`
-  - package target uses package changelog defaults:
-    - `packages.<path>.changelog-file` when configured
-    - otherwise `NEWS.md` for R targets or `CHANGELOG.md` for other targets at
-      `<package-path>/<default-file>`
-- lockfiles:
-  - Node strategy updates root `package-lock.json`/`npm-shrinkwrap.json` when
-    present
-  - Rust release PR prep refreshes all discovered `Cargo.lock` files
-  - Python strategy refreshes any `poetry.lock`/`uv.lock`/`pdm.lock` at the
-    package root by shelling out to the matching tool (`poetry lock
-    --no-update`, `uv lock`, `pdm lock --update-reuse`); the corresponding
-    binary must be on `PATH`
-- workspace/inheritance:
-  - Rust supports `version.workspace = true` via `[workspace.package].version`
-  - other strategies should document equivalent inheritance behavior explicitly
-
-## Architecture layout (canonical)
-
-Current runtime code uses a flat `src/` layout with clear module boundaries:
-
-- `src/cli/`: command router (`run`, `verify`, `plan`, `changelog`, `pr`, `release`)
-- `src/release/`: release orchestration (plan/changelog/PR/release/state/recovery)
-- `src/strategy/`: strategy contracts, resolver, and built-in implementations
-  (`simple`, `node`, `rust`, `r`, `latex`, `python`, `julia`)
-- `src/scm/`: SCM client contracts and provider implementation(s)
-- `src/config/`: config loading and schema validation
-- `src/git/`: git commit/range and repository URL helpers
-- `src/verify/`: repository/config verification
-- `src/types/`: shared config/plugin-facing types
-
-Configuration is loaded from `versionary.jsonc` by default (or
-`versionary.json`).
-
-Schema URL for editor support:
-
-- `https://raw.githubusercontent.com/jolars/versionary/main/schemas/config.json`
-
-## Config (manifest style)
-
-For a quick trial, use:
-
-- `version-file` (default `version.txt`) as version source
-- `changelog-file` (default `CHANGELOG.md`) as release notes output
-- `release-type: "node"` uses `package.json` as version source and updates it
-  during release PR prep
-- `release-type: "r"` uses `DESCRIPTION` as version source and updates the
-  `Version:` field
-- `release-type: "rust"` uses Cargo manifests (`Cargo.toml`) as version source;
-  `version-file` must point to a `Cargo.toml` (default: `Cargo.toml`)
-- `release-type: "latex"` uses `build.lua` as version source and updates LaTeX
-  `\ProvidesPackage{...}[YYYY-MM-DD vX.Y.Z ...]` metadata in `src/**/*.dtx`
-  using the release commit date
-- `release-type: "python"` uses `pyproject.toml` (default) and updates
-  `[project].version` and/or `[tool.poetry].version`; point `version-file` at a
-  Python source file (e.g. `src/<pkg>/__init__.py`) to update a `__version__`
-  assignment instead. Refreshes `poetry.lock`/`uv.lock`/`pdm.lock` at the
-  package root if present
-- `release-type: "julia"` uses `Project.toml` (default) as version source and
-  updates the top-level `version` field (Julia keeps `version`/`name` as root
-  keys, not under a section)
-- `release-type` can also be an array of strategy names to compose them across
-  manifests, e.g. `["python", "rust"]` for a PyO3/maturin project: the first
-  entry is the *primary* (drives `readVersion`, `readPackageName`, and consumes
-  any `version-file` override); each *secondary* writes its default manifest
-  with the same target version. Common combinations:
-  - `["python", "rust"]` — PyO3/maturin (`pyproject.toml` + `Cargo.toml` +
-    `Cargo.lock`)
-  - `["node", "rust"]` — napi-rs (`package.json` + `Cargo.toml` + `Cargo.lock`)
-  - `["r", "rust"]` — R packages with embedded Rust crates (note: nested
-    `src/rust/Cargo.toml` layouts are not supported by the array form yet —
-    use a single strategy until per-strategy `version-file` overrides land)
-- simple/default strategy keeps `version.txt` as source of truth and does not
-  update `package.json`
-- stable release branch (`release-branch`, default: `versionary/release`) so
-  release PRs are updated in-place
-- `baseline-file` (default `.versionary-manifest.json`) tracks baseline SHA for
-  deterministic commit ranges independent of tags
-- pre-1.0 policy defaults to conservative major handling: for `0.y.z`, breaking
-  changes bump to `0.(y+1).0`; set `allow-stable-major: true` to allow explicit
-  auto-transition to `1.0.0` on a breaking release
-- review mode (`review-mode`): `pr` (PR/MR style) or `direct` (no review
-  request)
-- `release-draft` (default `false`) publishes GitHub releases as drafts when
-  enabled
-- `release-reference-comments` controls release comments on linked issues/PRs:
-  - `off` (default): do not post comments
-  - `best-effort`: post comments and continue on API/permission failures
-  - `strict`: fail release if comment posting fails
-  - comments are authored by the account that owns the configured token; see
-    [Comment and commit author identity](#comment-and-commit-author-identity)
-    to post them under a bot identity
-- optional monorepo planning with `monorepo-mode` and `packages`:
-  - `independent` computes package bumps per path
-  - `fixed` computes one shared bump across configured package paths
-  - per-package `package-name` can override release identity (labels + tag base)
-  - per-package `changelog-file` writes package release notes to
-    `<package-path>/<changelog-file>`
-  - per-package `follows` declares an asymmetric version link to one or more
-    source packages: when any source bumps, the follower releases too, with
-    bump = `max(own bump, max(source bumps))`. The follower's changelog gets a
-    `### Dependencies` section listing the followed sources. Use it when one
-    package bundles another's artifact (e.g. an editor extension that ships
-    the CLI binary). Cycles, self-references, unknown source paths, and
-    combining `follows` with `monorepo-mode: "fixed"` are config errors.
-    `follows` is non-transitive: A follows B does not imply A follows what B
-    follows.
-  - per-package `exclude-paths` drops commits that only touch the listed paths
-    (relative to the package) from that package's bump and changelog. A
-    top-level `exclude-paths` applies to every package; the effective excludes
-    for a package are the union of the top-level list and the package's own
-    list. The top-level list also applies to a single-package (non-`packages`)
-    repository.
-  - per-package `allow-stable-major` overrides the top-level setting for that
-    package's own bump (including dependency-propagation and `follows`-driven
-    bumps), so a `0.y.z` package can transition to `1.0.0` on a breaking release
-    independently of its siblings. In `fixed` mode the single shared version is
-    governed by the top-level `allow-stable-major` only.
-
-```jsonc
-// Editor extension that bundles the root CLI artifact
-{
-  "version": 1,
-  "release-type": "rust",
-  "monorepo-mode": "independent",
-  "packages": {
-    ".": { "exclude-paths": ["editors"] },
-    "editors/code": {
-      "release-type": "node",
-      "package-name": "panache-code",
-      "follows": ["."]
-    }
-  }
-}
-```
-
-Rust strategy examples:
-
-```jsonc
-// Single crate
-{
-  "release-type": "rust",
-  "version-file": "Cargo.toml"
-}
-```
-
-```jsonc
-// Workspace root (virtual or root crate + members)
-{
-  "release-type": "rust",
-  "version-file": "Cargo.toml"
-}
-```
-
-Current rust auto-update behavior (phase scope):
-
-- updates crate versions in each targeted crate `[package].version`
-- supports targeted crates using `version.workspace = true` by updating
-  `[workspace.package].version` in the owning workspace manifest
-- updates internal workspace dependency versions when the dependency name
-  matches another targeted crate name
-- refreshes `Cargo.lock` via `cargo generate-lockfile` when `Cargo.lock` exists
-  in repo root
-- applies dependency version rewrites in:
-  - `[dependencies]`, `[dev-dependencies]`, `[build-dependencies]`
-  - `[target.*.dependencies]`, `[target.*.dev-dependencies]`,
-    `[target.*.build-dependencies]`
-
-Current rust non-goals/limits:
-
-- does not update external dependency versions
-- does not update `workspace.dependencies`
-- does not add missing `version = ...` fields to dependency inline tables
-- does not perform Cargo publish/release to crates.io
-
-If `Cargo.lock` exists, `cargo` must be available in PATH during PR preparation.
-
-### Monorepo release names and tag naming
-
-For independent monorepo targets, Versionary derives release tags as:
-
-- root package (`"."`): `v<version>`
-- non-root package: `<release-name>-v<version>`
-
-`release-name` precedence is:
-
-1. `packages.<path>.package-name` (explicit override)
-2. strategy-native package name from version file:
-   - Node: `package.json` `name`
-   - Rust: `Cargo.toml` `[package].name`
-   - R: `DESCRIPTION` `Package:`
-3. package path fallback
-
-When multiple packages resolve to the same `<release-name>` and version, the run
-fails fast with a duplicate-tag error and suggests setting unique
-`package-name` values.
-
-## Commit parsing and release analysis
-
-Release planning is based on Conventional Commit parsing semantics:
-
-- parses type/scope/description from commit headers
-- exposes structured parsed fields (`header`, `body`, `footer`, `type`, `scope`,
-  `description`, `notes`, `references`, `mentions`, `revert`)
-- separates parser output from release policy mapping (`inferReleaseType*`)
-- recognizes breaking changes from `!` and `BREAKING CHANGE` / `BREAKING-CHANGE`
-  footers
-- maps release impact as `feat => minor`, `fix|perf => patch`, breaking => major
-- treats `revert:` commits as patch-releasable by default (and major if marked
-  breaking, e.g. `revert!:` or `BREAKING CHANGE`)
-- suppresses commits that are reverted within the analyzed release window so
-  they do not affect bump/changelog output
-- emits parser diagnostics for malformed headers/footers/references and
-  ambiguous revert messages
-
-Commands:
-
-- `pnpm verify`
-- `pnpm run` (default orchestration: no-op, create/update release PR, or publish
-  release based on context)
-- `pnpm run -- --json` (machine-readable orchestration result)
-- `pnpm plan`
-- `pnpm changelog -- --write`
-- `pnpm pr`
-- `pnpm release`
-
-`pnpm pr` prepares release commit + branch and opens/updates a review request
-through the SCM client. `pnpm run` is the recommended CI entrypoint and
-auto-dispatches between PR/update and release publish.
-
-### Moloch migration example (semantic-release -> versionary)
-
-For LaTeX projects like `moloch`, use `release-type: "latex"` so Versionary:
-
-- bumps `build.lua` version
-- updates `src/**/*.dtx` `\ProvidesPackage{...}[YYYY-MM-DD vX.Y.Z ...]` entries
-  with the release commit date (`git show --format=%cs <sha>`)
-
-Example `versionary.jsonc` for `moloch`:
-
-```jsonc
-{
-  "version": 1,
-  "review-mode": "pr",
-  "release-type": "latex",
-  "version-file": "build.lua",
-  "changelog-file": "CHANGELOG.md",
-  "release-branch": "versionary/release"
-}
-```
-
-For first-run bootstrapping, set `bootstrap-sha` (similar to release-please).
-Subsequent runs use the baseline state file.
-
-## Release retry and recovery behavior
-
-Release publish (`pnpm release` or the publish path in `pnpm run`) is idempotent
-by target tag:
-
-- if a tag already exists, Versionary reuses it rather than recreating it
-- if release metadata already exists for the tag (e.g., GitHub Release), it is
-  reused
-- if a prior run created/pushed the tag but failed before metadata creation, a
-  rerun creates the missing metadata and proceeds
-
-Versionary fails fast when recovery is unsafe (for example, local and remote
-tags with the same name point to different SHAs). In these cases, the error
-message includes remediation guidance so CI logs are actionable.
-
-## SCM API model
-
-Versionary currently uses a static internal SCM client model:
-
-- `src/scm/types.ts` defines the `ScmClient` contract
-- `src/scm/client.ts` returns the active provider client
-- current provider is `github` via `src/scm/github-plugin.ts`
-
-There is no runtime discovery/loading of external SCM providers in the release
-flow. Adding another provider is an internal extension: implement `ScmClient`
-and wire provider selection in `src/scm/client.ts`.
-
-### GitHub integration: env, permissions, and flow
-
-Required environment for the GitHub SCM provider:
-
-- `GITHUB_REPOSITORY` (format: `owner/repo`)
-- one token env var: `VERSIONARY_PR_TOKEN` or `GH_TOKEN` or `GITHUB_TOKEN`
-
-Token precedence is:
-
-- `VERSIONARY_PR_TOKEN` > `GH_TOKEN` > `GITHUB_TOKEN`
-
-Minimum GitHub token/repo permissions for Versionary-managed metadata:
-
-- release PR create/update flow: `contents: write`, `pull-requests: write`
-- release metadata flow (GitHub Release create/read): `contents: write`
-
-`review-mode` behavior:
-
-- `pr` (preferred; `review` is a backward-compatible alias): `pnpm run run`
-  prepares/updates the release branch and creates or
-  updates a release PR
-- `direct`: `pnpm run run` prepares/updates the release branch and skips review
-  request creation
-
-Concise GitHub Actions examples:
-
-```yaml
-# 1) Release PR / update flow (run on push to default branch)
-permissions:
-  contents: write
-  pull-requests: write
-
-steps:
-  - uses: actions/checkout@v6
-    with:
-      fetch-depth: 0
-      fetch-tags: true
-  - id: versionary
-    uses: jolars/versionary@v1
-    with:
-      token: ${{ secrets.RELEASE_TOKEN }}
-```
-
-```yaml
-# 2) Release publish flow after merge (release commit context)
-permissions:
-  contents: write
-
-steps:
-  - uses: actions/checkout@v6
-    with:
-      fetch-depth: 0
-      fetch-tags: true
-  - id: versionary
-    uses: jolars/versionary@v1
-    with:
-      token: ${{ secrets.RELEASE_TOKEN }}
-  - if: ${{ steps.versionary.outputs.release_created == 'true' }}
-    run: echo "Released ${{ steps.versionary.outputs.tag_name }}"
-```
-
-`token` is used for both GitHub API calls and git push authentication in
-the composite action. This means release-branch force-pushes are attributed to
-that token and can trigger downstream workflows when using a PAT/App token.
-(`github-token` remains as a deprecated alias for backward compatibility.)
-
-#### Comment and commit author identity
-
-Two distinct identities are at play; keep them apart.
-
-**Release-reference comments, the GitHub Release, and the tag/branch push** are
-attributed to the account that owns the token you provide. There is no GitHub
-API to set a custom author independent of the token, so this identity always
-follows the token's account:
-
-- the workflow's default `GITHUB_TOKEN` acts as `github-actions[bot]` — the
-  common case, and what most `semantic-release` setups show
-- a **personal access token (PAT)** acts as your own user
-- a **dedicated bot user account** acts as that account (for example
-  `semantic-release`'s own `@semantic-release-bot`): create a separate GitHub
-  user, generate a PAT for it, and store it as the release token
-- a **GitHub App installation token** (e.g. minted with
-  `actions/create-github-app-token`) acts as `<app-name>[bot]`
-
-**The release commit's committer** comes from git's `user.name`/`user.email`,
-not the token. When neither is configured (e.g. a bare CI runner), Versionary
-defaults it to `github-actions[bot]`, so no `git config` step is needed in your
-workflow; an existing identity (local, global, or the one the GitHub Action
-wrapper sets) is left untouched.
-
-The release-reference comment body itself is signed by Versionary regardless of
-which account posts it.
-
-Action outputs:
-
-- `action`: `noop`, `pr-prepared`, `release-published`, `release-skipped`
-- `message`: human-readable summary
-- `release_created`: `"true"` when at least one release was published
-- `tag_name`: first published tag (for single-target flows)
-- `tag_names`: JSON array of published tags
-- `review_url`: review request URL when PR flow runs
-
-For GitHub Action consumers, publish immutable tags (for example `v1.2.3`) and
-maintain a moving major tag (`v1`, `v2`, ...). A small release-triggered
-workflow should update `v<major>` to the latest release tag so `uses:
-jolars/versionary@v1` stays current without breaking major compatibility.
-
-Package publication is intentionally out of scope in the current release flow.
-Use separate CI workflows for publishing after Versionary has prepared/tagged
-the release.
-
 ## Install from GitHub
 
 You can install directly from a git ref:
@@ -491,4 +145,8 @@ You can install directly from a git ref:
 ```
 
 The package runs a `prepare` build during git installation so the `versionary`
-CLI binary is available after `pnpm install`.
+CLI binary is available after install.
+
+## License
+
+[MIT](LICENSE)
