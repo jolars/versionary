@@ -3,7 +3,7 @@
 Versionary is a software-agnostic automated release tool focused on SemVer,
 Conventional Commits, release-PR workflows, and extensibility.
 
-📖 **Documentation: <https://jolars.github.io/versionary/>**
+📖 **Documentation: <https://versionary.dev/>**
 
 ## Why this exists
 
@@ -56,25 +56,25 @@ npx versionary plan
 ```
 
 Then automate it in CI—see the
-[Getting started](https://jolars.github.io/versionary/guide/getting-started) and
-[GitHub Actions](https://jolars.github.io/versionary/guide/github-actions)
+[Getting started](https://versionary.dev/guide/getting-started) and
+[GitHub Actions](https://versionary.dev/guide/github-actions)
 guides.
 
 ## Documentation
 
-The full documentation lives at <https://jolars.github.io/versionary/>:
+The full documentation lives at <https://versionary.dev/>:
 
-- [Getting started](https://jolars.github.io/versionary/guide/getting-started)
-- [GitHub Actions setup](https://jolars.github.io/versionary/guide/github-actions)
+- [Getting started](https://versionary.dev/guide/getting-started)
+- [GitHub Actions setup](https://versionary.dev/guide/github-actions)
   (including tokens and permissions)
-- [Release workflows](https://jolars.github.io/versionary/guide/workflows)
-- [Monorepos](https://jolars.github.io/versionary/guide/monorepos)
-- [Conventional Commits](https://jolars.github.io/versionary/guide/conventional-commits)
-  and [Versioning](https://jolars.github.io/versionary/guide/versioning)
+- [Release workflows](https://versionary.dev/guide/workflows)
+- [Monorepos](https://versionary.dev/guide/monorepos)
+- [Conventional Commits](https://versionary.dev/guide/conventional-commits)
+  and [Versioning](https://versionary.dev/guide/versioning)
 - Reference:
-  [CLI](https://jolars.github.io/versionary/reference/cli),
-  [Configuration](https://jolars.github.io/versionary/reference/configuration),
-  [Strategies](https://jolars.github.io/versionary/reference/strategies)
+  [CLI](https://versionary.dev/reference/cli),
+  [Configuration](https://versionary.dev/reference/configuration),
+  [Strategies](https://versionary.dev/reference/strategies)
 
 ## Scope and non-goals
 

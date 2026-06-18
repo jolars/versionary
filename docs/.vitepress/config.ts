@@ -5,10 +5,10 @@ export default defineConfig({
   description:
     "Software-agnostic automated releases driven by Conventional Commits and Semantic Versioning.",
   lang: "en-US",
-  base: "/versionary/",
+  base: "/",
   cleanUrls: true,
   lastUpdated: true,
-  head: [["link", { rel: "icon", href: "/versionary/favicon.svg" }]],
+  head: [["link", { rel: "icon", href: "/favicon.svg" }]],
   themeConfig: {
     nav: [
       { text: "Guide", link: "/guide/introduction" },
