@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="432" height="290" viewBox="0 0 432 290" fill="none">
+<rect width="432" height="290" fill="#111113"/>
+<path d="M34 124L398 124" stroke="#3a3d46" stroke-width="6" stroke-linecap="round"/>
+<path d="M34 124C44 124 44 62 54 62" stroke="#ff6369" stroke-width="6" fill="none" stroke-linecap="round"/>
+<path d="M54 62L92 62" stroke="#ff6369" stroke-width="6" stroke-linecap="round"/>
+<path d="M92 62C95 62 95 124 98 124" stroke="#ff6369" stroke-width="6" fill="none" stroke-linecap="round"/>
+<path d="M54 62C61 62 61 30 68 30" stroke="#ff6369" stroke-width="6" fill="none" stroke-linecap="round"/>
+<path d="M68 30L80 30" stroke="#ff6369" stroke-width="6" stroke-linecap="round"/>
+<path d="M80 30C86 30 86 62 92 62" stroke="#ff6369" stroke-width="6" fill="none" stroke-linecap="round"/>
+<path d="M150 124C162 124 162 64 174 64" stroke="#3dd68c" stroke-width="6" fill="none" stroke-linecap="round"/>
+<path d="M174 64L198 64" stroke="#3dd68c" stroke-width="6" stroke-linecap="round"/>
+<path d="M198 64C208 64 208 124 218 124" stroke="#3dd68c" stroke-width="6" fill="none" stroke-linecap="round"/>
+<path d="M306 124C315 124 315 96 324 96" stroke="#7c93f5" stroke-width="6" fill="none" stroke-linecap="round"/>
+<path d="M324 96C331 96 331 124 338 124" stroke="#7c93f5" stroke-width="6" fill="none" stroke-linecap="round"/>
+<circle cx="34" cy="124" r="6" fill="#6b6f78"/>
+<circle cx="150" cy="124" r="6" fill="#6b6f78"/>
+<circle cx="306" cy="124" r="6" fill="#6b6f78"/>
+<circle cx="128" cy="124" r="6" fill="#6b6f78"/>
+<circle cx="268" cy="124" r="6" fill="#6b6f78"/>
+<circle cx="398" cy="124" r="6" fill="#6b6f78"/>
+<circle cx="54" cy="62" r="7.5" fill="#ff6369"/>
+<circle cx="92" cy="62" r="7.5" fill="#ff6369"/>
+<circle cx="68" cy="30" r="6" fill="#ff6369"/>
+<circle cx="80" cy="30" r="6" fill="#ff6369"/>
+<circle cx="174" cy="64" r="7.5" fill="#3dd68c"/>
+<circle cx="198" cy="64" r="7.5" fill="#3dd68c"/>
+<circle cx="324" cy="96" r="7.5" fill="#7c93f5"/>
+<circle cx="98" cy="124" r="15" fill="#111113"/><circle cx="98" cy="124" r="12" fill="#ff6369"/>
+<path d="M98 140L98 174" stroke="#ff6369" stroke-width="5" stroke-linecap="round"/>
+<circle cx="218" cy="124" r="15" fill="#111113"/><circle cx="218" cy="124" r="12" fill="#3dd68c"/>
+<path d="M218 140L218 174" stroke="#3dd68c" stroke-width="5" stroke-linecap="round"/>
+<circle cx="338" cy="124" r="15" fill="#111113"/><circle cx="338" cy="124" r="12" fill="#7c93f5"/>
+<path d="M338 140L338 174" stroke="#7c93f5" stroke-width="5" stroke-linecap="round"/>
+<text x="98" y="250" font-family="'JetBrains Mono', 'Fira Code', 'SF Mono', 'Cascadia Code', ui-monospace, monospace" font-size="100" font-weight="700" text-anchor="middle" dominant-baseline="alphabetic" fill="#ff6369">x</text>
+<text x="158" y="250" font-family="'JetBrains Mono', 'Fira Code', 'SF Mono', 'Cascadia Code', ui-monospace, monospace" font-size="100" font-weight="700" text-anchor="middle" dominant-baseline="alphabetic" fill="#6b6f78">.</text>
+<text x="218" y="250" font-family="'JetBrains Mono', 'Fira Code', 'SF Mono', 'Cascadia Code', ui-monospace, monospace" font-size="100" font-weight="700" text-anchor="middle" dominant-baseline="alphabetic" fill="#3dd68c">y</text>
+<text x="278" y="250" font-family="'JetBrains Mono', 'Fira Code', 'SF Mono', 'Cascadia Code', ui-monospace, monospace" font-size="100" font-weight="700" text-anchor="middle" dominant-baseline="alphabetic" fill="#6b6f78">.</text>
+<text x="338" y="250" font-family="'JetBrains Mono', 'Fira Code', 'SF Mono', 'Cascadia Code', ui-monospace, monospace" font-size="100" font-weight="700" text-anchor="middle" dominant-baseline="alphabetic" fill="#7c93f5">z</text>
+</svg>

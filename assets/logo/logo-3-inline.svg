@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="130" viewBox="0 0 440 130" fill="none">
+<line x1="120" y1="62" x2="196" y2="62" stroke="#8b8d98" stroke-width="6" stroke-linecap="round"/>
+<line x1="244" y1="62" x2="320" y2="62" stroke="#8b8d98" stroke-width="6" stroke-linecap="round"/>
+<circle cx="120" cy="62" r="12" fill="#e5484d"/>
+<circle cx="196" cy="62" r="12" fill="#46a758"/>
+<circle cx="244" cy="62" r="12" fill="#46a758"/>
+<circle cx="320" cy="62" r="12" fill="#3e63dd"/>
+<text x="40" y="84" font-family="'JetBrains Mono', 'Fira Code', 'SF Mono', 'Cascadia Code', ui-monospace, monospace" font-size="84" font-weight="700"><tspan fill="#e5484d">x</tspan></text>
+<text x="206" y="84" font-family="'JetBrains Mono', 'Fira Code', 'SF Mono', 'Cascadia Code', ui-monospace, monospace" font-size="84" font-weight="700"><tspan fill="#46a758">y</tspan></text>
+<text x="330" y="84" font-family="'JetBrains Mono', 'Fira Code', 'SF Mono', 'Cascadia Code', ui-monospace, monospace" font-size="84" font-weight="700"><tspan fill="#3e63dd">z</tspan></text>
+</svg>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="460" height="200" viewBox="0 0 460 200" fill="none">
+<path d="M40 150 C70 150 70 100 100 100" stroke="#8b8d98" stroke-width="6" fill="none" stroke-linecap="round"/>
+<line x1="100" y1="100" x2="100" y2="60" stroke="#8b8d98" stroke-width="6" stroke-linecap="round"/>
+<path d="M100 130 C60 130 60 160 40 160" stroke="#3e63dd" stroke-width="6" fill="none" stroke-linecap="round"/>
+<path d="M100 100 C140 100 140 70 170 70" stroke="#46a758" stroke-width="6" fill="none" stroke-linecap="round"/>
+<line x1="100" y1="60" x2="100" y2="40" stroke="#e5484d" stroke-width="6" stroke-linecap="round"/>
+<circle cx="40" cy="150" r="11" fill="#ffffff" stroke="#8b8d98" stroke-width="6.050000000000001"/>
+<circle cx="100" cy="100" r="11" fill="#3e63dd"/>
+<circle cx="100" cy="60" r="11" fill="#46a758"/>
+<circle cx="100" cy="40" r="11" fill="#e5484d"/>
+<circle cx="170" cy="70" r="11" fill="#ffffff" stroke="#46a758" stroke-width="6.050000000000001"/>
+<text x="200" y="130" font-family="'JetBrains Mono', 'Fira Code', 'SF Mono', 'Cascadia Code', ui-monospace, monospace" font-size="78" font-weight="700" letter-spacing="-0.5"><tspan fill="#e5484d">x</tspan><tspan fill="#60646c">.</tspan><tspan fill="#46a758">y</tspan><tspan fill="#60646c">.</tspan><tspan fill="#3e63dd">z</tspan></text>
+</svg>

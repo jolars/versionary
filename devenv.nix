@@ -7,6 +7,7 @@
   packages = [
     pkgs.git
     pkgs.biome
+    pkgs.go-task
   ];
 
   languages = {
