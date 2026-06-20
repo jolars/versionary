@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="200" viewBox="0 0 360 200" fill="none">
+<line x1="96" y1="58" x2="264" y2="58" stroke="#8b8d98" stroke-width="6" stroke-linecap="round"/>
+<circle cx="96" cy="58" r="11" fill="#e5484d"/>
+<circle cx="180" cy="58" r="11" fill="#46a758"/>
+<circle cx="264" cy="58" r="11" fill="#3e63dd"/>
+<line x1="96" y1="69" x2="96" y2="110" stroke="#e5484d" stroke-width="6" stroke-linecap="round"/>
+<line x1="180" y1="69" x2="180" y2="110" stroke="#46a758" stroke-width="6" stroke-linecap="round"/>
+<line x1="264" y1="69" x2="264" y2="110" stroke="#3e63dd" stroke-width="6" stroke-linecap="round"/>
+<text x="70" y="170" font-family="'JetBrains Mono', 'Fira Code', 'SF Mono', 'Cascadia Code', ui-monospace, monospace" font-size="92" font-weight="700" letter-spacing="-0.5"><tspan fill="#e5484d">x</tspan><tspan fill="#60646c">.</tspan><tspan fill="#46a758">y</tspan><tspan fill="#60646c">.</tspan><tspan fill="#3e63dd">z</tspan></text>
+</svg>

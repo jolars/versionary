@@ -1,0 +1,49 @@
+# Taskfile for working on the project logo.
+#
+# Requires `task` (https://taskfile.dev). SVG generation needs `pnpm`; the
+# preview/watch tasks additionally need `inkscape` and ImageMagick (`magick`).
+#
+#   task logo            # regenerate the SVGs
+#   task logo:preview    # regenerate + render a light/dark preview PNG
+#   task logo:watch      # rebuild the preview on every save (iterate here)
+version: "3"
+
+vars:
+  SCRIPT: scripts/generate-logo.ts
+  DIR: assets/logo
+  PREVIEW: assets/logo/preview.png
+
+tasks:
+  logo:
+    desc: Generate the logo SVGs from the generator script
+    sources:
+      - "{{.SCRIPT}}"
+    generates:
+      - "{{.DIR}}/logo.svg"
+      - "{{.DIR}}/logo-dark.svg"
+    cmds:
+      - pnpm tsx {{.SCRIPT}}
+
+  logo:preview:
+    desc: Generate the SVGs and render a stacked light/dark preview PNG
+    deps: [logo]
+    sources:
+      - "{{.SCRIPT}}"
+    generates:
+      - "{{.PREVIEW}}"
+    preconditions:
+      - sh: command -v inkscape
+        msg: "inkscape not found — needed to rasterize the SVGs for preview"
+      - sh: command -v magick
+        msg: "ImageMagick (magick) not found — needed to stack the preview"
+    cmds:
+      - inkscape {{.DIR}}/logo.svg --export-type=png --export-filename={{.DIR}}/.light.png -w 864
+      - inkscape {{.DIR}}/logo-dark.svg --export-type=png --export-filename={{.DIR}}/.dark.png -w 864
+      - magick montage {{.DIR}}/.light.png {{.DIR}}/.dark.png -tile 1x2 -geometry +12+12 -background "#dddddd" {{.PREVIEW}}
+      - rm -f {{.DIR}}/.light.png {{.DIR}}/.dark.png
+      - 'echo "preview written to {{.PREVIEW}}"'
+
+  logo:watch:
+    desc: Watch the generator and rebuild the preview on every change
+    cmds:
+      - task --watch --interval 300ms logo:preview

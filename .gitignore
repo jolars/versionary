@@ -148,3 +148,6 @@ devenv.local.yaml
 
 # pre-commit
 .pre-commit-config.yaml
+
+# logo preview render (see Taskfile.yml: `task logo:preview`)
+assets/logo/preview.png
