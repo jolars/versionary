@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.32.0](https://github.com/jolars/versionary/compare/v0.31.0...v0.32.0) (2026-07-04)
+
+### Features
+- **artifact-rules:** support templated regex replacement ([`1bc89e5`](https://github.com/jolars/versionary/commit/1bc89e5cbf2bf3e6135ae7f50c737a843217edc0)), closes [#68](https://github.com/jolars/versionary/issues/68)
+
+### Bug Fixes
+- **pr:** honor r-news format in single-package PR body ([`d8004c0`](https://github.com/jolars/versionary/commit/d8004c047d6099d2849b0a34bea4bcb94398106a))
+- **deps:** bump vite to 8 and esbuild to 0.28.1 ([`b571e22`](https://github.com/jolars/versionary/commit/b571e2226e2afdf8ecc2f34836fd20e9166fec81))
+
 ## [0.31.0](https://github.com/jolars/versionary/compare/v0.30.0...v0.31.0) (2026-06-14)
 
 ### Features
