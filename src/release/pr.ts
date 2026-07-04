@@ -680,6 +680,16 @@ export function renderSimpleReviewRequestBody(
     return `${bodySections}\n\n${renderReviewRequestFooter()}`;
   }
 
+  // Honor the plan's changelog format (e.g. r-news) so manual notes, which are
+  // authored/extracted relative to that format's heading depth, render at the
+  // right level. Falling through to renderReleaseNotesSection would always use
+  // the markdown-changelog convention and leave r-news highlights one level too
+  // high relative to the auto-generated sections.
+  if (plan && plan.changelogFormat === "r-news") {
+    const notes = renderReleasePlanChangelog(plan, { cwd, highlights });
+    return `${notes}\n\n${renderReviewRequestFooter()}`;
+  }
+
   return renderReleaseNotesSection(
     {
       currentVersion: previousVersion,
