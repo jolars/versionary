@@ -19,8 +19,15 @@ import type {
   VersionaryConfig,
   VersionaryPackage,
 } from "../types/config.js";
+import { releaseTypeBetween, resolveReleaseAsOverride } from "./release-as.js";
 import { bumpVersion, maxReleaseType, type ReleaseType } from "./semver.js";
 import { readBaselineSha, readReleaseTargets } from "./state.js";
+
+type BumpReason =
+  | "direct"
+  | "dependency-propagation"
+  | "follows"
+  | "release-as";
 
 export interface ReleasePlan {
   mode: "simple";
@@ -39,7 +46,7 @@ export interface ReleasePlan {
     releaseType: ReleaseType;
     currentVersion: string;
     nextVersion: string | null;
-    bumpReason?: "direct" | "dependency-propagation" | "follows";
+    bumpReason?: BumpReason;
     dependencySourcePaths?: string[];
     commits: ParsedCommit[];
   }>;
@@ -132,7 +139,7 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
     releaseType: ReleaseType;
     currentVersion: string;
     nextVersion: string | null;
-    bumpReason?: "direct" | "dependency-propagation" | "follows";
+    bumpReason?: BumpReason;
     dependencySourcePaths?: string[];
     commits: ParsedCommit[];
     parsedCommits: ParsedCommit[];
@@ -175,19 +182,33 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
     }
     const effectiveCommits = applyRevertSuppression(parsedCommits);
     const commits = effectiveCommits;
-    const releaseType = analyzeParsedCommits(parsedCommits);
-    const nextVersion = releaseType
-      ? bumpVersion(packageCurrentVersion, releaseType, {
-          allowStableMajor: allowStableMajorForPath(pkg.path),
-        })
-      : null;
+    const analyzedType = analyzeParsedCommits(parsedCommits);
+    const override = resolveReleaseAsOverride(commits, packageCurrentVersion);
+    let releaseType: ReleaseType;
+    let nextVersion: string | null;
+    let bumpReason: BumpReason | undefined;
+    if (override) {
+      // An explicit `Release-As:` footer forces a release with the requested
+      // version, even when the conventional-commit analysis produces no bump.
+      nextVersion = override.version;
+      releaseType = releaseTypeBetween(packageCurrentVersion, override.version);
+      bumpReason = "release-as";
+    } else {
+      releaseType = analyzedType;
+      nextVersion = releaseType
+        ? bumpVersion(packageCurrentVersion, releaseType, {
+            allowStableMajor: allowStableMajorForPath(pkg.path),
+          })
+        : null;
+      bumpReason = nextVersion ? "direct" : undefined;
+    }
     return {
       path: pkg.path,
       implicitRoot: pkg.implicitRoot,
       releaseType,
       currentVersion: packageCurrentVersion,
       nextVersion,
-      bumpReason: nextVersion ? ("direct" as const) : undefined,
+      bumpReason,
       commits,
       parsedCommits,
       resolvedVersionFile: packageContext.versionFile,
@@ -347,6 +368,11 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
     }
   }
   const adjustedPackages = propagatedPackages.map((pkgPlan) => {
+    if (pkgPlan.bumpReason === "release-as") {
+      // An explicit override pins this package's version; do not let a
+      // followed source recompute it out from under the requested version.
+      return pkgPlan;
+    }
     const followsSources = followsByPath.get(pkgPlan.path) ?? [];
     const bumpingSources = followsSources
       .map((sourcePath) =>
@@ -417,14 +443,22 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
     };
   }
 
+  const rootOverridden = rootPackagePlan.bumpReason === "release-as";
+
   if (monorepoMode === "fixed") {
-    const fixedType = analyzeParsedCommits(
+    const analyzedFixedType = analyzeParsedCommits(
       adjustedPackages.flatMap((pkgPlan) => pkgPlan.parsedCommits),
     );
     const fixedBaseVersion = rootPackagePlan.currentVersion;
-    const fixedNextVersion = fixedType
-      ? bumpVersion(fixedBaseVersion, fixedType, { allowStableMajor })
-      : null;
+    // A `Release-As:` footer on the shared (root) version pins every package.
+    const fixedType = rootOverridden
+      ? rootPackagePlan.releaseType
+      : analyzedFixedType;
+    const fixedNextVersion = rootOverridden
+      ? rootPackagePlan.nextVersion
+      : analyzedFixedType
+        ? bumpVersion(fixedBaseVersion, analyzedFixedType, { allowStableMajor })
+        : null;
     const adjusted = adjustedPackages.map((pkgPlan) => ({
       ...pkgPlan,
       releaseType: fixedType,
@@ -448,13 +482,22 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
     };
   }
 
-  const overallType = analyzeParsedCommits(
+  const analyzedOverallType = analyzeParsedCommits(
     adjustedPackages.flatMap((pkgPlan) => pkgPlan.parsedCommits),
   );
   const overallBaseVersion = rootPackagePlan.currentVersion;
-  const overallNextVersion = overallType
-    ? bumpVersion(overallBaseVersion, overallType, { allowStableMajor })
-    : null;
+  // A root-level `Release-As:` footer drives the aggregate version too, keeping
+  // the top-level plan consistent with the pinned root package.
+  const overallType = rootOverridden
+    ? rootPackagePlan.releaseType
+    : analyzedOverallType;
+  const overallNextVersion = rootOverridden
+    ? rootPackagePlan.nextVersion
+    : analyzedOverallType
+      ? bumpVersion(overallBaseVersion, analyzedOverallType, {
+          allowStableMajor,
+        })
+      : null;
 
   return {
     mode: "simple",
