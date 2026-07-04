@@ -44,6 +44,7 @@ const artifactRuleItems = {
         type: { type: "string", const: "regex" },
         path: { type: "string", minLength: 1 },
         pattern: { type: "string" },
+        replacement: { type: "string" },
       },
       required: ["type", "path", "pattern"],
       additionalProperties: false,

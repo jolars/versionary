@@ -172,6 +172,9 @@
                     },
                     "pattern": {
                       "type": "string"
+                    },
+                    "replacement": {
+                      "type": "string"
                     }
                   },
                   "required": ["type", "path", "pattern"],

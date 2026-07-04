@@ -100,13 +100,46 @@ rule is an **artifact rule**:
 | `field-path` | string | `json`/`toml`/`yaml`/`nix` | JSONPath-style locator of the version field (e.g. `$.version`). Required for these types. |
 | `jsonpath`   | string | (deprecated)          | Deprecated alias for `field-path`. Don't combine with `field-path`. |
 | `pattern`    | string | `regex`               | Regex with a capturing group (or a named `(?<version>…)` group) around the version. Required for `regex`. |
+| `replacement`| string | `regex`               | Optional template for the substituted text. When set, the **entire match** is replaced with the rendered template. |
 
 Validation rules enforced by the schema:
 
 - `json`/`toml`/`yaml`/`nix` rules **require** `field-path` (or the deprecated
-  `jsonpath`) and **must not** use `pattern`.
+  `jsonpath`) and **must not** use `pattern` or `replacement`.
 - `regex` rules **require** `pattern` and **must not** use `field-path`/`jsonpath`.
 - You can't set both `field-path` and `jsonpath`.
+
+### Regex substitution
+
+Without a `replacement`, the first capturing group is replaced with the full
+computed version, leaving the rest of the match intact. This keeps a full
+`versionary@1.2.3`-style reference in sync.
+
+With a `replacement`, the whole match is replaced by the rendered template. The
+following `{{token}}` placeholders are available:
+
+| Token            | Value                                  |
+| ---------------- | -------------------------------------- |
+| `{{version}}`    | the full computed version (`1.2.3`)    |
+| `{{major}}`      | the major component (`1`)              |
+| `{{minor}}`      | the minor component (`2`)              |
+| `{{patch}}`      | the patch component (`3`)              |
+| `{{prerelease}}` | dot-joined prerelease identifiers      |
+| `{{build}}`      | dot-joined build-metadata identifiers  |
+
+This is useful for major-only references such as a moving `@v1` tag, which
+should only advance on a major release:
+
+```jsonc
+{
+  "type": "regex",
+  "path": "README.md",
+  "pattern": "jolars/panache-action@v(\\d+)",
+  "replacement": "jolars/panache-action@v{{major}}"
+}
+```
+
+On a `2.0.0` release this rewrites `@v1` to `@v2` (not `@v2.0.0`).
 
 Example — keep the action's pinned version in sync, plus a TOML manifest:
 

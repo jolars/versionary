@@ -8,6 +8,7 @@ import type {
   VersionaryPackage,
 } from "../types/config.js";
 import type { SimplePlan } from "./plan.js";
+import { parseVersion } from "./semver.js";
 
 const WILDCARD = Symbol("wildcard");
 type FieldPathToken = string | number | typeof WILDCARD;
@@ -223,16 +224,48 @@ function parseRegexPattern(pattern: string): RegExp {
   return new RegExp(pattern, "m");
 }
 
+const REPLACEMENT_TOKEN_PATTERN = /\{\{\s*([A-Za-z]+)\s*\}\}/gu;
+
+function renderReplacementTemplate(template: string, version: string): string {
+  const parsed = parseVersion(version);
+  const tokens: Record<string, string> = {
+    version,
+    major: String(parsed.major),
+    minor: String(parsed.minor),
+    patch: String(parsed.patch),
+    prerelease: parsed.prerelease.join("."),
+    build: parsed.build.join("."),
+  };
+  return template.replace(REPLACEMENT_TOKEN_PATTERN, (_whole, name: string) => {
+    const key = name.toLowerCase();
+    const value = tokens[key];
+    if (value === undefined) {
+      throw new Error(
+        `Unknown replacement token "{{${name}}}". Supported tokens: ${Object.keys(
+          tokens,
+        )
+          .map((token) => `{{${token}}}`)
+          .join(", ")}.`,
+      );
+    }
+    return value;
+  });
+}
+
 function applyRegexRule(
   content: string,
   pattern: string,
   version: string,
+  replacementTemplate?: string,
 ): string {
   const regex = parseRegexPattern(pattern);
   const matchFlags = regex.flags.includes("g")
     ? regex.flags
     : `${regex.flags}g`;
-  const globalRegex = new RegExp(regex.source, matchFlags);
+  const globalRegex = new RegExp(
+    regex.source,
+    matchFlags.includes("d") ? matchFlags : `${matchFlags}d`,
+  );
   const matches = [...content.matchAll(globalRegex)];
   if (matches.length !== 1) {
     throw new Error(
@@ -248,10 +281,23 @@ function applyRegexRule(
     throw new Error("Regex match did not include an index.");
   }
   const full = match[0];
-  const groupOne = match[1];
-  const replacement =
-    typeof groupOne === "string" ? full.replace(groupOne, version) : version;
-  return `${content.slice(0, start)}${replacement}${content.slice(start + full.length)}`;
+
+  // With a replacement template, render it and replace the entire match.
+  if (replacementTemplate !== undefined) {
+    const rendered = renderReplacementTemplate(replacementTemplate, version);
+    return `${content.slice(0, start)}${rendered}${content.slice(start + full.length)}`;
+  }
+
+  // Legacy behavior: substitute the full version into the first capture group,
+  // leaving the rest of the match intact. Splice by group indices rather than
+  // `String.replace` so literal `$` sequences and repeated group content are
+  // handled correctly.
+  const groupIndices = match.indices?.[1];
+  if (!groupIndices) {
+    return `${content.slice(0, start)}${version}${content.slice(start + full.length)}`;
+  }
+  const [groupStart, groupEnd] = groupIndices;
+  return `${content.slice(0, groupStart)}${version}${content.slice(groupEnd)}`;
 }
 
 function applyTomlRulePreservingFormatting(
@@ -528,7 +574,7 @@ function applyArtifactRuleToContent(
     if (!rule.pattern) {
       throw new Error('regex artifact rules require "pattern".');
     }
-    return applyRegexRule(content, rule.pattern, version);
+    return applyRegexRule(content, rule.pattern, version, rule.replacement);
   }
   if (rule.type === "json") {
     const parsed = JSON.parse(content) as unknown;

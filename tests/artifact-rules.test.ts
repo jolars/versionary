@@ -328,4 +328,102 @@ describe("artifact rules", () => {
       applyConfiguredArtifactRules(cwd, config2, basePlan()),
     ).toThrow(/must match exactly one occurrence/);
   });
+
+  it("substitutes templated replacement tokens in regex rules", () => {
+    const cwd = makeTempDir();
+    write(cwd, "pkg/README.md", "uses: jolars/panache-action@v1\n");
+
+    const config: VersionaryConfig = {
+      version: 1,
+      packages: {
+        pkg: {
+          "extra-files": [
+            {
+              type: "regex",
+              path: "README.md",
+              pattern: "jolars/panache-action@v(\\d+)",
+              replacement: "jolars/panache-action@v{{major}}",
+            },
+          ],
+        },
+      },
+    };
+
+    applyConfiguredArtifactRules(cwd, config, basePlan("pkg", "2.0.0"));
+    expect(read(cwd, "pkg/README.md")).toContain("jolars/panache-action@v2\n");
+  });
+
+  it("exposes major/minor/patch tokens in regex replacements", () => {
+    const cwd = makeTempDir();
+    write(cwd, "pkg/README.md", "series: 1.2\n");
+
+    const config: VersionaryConfig = {
+      version: 1,
+      packages: {
+        pkg: {
+          "extra-files": [
+            {
+              type: "regex",
+              path: "README.md",
+              pattern: "series: \\d+\\.\\d+",
+              replacement: "series: {{major}}.{{minor}}",
+            },
+          ],
+        },
+      },
+    };
+
+    applyConfiguredArtifactRules(cwd, config, basePlan("pkg", "1.2.3"));
+    expect(read(cwd, "pkg/README.md")).toContain("series: 1.2\n");
+  });
+
+  it("does not interpret `$` sequences in replacement output", () => {
+    const cwd = makeTempDir();
+    write(cwd, "pkg/README.md", "price: OLD\n");
+
+    const config: VersionaryConfig = {
+      version: 1,
+      packages: {
+        pkg: {
+          "extra-files": [
+            {
+              type: "regex",
+              path: "README.md",
+              pattern: "price: OLD",
+              // biome-ignore lint/suspicious/noTemplateCurlyInString: literal token under test
+              replacement: "price: ${{major}}$&",
+            },
+          ],
+        },
+      },
+    };
+
+    applyConfiguredArtifactRules(cwd, config, basePlan("pkg", "1.2.3"));
+    expect(read(cwd, "pkg/README.md")).toContain("price: $1$&\n");
+  });
+
+  it("throws on unknown replacement tokens", () => {
+    const cwd = makeTempDir();
+    write(cwd, "pkg/README.md", "v1.2.2\n");
+
+    const config: VersionaryConfig = {
+      version: 1,
+      packages: {
+        pkg: {
+          "extra-files": [
+            {
+              type: "regex",
+              path: "README.md",
+              pattern: "v\\d+\\.\\d+\\.\\d+",
+              replacement: "v{{bogus}}",
+            },
+          ],
+        },
+      },
+    };
+
+    expect(() => applyConfiguredArtifactRules(cwd, config, basePlan())).toThrow(
+      /Unknown replacement token/,
+    );
+  });
 });

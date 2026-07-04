@@ -7,6 +7,7 @@ const artifactRuleSchema = z
     "field-path": z.string().optional(),
     jsonpath: z.string().optional(),
     pattern: z.string().optional(),
+    replacement: z.string().optional(),
   })
   .superRefine((value, ctx) => {
     const needsJsonPath =
@@ -27,6 +28,13 @@ const artifactRuleSchema = z
         code: z.ZodIssueCode.custom,
         message: `${value.type} artifact rules do not support "pattern".`,
         path: ["pattern"],
+      });
+    }
+    if (needsJsonPath && value.replacement) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${value.type} artifact rules do not support "replacement".`,
+        path: ["replacement"],
       });
     }
     if (value["field-path"] && value.jsonpath) {
