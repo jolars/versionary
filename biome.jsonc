@@ -3,6 +3,7 @@
   "files": {
     "includes": [
       "**",
+      "!assets",
       "!.devenv",
       "!.direnv",
       "!dist",
