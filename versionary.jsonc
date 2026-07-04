@@ -5,6 +5,7 @@
   "review-mode": "pr",
   "release-type": "node",
   "release-reference-comments": "best-effort",
+  "allow-stable-major": true,
   "bootstrap-sha": "f46f767",
   "monorepo-mode": "independent",
   "packages": {
