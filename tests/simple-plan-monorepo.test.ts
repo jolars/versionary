@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { createSimplePlan } from "../src/release/plan.js";
+import { createReleasePlan } from "../src/release/plan.js";
 
 const tempDirs: string[] = [];
 
@@ -72,7 +72,7 @@ describe("simple monorepo planning", () => {
     git(cwd, "add", "packages/b/index.ts");
     git(cwd, "commit", "-m", "fix: patch package b");
 
-    const plan = createSimplePlan(cwd);
+    const plan = createReleasePlan(cwd);
     expect(plan.packages).toHaveLength(2);
     const packageA = plan.packages?.find((pkg) => pkg.path === "packages/a");
     const packageB = plan.packages?.find((pkg) => pkg.path === "packages/b");
@@ -117,7 +117,7 @@ describe("simple monorepo planning", () => {
     git(cwd, "add", "packages/b/index.ts");
     git(cwd, "commit", "-m", "feat!: break package b");
 
-    const plan = createSimplePlan(cwd);
+    const plan = createReleasePlan(cwd);
     const packageA = plan.packages?.find((pkg) => pkg.path === "packages/a");
     const packageB = plan.packages?.find((pkg) => pkg.path === "packages/b");
     expect(packageA?.releaseType).toBe("major");
@@ -159,7 +159,7 @@ describe("simple monorepo planning", () => {
     git(cwd, "add", "packages/b/index.ts");
     git(cwd, "commit", "-m", "fix: patch package b");
 
-    const plan = createSimplePlan(cwd);
+    const plan = createReleasePlan(cwd);
     expect(plan.releaseType).toBe("minor");
     expect(plan.nextVersion).toBe("2.1.0");
     expect(plan.packages?.every((pkg) => pkg.releaseType === "minor")).toBe(
@@ -199,7 +199,7 @@ describe("simple monorepo planning", () => {
     git(cwd, "add", "packages/a/index.ts");
     git(cwd, "commit", "-m", "feat: add package a feature");
 
-    const plan = createSimplePlan(cwd);
+    const plan = createReleasePlan(cwd);
     expect(plan.currentVersion).toBe("2.0.0");
     expect(plan.nextVersion).toBe("2.1.0");
     expect(plan.packages?.find((pkg) => pkg.path === ".")).toBeUndefined();
@@ -275,7 +275,7 @@ describe("simple monorepo planning", () => {
     git(cwd, "commit", "-m", "fix(editors): trigger patch bump");
     git(cwd, "tag", "panache-code-v2.34.2");
 
-    const plan = createSimplePlan(cwd);
+    const plan = createReleasePlan(cwd);
     const editorsCode = plan.packages?.find(
       (pkg) => pkg.path === "editors/code",
     );
@@ -311,7 +311,7 @@ describe("simple monorepo planning", () => {
     git(cwd, "add", ".");
     git(cwd, "commit", "-m", "fix: second release commit");
 
-    const plan = createSimplePlan(cwd);
+    const plan = createReleasePlan(cwd);
     expect(plan.releaseType).toBe("patch");
     expect(plan.nextVersion).toBe("1.0.1");
     expect(plan.commits).toHaveLength(1);
@@ -341,7 +341,7 @@ describe("simple monorepo planning", () => {
     git(cwd, "add", "src/index.ts");
     git(cwd, "commit", "-m", "feat!: breaking change");
 
-    const defaultPlan = createSimplePlan(cwd);
+    const defaultPlan = createReleasePlan(cwd);
     expect(defaultPlan.releaseType).toBe("major");
     expect(defaultPlan.nextVersion).toBe("0.5.0");
 
@@ -353,7 +353,7 @@ describe("simple monorepo planning", () => {
         "allow-stable-major": true,
       }),
     );
-    const optedInPlan = createSimplePlan(cwd);
+    const optedInPlan = createReleasePlan(cwd);
     expect(optedInPlan.releaseType).toBe("major");
     expect(optedInPlan.nextVersion).toBe("1.0.0");
   });
@@ -392,7 +392,7 @@ describe("simple monorepo planning", () => {
     git(cwd, "add", "packages/a/index.ts");
     git(cwd, "commit", "-m", "fix: package source update");
 
-    const plan = createSimplePlan(cwd);
+    const plan = createReleasePlan(cwd);
     const packageA = plan.packages?.find((pkg) => pkg.path === "packages/a");
     expect(packageA?.releaseType).toBe("patch");
     expect(packageA?.commits.map((commit) => commit.subject)).toEqual([
@@ -442,7 +442,7 @@ describe("simple monorepo planning", () => {
     git(cwd, "add", "packages/a/index.ts");
     git(cwd, "commit", "-m", "fix: package source update");
 
-    const plan = createSimplePlan(cwd);
+    const plan = createReleasePlan(cwd);
     const packageA = plan.packages?.find((pkg) => pkg.path === "packages/a");
     expect(packageA?.releaseType).toBe("patch");
     expect(packageA?.commits.map((commit) => commit.subject)).toEqual([
@@ -479,7 +479,7 @@ describe("simple monorepo planning", () => {
     git(cwd, "add", "src/index.ts");
     git(cwd, "commit", "-m", "fix: source update");
 
-    const plan = createSimplePlan(cwd);
+    const plan = createReleasePlan(cwd);
     expect(plan.releaseType).toBe("patch");
     expect(plan.commits.map((commit) => commit.subject)).toEqual([
       "fix: source update",
@@ -553,7 +553,7 @@ describe("simple monorepo planning", () => {
     git(cwd, "add", "crates/a/src/lib.rs");
     git(cwd, "commit", "-m", "feat: update crate a");
 
-    const plan = createSimplePlan(cwd);
+    const plan = createReleasePlan(cwd);
     const a = plan.packages?.find((pkg) => pkg.path === "crates/a");
     const b = plan.packages?.find((pkg) => pkg.path === "crates/b");
 
@@ -621,7 +621,7 @@ describe("simple monorepo planning", () => {
               {
                 type: "toml",
                 path: "extension.toml",
-                jsonpath: "$.version",
+                "field-path": "$.version",
               },
             ],
           },
@@ -637,7 +637,7 @@ describe("simple monorepo planning", () => {
     git(cwd, "add", "crates/core/src/lib.rs");
     git(cwd, "commit", "-m", "feat: update core");
 
-    const plan = createSimplePlan(cwd);
+    const plan = createReleasePlan(cwd);
     const zed = plan.packages?.find((pkg) => pkg.path === "editors/zed");
     expect(zed?.releaseType).toBeNull();
     expect(zed?.nextVersion).toBeNull();
@@ -693,7 +693,7 @@ describe("simple monorepo planning", () => {
     git(cwd, "add", "src/lib.rs");
     git(cwd, "commit", "-m", "feat: add root feature");
 
-    const plan = createSimplePlan(cwd);
+    const plan = createReleasePlan(cwd);
     const root = plan.packages?.find((pkg) => pkg.path === ".");
     const editor = plan.packages?.find((pkg) => pkg.path === "editors/code");
     expect(root?.releaseType).toBe("minor");
@@ -751,7 +751,7 @@ describe("simple monorepo planning", () => {
     git(cwd, "commit", "-m", "chore: initial");
     git(cwd, "tag", "v1.0.0");
 
-    const plan = createSimplePlan(cwd);
+    const plan = createReleasePlan(cwd);
     const root = plan.packages?.find((pkg) => pkg.path === ".");
     const editor = plan.packages?.find((pkg) => pkg.path === "editors/code");
     expect(root?.nextVersion).toBeNull();
@@ -813,7 +813,7 @@ describe("simple monorepo planning", () => {
     git(cwd, "add", "editors/code/src/index.ts");
     git(cwd, "commit", "-m", "feat(editors): editor feature");
 
-    const plan = createSimplePlan(cwd);
+    const plan = createReleasePlan(cwd);
     const editor = plan.packages?.find((pkg) => pkg.path === "editors/code");
     expect(editor?.releaseType).toBe("minor");
     expect(editor?.nextVersion).toBe("1.1.0");
@@ -875,7 +875,7 @@ describe("simple monorepo planning", () => {
     git(cwd, "add", "editors/code/src/index.ts");
     git(cwd, "commit", "-m", "fix(editors): tiny editor fix");
 
-    const plan = createSimplePlan(cwd);
+    const plan = createReleasePlan(cwd);
     const editor = plan.packages?.find((pkg) => pkg.path === "editors/code");
     expect(editor?.releaseType).toBe("major");
     expect(editor?.nextVersion).toBe("2.0.0");
@@ -955,7 +955,7 @@ describe("simple monorepo planning", () => {
     git(cwd, "add", "packages/b/index.ts");
     git(cwd, "commit", "-m", "feat: minor b feature");
 
-    const plan = createSimplePlan(cwd);
+    const plan = createReleasePlan(cwd);
     const follower = plan.packages?.find(
       (pkg) => pkg.path === "packages/follower",
     );
@@ -1016,7 +1016,7 @@ describe("simple monorepo planning", () => {
     git(cwd, "add", "editors/zed/src/lib.rs");
     git(cwd, "commit", "-m", "feat: zed-only feature");
 
-    const plan = createSimplePlan(cwd);
+    const plan = createReleasePlan(cwd);
     const root = plan.packages?.find((pkg) => pkg.path === ".");
     const zed = plan.packages?.find((pkg) => pkg.path === "editors/zed");
 

@@ -148,7 +148,7 @@ describe("simple baseline state", () => {
     ]);
   });
 
-  it("falls back to accumulated targets for manifests without a pending key", () => {
+  it("reports no pending targets for manifests without a pending key", () => {
     const dir = makeTempDir();
     fs.writeFileSync(
       path.join(dir, "versionary.json"),
@@ -159,7 +159,7 @@ describe("simple baseline state", () => {
       path.join(dir, ".versionary-manifest.json"),
       JSON.stringify({
         "manifest-version": 1,
-        "baseline-sha": "legacy",
+        "baseline-sha": "abc123",
         "release-targets": [
           { path: ".", version: "1.0.0", tag: "v1.0.0" },
           { path: "pkg/a", version: "0.1.0", tag: "a-v0.1.0" },
@@ -168,10 +168,7 @@ describe("simple baseline state", () => {
       "utf8",
     );
 
-    expect(readPendingReleaseTargets(dir)).toEqual([
-      { path: ".", version: "1.0.0", tag: "v1.0.0" },
-      { path: "pkg/a", version: "0.1.0", tag: "a-v0.1.0" },
-    ]);
+    expect(readPendingReleaseTargets(dir)).toEqual([]);
   });
 
   it("retains the pending set across baseline-only writes", () => {

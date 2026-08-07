@@ -6,7 +6,6 @@ export interface VersionaryArtifactRule {
   type: "json" | "toml" | "yaml" | "nix" | "regex";
   path: string;
   "field-path"?: string;
-  jsonpath?: string;
   pattern?: string;
   replacement?: string;
 }
@@ -24,7 +23,7 @@ export interface VersionaryPackage {
 
 export interface VersionaryConfig {
   version: 1;
-  "review-mode"?: "direct" | "pr" | "review";
+  "review-mode"?: "direct" | "pr";
   "version-file"?: string;
   "changelog-file"?: string;
   "changelog-format"?: VersionaryChangelogFormat;
@@ -32,7 +31,6 @@ export interface VersionaryConfig {
   "release-reference-comments"?: ReleaseReferenceCommentsMode;
   "release-branch"?: string;
   "baseline-file"?: string;
-  "next-release-file"?: string;
   "bootstrap-sha"?: string;
   "monorepo-mode"?: "independent" | "fixed";
   "bump-minor-pre-major"?: boolean;

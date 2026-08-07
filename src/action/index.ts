@@ -77,11 +77,9 @@ function setOutput(name: string, value: string): void {
 }
 
 function main(): void {
-  const token = getInput("token") || getInput("github-token");
+  const token = getInput("token");
   if (!token) {
-    throw new Error(
-      "Input required and not supplied: token (or deprecated github-token).",
-    );
+    throw new Error("Input required and not supplied: token.");
   }
 
   const versionaryVersion = getInput("versionary-version") || "0.7.0";

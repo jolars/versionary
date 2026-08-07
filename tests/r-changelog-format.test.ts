@@ -4,10 +4,10 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { parseConventionalCommitMessage } from "../src/git/commits.js";
-import { renderSimpleChangelog } from "../src/release/changelog.js";
-import type { SimplePlan } from "../src/release/plan.js";
-import { createSimplePlan } from "../src/release/plan.js";
-import { prepareSimpleReleasePr } from "../src/release/pr.js";
+import { renderReleasePlanChangelog } from "../src/release/changelog.js";
+import type { ReleasePlan } from "../src/release/plan.js";
+import { createReleasePlan } from "../src/release/plan.js";
+import { prepareReleasePr } from "../src/release/pr.js";
 
 const tempDirs: string[] = [];
 
@@ -68,13 +68,13 @@ describe("R changelog support", () => {
     git(cwd, "add", "R/main.R");
     git(cwd, "commit", "-m", "feat: add entrypoint");
 
-    const plan = createSimplePlan(cwd);
+    const plan = createReleasePlan(cwd);
     expect(plan.changelogFile).toBe("NEWS.md");
     expect(plan.changelogFormat).toBe("r-news");
   });
 
   it("renders r-news with top-level package version headings", () => {
-    const plan: SimplePlan = {
+    const plan: ReleasePlan = {
       mode: "simple",
       releaseType: "minor",
       currentVersion: "1.1.0",
@@ -97,7 +97,7 @@ describe("R changelog support", () => {
       ],
     };
 
-    const rendered = renderSimpleChangelog(plan);
+    const rendered = renderReleasePlanChangelog(plan);
     expect(rendered).toContain("# versionary 1.2");
     expect(rendered).toContain("## Features");
     expect(rendered).toContain("## Bug fixes");
@@ -131,7 +131,7 @@ describe("R changelog support", () => {
     git(cwd, "add", "R/new-feature.R");
     git(cwd, "commit", "-m", "feat: add exported helper");
 
-    const result = prepareSimpleReleasePr(cwd);
+    const result = prepareReleasePr(cwd);
     expect(result.version).toBe("1.2.0");
     const news = fs.readFileSync(path.join(cwd, "NEWS.md"), "utf8");
     expect(news).toContain("# versionary 1.2");
@@ -182,7 +182,7 @@ describe("R changelog support", () => {
     git(cwd, "add", "R/fix.R");
     git(cwd, "commit", "-m", "fix: patch docs");
 
-    prepareSimpleReleasePr(cwd);
+    prepareReleasePr(cwd);
 
     const news = fs.readFileSync(path.join(cwd, "NEWS.md"), "utf8");
     expect(news).toContain("# eulerr 7.0");

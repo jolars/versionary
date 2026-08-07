@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { parseConventionalCommitMessage } from "../src/git/commits.js";
 import {
   renderReleaseNotesSection,
-  renderSimpleChangelog,
+  renderReleasePlanChangelog,
 } from "../src/release/changelog.js";
-import type { SimplePlan } from "../src/release/plan.js";
+import type { ReleasePlan } from "../src/release/plan.js";
 
-function makePlan(): SimplePlan {
+function makePlan(): ReleasePlan {
   return {
     mode: "simple",
     releaseType: "minor",
@@ -44,7 +44,7 @@ describe("simple changelog rendering", () => {
     try {
       process.env.GITHUB_SERVER_URL = "https://github.com";
       process.env.GITHUB_REPOSITORY = "jolars/versionary";
-      changelog = renderSimpleChangelog(makePlan());
+      changelog = renderReleasePlanChangelog(makePlan());
     } finally {
       process.env.GITHUB_SERVER_URL = prevServer;
       process.env.GITHUB_REPOSITORY = prevRepo;
@@ -79,7 +79,7 @@ describe("simple changelog rendering", () => {
         ...parseConventionalCommitMessage("perf: speed up parser"),
         hash: "9999999",
       });
-      changelog = renderSimpleChangelog(plan);
+      changelog = renderReleasePlanChangelog(plan);
     } finally {
       process.env.GITHUB_SERVER_URL = prevServer;
       process.env.GITHUB_REPOSITORY = prevRepo;
@@ -107,7 +107,7 @@ describe("simple changelog rendering", () => {
         ...parseConventionalCommitMessage("revert: feat: add feature"),
         hash: "5555555",
       });
-      changelog = renderSimpleChangelog(plan);
+      changelog = renderReleasePlanChangelog(plan);
     } finally {
       process.env.GITHUB_SERVER_URL = prevServer;
       process.env.GITHUB_REPOSITORY = prevRepo;
@@ -134,7 +134,7 @@ describe("simple changelog rendering", () => {
           hash: "6666666",
         },
       ];
-      changelog = renderSimpleChangelog(plan);
+      changelog = renderReleasePlanChangelog(plan);
     } finally {
       process.env.GITHUB_SERVER_URL = prevServer;
       process.env.GITHUB_REPOSITORY = prevRepo;
@@ -164,7 +164,7 @@ describe("simple changelog rendering", () => {
       };
       const plan = makePlan();
       plan.commits = [feature, revert];
-      changelog = renderSimpleChangelog(plan);
+      changelog = renderReleasePlanChangelog(plan);
     } finally {
       process.env.GITHUB_SERVER_URL = prevServer;
       process.env.GITHUB_REPOSITORY = prevRepo;
@@ -207,7 +207,7 @@ describe("simple changelog rendering", () => {
           ],
         },
       ];
-      changelog = renderSimpleChangelog(plan);
+      changelog = renderReleasePlanChangelog(plan);
     } finally {
       process.env.GITHUB_SERVER_URL = prevServer;
       process.env.GITHUB_REPOSITORY = prevRepo;
@@ -278,7 +278,7 @@ describe("simple changelog rendering", () => {
           ],
         },
       ];
-      changelog = renderSimpleChangelog(plan);
+      changelog = renderReleasePlanChangelog(plan);
     } finally {
       process.env.GITHUB_SERVER_URL = prevServer;
       process.env.GITHUB_REPOSITORY = prevRepo;
@@ -305,7 +305,7 @@ describe("simple changelog rendering", () => {
       plan.currentVersion = "2.35.0";
       plan.nextVersion = "2.36.0";
       plan.commits = [duplicate, duplicate];
-      changelog = renderSimpleChangelog(plan);
+      changelog = renderReleasePlanChangelog(plan);
     } finally {
       process.env.GITHUB_SERVER_URL = prevServer;
       process.env.GITHUB_REPOSITORY = prevRepo;
@@ -332,7 +332,7 @@ describe("simple changelog rendering", () => {
           hash: "1a7d009",
         },
       ];
-      changelog = renderSimpleChangelog(plan);
+      changelog = renderReleasePlanChangelog(plan);
     } finally {
       process.env.GITHUB_SERVER_URL = prevServer;
       process.env.GITHUB_REPOSITORY = prevRepo;
@@ -361,7 +361,7 @@ describe("simple changelog rendering", () => {
           hash: "1a7d009",
         },
       ];
-      changelog = renderSimpleChangelog(plan);
+      changelog = renderReleasePlanChangelog(plan);
     } finally {
       process.env.GITHUB_SERVER_URL = prevServer;
       process.env.GITHUB_REPOSITORY = prevRepo;

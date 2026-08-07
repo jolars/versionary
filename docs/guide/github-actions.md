@@ -149,9 +149,9 @@ the token from environment variables, in precedence order:
 VERSIONARY_PR_TOKEN > GH_TOKEN > GITHUB_TOKEN
 ```
 
-The action wraps this for you: it takes the `token` input (or the deprecated
-`github-token` alias) and exposes it to the CLI. It also configures the `origin`
-remote and a default git identity if none is set.
+The action wraps this for you: it takes the `token` input and exposes it to the
+CLI. It also configures the `origin` remote and a default git identity if none
+is set.
 
 ## Committer identity
 
@@ -167,12 +167,9 @@ untouched.
 
 | Input               | Required | Default  | Description                                            |
 | ------------------- | -------- | -------- | ------------------------------------------------------ |
-| `token`             | no\*     | —        | GitHub token for SCM integration and git push.         |
-| `github-token`      | no       | —        | **Deprecated** alias for `token`.                      |
+| `token`             | yes      | —        | GitHub token for SCM integration and git push.         |
 | `versionary-version`| no       | pinned   | npm version or dist-tag of Versionary to run.          |
 | `working-directory` | no       | `.`      | Directory containing `versionary.jsonc`/`.json`.       |
-
-\* A token must be supplied via `token` or `github-token`, or the action fails.
 
 ### Outputs
 

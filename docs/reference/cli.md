@@ -95,7 +95,7 @@ Renders the next release's changelog section.
 
 - Without flags, prints the section to stdout.
 - With `--write`, prepends the section to the configured changelog file and
-  consumes any [next-release highlights](/reference/configuration#next-release-file).
+  folds in any [release highlights](/guide/versioning#release-highlights).
 
 ```bash
 versionary changelog            # preview

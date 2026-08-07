@@ -16,7 +16,7 @@ const OUTPUT_PATH = path.join(
 
 // `z.toJSONSchema()` cannot represent the `.superRefine()` cross-field rules on
 // artifact rules (it flattens `extra-files` items into a single object where
-// `field-path`, `jsonpath`, and `pattern` are all independently optional). We
+// `field-path` and `pattern` are both independently optional). We
 // re-impose the json/toml/yaml/nix vs regex discrimination by hand so editors
 // still surface those constraints. Keep the allowed `type` values in sync with
 // `artifactRuleSchema` in src/config/schema.ts.
@@ -31,11 +31,8 @@ const artifactRuleItems = {
         },
         path: { type: "string", minLength: 1 },
         "field-path": { type: "string" },
-        jsonpath: { type: "string" },
       },
-      required: ["type", "path"],
-      anyOf: [{ required: ["field-path"] }, { required: ["jsonpath"] }],
-      not: { required: ["field-path", "jsonpath"] },
+      required: ["type", "path", "field-path"],
       additionalProperties: false,
     },
     {

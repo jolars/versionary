@@ -17,7 +17,7 @@ key, and a single `run` entrypoint that does the right thing based on context.
   updates a dedicated release branch with the version bump and changelog, then
   opens or updates a release PR through the SCM provider. A maintainer reviews
   and merges; the merge produces a release commit, and the next `run` publishes
-  the release. The legacy value `review` is accepted as an alias for `pr`.
+  the release.
 - **`direct`** — the **direct workflow**. Versionary prepares/updates the
   release branch but skips creating a review request.
 

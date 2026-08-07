@@ -32,7 +32,6 @@ import {
   getChangelogDefaults,
   type ReleasePlan,
   resolvePackageDependencies,
-  type SimplePlan,
 } from "./plan.js";
 import {
   getBaselineStatePath,
@@ -48,47 +47,6 @@ const SAFE_DIRTY_FILES = new Set([
   "npm-shrinkwrap.json",
 ]);
 const VERSIONARY_RELEASE_TRAILER = "Versionary-Release: true";
-
-export function getNextReleaseFile(config: VersionaryConfig): string {
-  return config["next-release-file"] ?? "NEXT_RELEASE.md";
-}
-
-export function readNextReleaseHighlights(
-  cwd: string,
-  config: VersionaryConfig,
-): { content: string; filePath: string } | null {
-  const filePath = getNextReleaseFile(config);
-  const fullPath = path.join(cwd, filePath);
-  if (!fs.existsSync(fullPath)) {
-    return null;
-  }
-  const content = fs.readFileSync(fullPath, "utf8").trim();
-  return { content, filePath };
-}
-
-function isTrackedFile(cwd: string, filePath: string): boolean {
-  try {
-    execFileSync("git", ["ls-files", "--error-unmatch", "--", filePath], {
-      cwd,
-      stdio: ["ignore", "pipe", "ignore"],
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export function consumeNextReleaseFile(
-  cwd: string,
-  filePath: string,
-): { tracked: boolean } {
-  const tracked = isTrackedFile(cwd, filePath);
-  const fullPath = path.join(cwd, filePath);
-  if (fs.existsSync(fullPath)) {
-    fs.rmSync(fullPath);
-  }
-  return { tracked };
-}
 
 /**
  * Read the manual-notes ("Unreleased") prose from the top of a changelog file.
@@ -109,37 +67,21 @@ export function readChangelogHighlights(
 
 export interface ResolvedReleaseHighlights {
   highlights: string;
-  source: "changelog" | "file" | "none";
-  filePath?: string;
+  source: "changelog" | "none";
 }
 
 /**
- * Resolve release highlights, preferring an editable "Unreleased" section at the
- * top of the changelog. Falls back to the deprecated `NEXT_RELEASE.md` file
- * (emitting a warning) so existing setups keep working.
+ * Resolve release highlights from the editable "Unreleased" section at the top
+ * of the changelog.
  */
 export function resolveReleaseHighlights(
   cwd: string,
-  config: VersionaryConfig,
   changelogFile: string,
   format: VersionaryChangelogFormat,
-  logger?: VersionaryPluginContext["logger"],
 ): ResolvedReleaseHighlights {
   const fromChangelog = readChangelogHighlights(cwd, changelogFile, format);
   if (fromChangelog.length > 0) {
     return { highlights: fromChangelog, source: "changelog" };
-  }
-
-  const fromFile = readNextReleaseHighlights(cwd, config);
-  if (fromFile) {
-    logger?.warn(
-      `${fromFile.filePath} is deprecated; add release notes under an "Unreleased" heading at the top of ${changelogFile} instead.`,
-    );
-    return {
-      highlights: fromFile.content,
-      source: "file",
-      filePath: fromFile.filePath,
-    };
   }
 
   return { highlights: "", source: "none" };
@@ -272,7 +214,7 @@ function fetchRemoteReleaseBranch(cwd: string, branch: string): string {
 
 function buildReleaseTargets(
   cwd: string,
-  plan: SimplePlan,
+  plan: ReleasePlan,
   loadedConfig: ReturnType<typeof loadConfig>["config"],
 ): ReleaseTargetState[] {
   const releaseTargets: ReleaseTargetState[] = plan.packages
@@ -334,7 +276,7 @@ interface PackageReleaseMetadata {
 
 function buildPackageReleaseMetadata(
   cwd: string,
-  plan: SimplePlan,
+  plan: ReleasePlan,
   loadedConfig: ReturnType<typeof loadConfig>["config"],
 ): Record<string, PackageReleaseMetadata> {
   const metadataByPath: Record<string, PackageReleaseMetadata> = {};
@@ -485,24 +427,13 @@ export function prepareReleasePr(
   );
   const highlightsResult = resolveReleaseHighlights(
     cwd,
-    loaded.config,
     plan.changelogFile,
     plan.changelogFormat,
-    options.logger,
   );
   const highlights = highlightsResult.highlights;
   const section = renderReleasePlanChangelog(plan, { highlights, cwd });
   prependChangelog(cwd, plan.changelogFile, section, plan.changelogFormat);
   const updatedChangelogFiles = [plan.changelogFile];
-  let consumedHighlightsPath: string | null = null;
-  // The changelog "Unreleased" block is stripped in-place by prependChangelog;
-  // only the legacy side file needs explicit consumption and staging.
-  if (highlightsResult.source === "file" && highlightsResult.filePath) {
-    const { tracked } = consumeNextReleaseFile(cwd, highlightsResult.filePath);
-    if (tracked) {
-      consumedHighlightsPath = highlightsResult.filePath;
-    }
-  }
   for (const packagePlan of plan.packages ?? []) {
     if (!packagePlan.nextVersion || packagePlan.path === ".") {
       continue;
@@ -571,7 +502,6 @@ export function prepareReleasePr(
       ...updatedVersionFiles,
       ...updatedArtifactFiles,
       ...updatedChangelogFiles,
-      ...(consumedHighlightsPath ? [consumedHighlightsPath] : []),
     ]),
   ];
   execFileSync("git", ["add", ...filesToAdd], {
@@ -616,7 +546,7 @@ export function renderSimpleReviewRequestBody(
   version: string,
   previousVersion: string,
   commits: ParsedCommit[],
-  plan: SimplePlan | null = null,
+  plan: ReleasePlan | null = null,
   cwd = process.cwd(),
   highlights = "",
   loadedConfig?: VersionaryConfig,
@@ -709,7 +639,7 @@ export async function openOrUpdateReviewRequest(
   version: string,
   previousVersion: string,
   commits: ParsedCommit[],
-  plan: SimplePlan | null = null,
+  plan: ReleasePlan | null = null,
   options: {
     logger?: VersionaryPluginContext["logger"];
     highlights?: string;
@@ -784,40 +714,6 @@ export async function closeStaleReviewRequestIfExists(
     );
   }
   return result;
-}
-
-/** @deprecated Use prepareReleasePr. */
-export function prepareSimpleReleasePr(
-  cwd = process.cwd(),
-  options: { logger?: VersionaryPluginContext["logger"] } = {},
-): ReturnType<typeof prepareReleasePr> {
-  return prepareReleasePr(cwd, options);
-}
-
-/** @deprecated Use openOrUpdateReviewRequest. */
-export async function openOrUpdateSimpleReviewRequest(
-  cwd: string,
-  branch: string,
-  title: string,
-  version: string,
-  previousVersion: string,
-  commits: ParsedCommit[],
-  plan: SimplePlan | null = null,
-  options: {
-    logger?: VersionaryPluginContext["logger"];
-    highlights?: string;
-  } = {},
-): Promise<string> {
-  return openOrUpdateReviewRequest(
-    cwd,
-    branch,
-    title,
-    version,
-    previousVersion,
-    commits,
-    plan,
-    options,
-  );
 }
 
 export function pushReleaseBranch(cwd: string, branch: string): void {

@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { prependChangelog } from "../src/release/changelog.js";
-import { prepareSimpleReleasePr } from "../src/release/pr.js";
+import { prepareReleasePr } from "../src/release/pr.js";
 import { readReleaseTargets } from "../src/release/state.js";
 
 const tempDirs: string[] = [];
@@ -150,7 +150,7 @@ describe("release PR package version update", () => {
     git(cwd, "add", "src/index.ts");
     git(cwd, "commit", "-m", "feat: add value");
 
-    const result = prepareSimpleReleasePr(cwd);
+    const result = prepareReleasePr(cwd);
     expect(result.version).toBe("1.1.0");
     const releaseMessage = git(cwd, "log", "-1", "--pretty=%B");
     expect(releaseMessage).toContain("chore(release): v1.1.0");
@@ -207,7 +207,7 @@ describe("release PR package version update", () => {
     git(cwd, "add", "src/index.ts");
     git(cwd, "commit", "-m", "feat: add value");
 
-    const result = prepareSimpleReleasePr(cwd);
+    const result = prepareReleasePr(cwd);
     expect(result.version).toBe("1.1.0");
 
     const pkg = JSON.parse(
@@ -256,7 +256,7 @@ describe("release PR package version update", () => {
     git(cwd, "add", "src/index.ts");
     git(cwd, "commit", "-m", "feat: add value");
 
-    const result = prepareSimpleReleasePr(cwd);
+    const result = prepareReleasePr(cwd);
     expect(result.version).toBe("1.1.0");
 
     const pkg = JSON.parse(
@@ -280,12 +280,12 @@ describe("release PR package version update", () => {
     git(cwd, "add", "src/index.ts");
     git(cwd, "commit", "-m", "feat: add value");
 
-    const first = prepareSimpleReleasePr(cwd);
+    const first = prepareReleasePr(cwd);
     expect(first.updated).toBe(true);
     git(cwd, "push", "--force-with-lease", "origin", first.branch);
     git(cwd, "checkout", "main");
 
-    const second = prepareSimpleReleasePr(cwd);
+    const second = prepareReleasePr(cwd);
     expect(second.updated).toBe(false);
     expect(git(cwd, "rev-parse", "HEAD^{tree}")).toBe(
       git(cwd, "rev-parse", `origin/${second.branch}^{tree}`),
@@ -326,7 +326,7 @@ describe("release PR package version update", () => {
     git(cwd, "add", "packages/b/index.ts");
     git(cwd, "commit", "-m", "fix: patch package b");
 
-    const result = prepareSimpleReleasePr(cwd);
+    const result = prepareReleasePr(cwd);
     expect(result.plan.packages).toHaveLength(2);
     const releaseMessage = git(cwd, "log", "-1", "--pretty=%B");
     expect(releaseMessage).toContain(
@@ -428,7 +428,7 @@ describe("release PR package version update", () => {
     git(cwd, "add", ".");
     git(cwd, "commit", "-m", "feat: update panache components");
 
-    const result = prepareSimpleReleasePr(cwd);
+    const result = prepareReleasePr(cwd);
     expect(result.plan.packages).toHaveLength(4);
     const targets = readReleaseTargets(cwd);
 
@@ -513,7 +513,7 @@ describe("release PR package version update", () => {
     try {
       process.env.GITHUB_SERVER_URL = "https://github.com";
       process.env.GITHUB_REPOSITORY = "jolars/panache";
-      prepareSimpleReleasePr(cwd);
+      prepareReleasePr(cwd);
     } finally {
       process.env.GITHUB_SERVER_URL = prevServer;
       process.env.GITHUB_REPOSITORY = prevRepo;
@@ -568,7 +568,7 @@ describe("release PR package version update", () => {
     git(cwd, "add", "crates/panache-parser/src/lib.rs");
     git(cwd, "commit", "-m", "feat: update parser");
 
-    prepareSimpleReleasePr(cwd);
+    prepareReleasePr(cwd);
     const targets = readReleaseTargets(cwd);
     expect(targets.map((target) => target.tag).sort()).toEqual([
       "panache-parser-v2.35.0",
@@ -618,7 +618,7 @@ describe("release PR package version update", () => {
     git(cwd, "add", "b/src/index.ts");
     git(cwd, "commit", "-m", "feat: update b");
 
-    expect(() => prepareSimpleReleasePr(cwd)).toThrow(
+    expect(() => prepareReleasePr(cwd)).toThrow(
       /Duplicate release tag "shared-v1\.1\.0"/,
     );
   });
@@ -672,7 +672,7 @@ describe("release PR package version update", () => {
     const prevPath = process.env.PATH ?? "";
     process.env.PATH = `${fakeBin}:${prevPath}`;
     try {
-      prepareSimpleReleasePr(cwd);
+      prepareReleasePr(cwd);
     } finally {
       process.env.PATH = prevPath;
     }
@@ -727,7 +727,7 @@ describe("release PR package version update", () => {
     const prevPath = process.env.PATH ?? "";
     process.env.PATH = `${fakeBin}:${prevPath}`;
     try {
-      expect(() => prepareSimpleReleasePr(cwd)).toThrow(
+      expect(() => prepareReleasePr(cwd)).toThrow(
         /Failed to refresh .*Cargo\.lock/i,
       );
     } finally {
@@ -809,7 +809,7 @@ describe("release PR package version update", () => {
     const prevPath = process.env.PATH ?? "";
     process.env.PATH = `${fakeBin}:${prevPath}`;
     try {
-      prepareSimpleReleasePr(cwd);
+      prepareReleasePr(cwd);
     } finally {
       process.env.PATH = prevPath;
     }
@@ -906,7 +906,7 @@ describe("release PR package version update", () => {
     git(cwd, "add", "crates/a/src/lib.rs");
     git(cwd, "commit", "-m", "feat: update crate a");
 
-    const result = prepareSimpleReleasePr(cwd);
+    const result = prepareReleasePr(cwd);
     expect(result.plan.packages).toHaveLength(2);
 
     const aManifest = fs.readFileSync(
@@ -997,7 +997,7 @@ describe("release PR package version update", () => {
     git(cwd, "add", "crates/core/src/lib.rs");
     git(cwd, "commit", "-m", "feat: update crate core");
 
-    const result = prepareSimpleReleasePr(cwd);
+    const result = prepareReleasePr(cwd);
     expect(result.plan.packages).toHaveLength(1);
 
     const workspaceManifest = fs.readFileSync(
@@ -1058,7 +1058,7 @@ describe("release PR package version update", () => {
     git(cwd, "add", "editors/code/src/index.ts");
     git(cwd, "commit", "-m", "feat: add editor enhancement");
 
-    prepareSimpleReleasePr(cwd);
+    prepareReleasePr(cwd);
 
     const rootChangelog = fs.readFileSync(
       path.join(cwd, "CHANGELOG.md"),
@@ -1113,7 +1113,7 @@ describe("release PR package version update", () => {
     git(cwd, "add", "crates/parser/src/lib.rs");
     git(cwd, "commit", "-m", "fix(parser): avoid panic");
 
-    prepareSimpleReleasePr(cwd);
+    prepareReleasePr(cwd);
 
     const rootChangelog = fs.readFileSync(
       path.join(cwd, "CHANGELOG.md"),

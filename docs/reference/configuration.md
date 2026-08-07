@@ -26,14 +26,13 @@ is the single source of truth for the config shape.
 | `version`                    | `1`                   | — (required)             | Config-format version. Must be `1`. |
 | `$schema`                    | string                | —                        | JSON Schema URL for editor support. |
 | `release-type`               | string \| string[]    | `"simple"`               | The [strategy](/reference/strategies) (or array of strategies) used to read/write versions. |
-| `review-mode`                | `"direct"` \| `"pr"` \| `"review"` | `"pr"`      | Release style. `pr` opens a release PR; `direct` skips it. `review` is a legacy alias for `pr`. See [workflows](/guide/workflows). |
+| `review-mode`                | `"direct"` \| `"pr"`  | `"pr"`                   | Release style. `pr` opens a release PR; `direct` skips it. See [workflows](/guide/workflows). |
 | `version-file`               | string                | strategy-specific        | Path to the primary version source. Default depends on `release-type` (see table below). |
 | `changelog-file`             | string                | `CHANGELOG.md` / `NEWS.md` | Path to the changelog. Defaults to `NEWS.md` for the R strategy, `CHANGELOG.md` otherwise. |
 | `changelog-format`           | `"markdown-changelog"` \| `"r-news"` | strategy-specific | Changelog format. Defaults to `r-news` for the R strategy, `markdown-changelog` otherwise. |
 | `release-branch`             | string                | `"versionary/release"`   | Branch used for the release PR/commit. |
 | `baseline-file`              | string                | `".versionary-manifest.json"` | File tracking the baseline SHA for deterministic commit ranges. |
 | `bootstrap-sha`              | string                | —                        | First-run baseline commit when adopting Versionary on existing history. |
-| `next-release-file`          | string                | —                        | Path to a file whose contents are injected as highlights atop the next release's notes. |
 | `release-draft`              | boolean               | `false`                  | Publish GitHub Releases as drafts. |
 | `release-reference-comments` | `"off"` \| `"best-effort"` \| `"strict"` | `"off"` | Whether to comment on linked issues/PRs when released. See below. |
 | `monorepo-mode`              | `"independent"` \| `"fixed"` | —                 | Enables [monorepo](/guide/monorepos) planning. |
@@ -98,16 +97,14 @@ rule is an **artifact rule**:
 | `type`       | enum   | all                   | One of `json`, `toml`, `yaml`, `nix`, `regex`. |
 | `path`       | string | all                   | Path to the file to update. |
 | `field-path` | string | `json`/`toml`/`yaml`/`nix` | JSONPath-style locator of the version field (e.g. `$.version`). Required for these types. |
-| `jsonpath`   | string | (deprecated)          | Deprecated alias for `field-path`. Don't combine with `field-path`. |
 | `pattern`    | string | `regex`               | Regex with a capturing group (or a named `(?<version>…)` group) around the version. Required for `regex`. |
 | `replacement`| string | `regex`               | Optional template for the substituted text. When set, the **entire match** is replaced with the rendered template. |
 
 Validation rules enforced by the schema:
 
-- `json`/`toml`/`yaml`/`nix` rules **require** `field-path` (or the deprecated
-  `jsonpath`) and **must not** use `pattern` or `replacement`.
-- `regex` rules **require** `pattern` and **must not** use `field-path`/`jsonpath`.
-- You can't set both `field-path` and `jsonpath`.
+- `json`/`toml`/`yaml`/`nix` rules **require** `field-path` and **must not** use
+  `pattern` or `replacement`.
+- `regex` rules **require** `pattern` and **must not** use `field-path`.
 
 ### Regex substitution
 

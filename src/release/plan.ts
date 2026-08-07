@@ -53,9 +53,6 @@ export interface ReleasePlan {
   }>;
 }
 
-/** @deprecated Use ReleasePlan. */
-export type SimplePlan = ReleasePlan;
-
 function getMode(
   configMode?: "independent" | "fixed",
 ): "independent" | "fixed" {
@@ -660,11 +657,6 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
       ({ implicitRoot: _implicitRoot, ...pkgPlan }) => pkgPlan,
     ),
   };
-}
-
-/** @deprecated Use createReleasePlan. */
-export function createSimplePlan(cwd = process.cwd()): ReleasePlan {
-  return createReleasePlan(cwd);
 }
 
 export function resolvePackageDependencies(

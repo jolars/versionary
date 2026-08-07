@@ -9,7 +9,6 @@ import {
 import { createReleasePlan } from "../release/plan.js";
 import {
   closeStaleReviewRequestIfExists,
-  consumeNextReleaseFile,
   isReleaseCommitMessage,
   openOrUpdateReviewRequest,
   prepareReleasePr,
@@ -264,13 +263,10 @@ async function main(): Promise<number> {
       return 0;
     }
 
-    const loaded = loadConfig();
     const highlightsResult = resolveReleaseHighlights(
       process.cwd(),
-      loaded.config,
       plan.changelogFile,
       plan.changelogFormat,
-      logger,
     );
     const section = renderReleasePlanChangelog(plan, {
       highlights: highlightsResult.highlights,
@@ -286,9 +282,6 @@ async function main(): Promise<number> {
       section,
       plan.changelogFormat,
     );
-    if (highlightsResult.source === "file" && highlightsResult.filePath) {
-      consumeNextReleaseFile(process.cwd(), highlightsResult.filePath);
-    }
     console.log(`Updated ${plan.changelogFile}`);
     return 0;
   }

@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { parseConventionalCommitMessage } from "../src/git/commits.js";
 import { renderReleaseNotesSection } from "../src/release/changelog.js";
 import {
+  type ReleasePlan,
   resolvePackageDependencies,
-  type SimplePlan,
 } from "../src/release/plan.js";
 import {
   isReleaseCommitMessage,
@@ -633,7 +633,7 @@ describe("changelog/PR body per-package equivalence", () => {
     const prevServer = process.env.GITHUB_SERVER_URL;
     const prevRepo = process.env.GITHUB_REPOSITORY;
     const cwd = "/tmp/panache";
-    const plan: SimplePlan = {
+    const plan: ReleasePlan = {
       mode: "simple",
       releaseType: "minor",
       currentVersion: "2.37.0",

@@ -8,10 +8,9 @@ import {
   extractUnreleasedNotes,
   renderReleasePlanChangelog,
   renderRNewsReleaseNotes,
-  renderSimpleChangelog,
 } from "../src/release/changelog.js";
-import type { SimplePlan } from "../src/release/plan.js";
-import { prepareSimpleReleasePr } from "../src/release/pr.js";
+import type { ReleasePlan } from "../src/release/plan.js";
+import { prepareReleasePr } from "../src/release/pr.js";
 import { isVersionHeading } from "../src/release/semver.js";
 
 const tempDirs: string[] = [];
@@ -47,7 +46,7 @@ afterEach(() => {
   }
 });
 
-function makePlan(): SimplePlan {
+function makePlan(): ReleasePlan {
   return {
     mode: "simple",
     releaseType: "minor",
@@ -75,7 +74,7 @@ function makePlan(): SimplePlan {
 describe("next-release highlights rendering", () => {
   it("inserts highlights between header and first section in markdown", () => {
     const plan = makePlan();
-    const baseline = renderSimpleChangelog(plan);
+    const baseline = renderReleasePlanChangelog(plan);
     expect(baseline).not.toContain("Big things this release");
 
     const withHighlights = renderReleasePlanChangelog(plan, {
@@ -266,36 +265,7 @@ describe("prepareReleasePr highlights consumption", () => {
     return cwd;
   }
 
-  it("prepends highlights to changelog and deletes tracked NEXT_RELEASE.md", () => {
-    const cwd = setupRepo();
-    write(cwd, "NEXT_RELEASE.md", "## Highlights\n\nMajor refactor.\n");
-    git(cwd, "add", ".");
-    git(cwd, "commit", "-m", "chore: initial");
-    git(cwd, "tag", "v1.0.0");
-
-    write(cwd, "src/index.ts", "export const value = 1;\n");
-    git(cwd, "add", "src/index.ts");
-    git(cwd, "commit", "-m", "feat: add value");
-
-    const result = prepareSimpleReleasePr(cwd);
-    expect(result.version).toBe("1.1.0");
-    expect(result.highlights).toBe("## Highlights\n\nMajor refactor.");
-
-    const changelog = fs.readFileSync(path.join(cwd, "CHANGELOG.md"), "utf8");
-    expect(changelog).toContain("Major refactor.");
-    const highlightsIdx = changelog.indexOf("Major refactor.");
-    const featuresIdx = changelog.indexOf("### Features");
-    expect(highlightsIdx).toBeGreaterThan(0);
-    expect(featuresIdx).toBeGreaterThan(highlightsIdx);
-
-    expect(fs.existsSync(path.join(cwd, "NEXT_RELEASE.md"))).toBe(false);
-
-    // Tracked file deletion should be staged in the release commit.
-    const showOutput = git(cwd, "show", "--name-status", "--pretty=", "HEAD");
-    expect(showOutput).toMatch(/^D\s+NEXT_RELEASE\.md$/mu);
-  });
-
-  it("handles untracked NEXT_RELEASE.md by deleting locally without staging", () => {
+  it("returns empty highlights when the changelog has no Unreleased section", () => {
     const cwd = setupRepo();
     git(cwd, "add", ".");
     git(cwd, "commit", "-m", "chore: initial");
@@ -305,64 +275,11 @@ describe("prepareReleasePr highlights consumption", () => {
     git(cwd, "add", "src/index.ts");
     git(cwd, "commit", "-m", "feat: add value");
 
-    write(cwd, "NEXT_RELEASE.md", "Untracked highlights here.\n");
-
-    const result = prepareSimpleReleasePr(cwd);
-    expect(result.version).toBe("1.1.0");
-    expect(result.highlights).toBe("Untracked highlights here.");
-
-    const changelog = fs.readFileSync(path.join(cwd, "CHANGELOG.md"), "utf8");
-    expect(changelog).toContain("Untracked highlights here.");
-    expect(fs.existsSync(path.join(cwd, "NEXT_RELEASE.md"))).toBe(false);
-
-    const showOutput = git(cwd, "show", "--name-status", "--pretty=", "HEAD");
-    expect(showOutput).not.toMatch(/NEXT_RELEASE\.md/u);
-  });
-
-  it("returns empty highlights when no NEXT_RELEASE.md exists", () => {
-    const cwd = setupRepo();
-    git(cwd, "add", ".");
-    git(cwd, "commit", "-m", "chore: initial");
-    git(cwd, "tag", "v1.0.0");
-
-    write(cwd, "src/index.ts", "export const value = 1;\n");
-    git(cwd, "add", "src/index.ts");
-    git(cwd, "commit", "-m", "feat: add value");
-
-    const result = prepareSimpleReleasePr(cwd);
+    const result = prepareReleasePr(cwd);
     expect(result.highlights).toBe("");
     const changelog = fs.readFileSync(path.join(cwd, "CHANGELOG.md"), "utf8");
     expect(changelog).toContain("### Features");
     expect(changelog).toContain("# Changelog");
-  });
-
-  it("respects custom next-release-file config", () => {
-    const cwd = setupRepo();
-    write(
-      cwd,
-      "versionary.jsonc",
-      JSON.stringify({
-        version: 1,
-        "review-mode": "direct",
-        "version-file": "version.txt",
-        "changelog-file": "CHANGELOG.md",
-        "next-release-file": "RELEASE_DRAFT.md",
-      }),
-    );
-    write(cwd, "RELEASE_DRAFT.md", "Custom path highlights.\n");
-    git(cwd, "add", ".");
-    git(cwd, "commit", "-m", "chore: initial");
-    git(cwd, "tag", "v1.0.0");
-
-    write(cwd, "src/index.ts", "export const value = 1;\n");
-    git(cwd, "add", "src/index.ts");
-    git(cwd, "commit", "-m", "feat: add value");
-
-    const result = prepareSimpleReleasePr(cwd);
-    expect(result.highlights).toBe("Custom path highlights.");
-    expect(fs.existsSync(path.join(cwd, "RELEASE_DRAFT.md"))).toBe(false);
-    const showOutput = git(cwd, "show", "--name-status", "--pretty=", "HEAD");
-    expect(showOutput).toMatch(/^D\s+RELEASE_DRAFT\.md$/mu);
   });
 
   it("reads highlights from an Unreleased section and strips the block", () => {
@@ -380,7 +297,7 @@ describe("prepareReleasePr highlights consumption", () => {
     git(cwd, "add", "src/index.ts");
     git(cwd, "commit", "-m", "feat: add value");
 
-    const result = prepareSimpleReleasePr(cwd);
+    const result = prepareReleasePr(cwd);
     expect(result.version).toBe("1.1.0");
     expect(result.highlights).toBe("Big release.\n\n- shiny item");
 
@@ -392,33 +309,5 @@ describe("prepareReleasePr highlights consumption", () => {
     const featuresIdx = changelog.indexOf("### Features");
     expect(highlightsIdx).toBeGreaterThan(0);
     expect(featuresIdx).toBeGreaterThan(highlightsIdx);
-    // No legacy side file should be involved.
-    expect(fs.existsSync(path.join(cwd, "NEXT_RELEASE.md"))).toBe(false);
-  });
-
-  it("prefers the Unreleased section over a NEXT_RELEASE.md fallback", () => {
-    const cwd = setupRepo();
-    write(
-      cwd,
-      "CHANGELOG.md",
-      "# Changelog\n\n## Unreleased\n\nFrom changelog.\n",
-    );
-    write(cwd, "NEXT_RELEASE.md", "From side file.\n");
-    git(cwd, "add", ".");
-    git(cwd, "commit", "-m", "chore: initial");
-    git(cwd, "tag", "v1.0.0");
-
-    write(cwd, "src/index.ts", "export const value = 1;\n");
-    git(cwd, "add", "src/index.ts");
-    git(cwd, "commit", "-m", "feat: add value");
-
-    const result = prepareSimpleReleasePr(cwd);
-    expect(result.highlights).toBe("From changelog.");
-
-    const changelog = fs.readFileSync(path.join(cwd, "CHANGELOG.md"), "utf8");
-    expect(changelog).toContain("From changelog.");
-    expect(changelog).not.toContain("From side file.");
-    // The side file is untouched when the changelog wins.
-    expect(fs.existsSync(path.join(cwd, "NEXT_RELEASE.md"))).toBe(true);
   });
 });

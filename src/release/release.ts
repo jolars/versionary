@@ -370,19 +370,3 @@ export async function runReleaseDetailed(
     message: `Published releases ${published.join(", ")}`,
   };
 }
-
-/** @deprecated Use RunReleaseResult. */
-export type SimpleRunReleaseResult = RunReleaseResult;
-/** @deprecated Use RunReleaseOptions. */
-export type RunSimpleReleaseOptions = RunReleaseOptions;
-/** @deprecated Use runRelease. */
-export async function runSimpleRelease(cwd = process.cwd()): Promise<string> {
-  return runRelease(cwd);
-}
-/** @deprecated Use runReleaseDetailed. */
-export async function runSimpleReleaseDetailed(
-  cwd = process.cwd(),
-  options: RunSimpleReleaseOptions = {},
-): Promise<SimpleRunReleaseResult> {
-  return runReleaseDetailed(cwd, options);
-}

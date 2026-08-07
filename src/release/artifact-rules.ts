@@ -7,7 +7,7 @@ import type {
   VersionaryConfig,
   VersionaryPackage,
 } from "../types/config.js";
-import type { SimplePlan } from "./plan.js";
+import type { ReleasePlan } from "./plan.js";
 import { parseVersion } from "./semver.js";
 
 const WILDCARD = Symbol("wildcard");
@@ -202,11 +202,9 @@ function setVersionAtJsonPath(
 }
 
 function resolveFieldPath(rule: VersionaryArtifactRule): string {
-  const fieldPath = rule["field-path"] ?? rule.jsonpath;
+  const fieldPath = rule["field-path"];
   if (!fieldPath) {
-    throw new Error(
-      `${rule.type} artifact rules require "field-path" (or deprecated "jsonpath").`,
-    );
+    throw new Error(`${rule.type} artifact rules require "field-path".`);
   }
   return fieldPath;
 }
@@ -288,8 +286,8 @@ function applyRegexRule(
     return `${content.slice(0, start)}${rendered}${content.slice(start + full.length)}`;
   }
 
-  // Legacy behavior: substitute the full version into the first capture group,
-  // leaving the rest of the match intact. Splice by group indices rather than
+  // Without a template: substitute the full version into the first capture
+  // group, leaving the rest of the match intact. Splice by group indices rather than
   // `String.replace` so literal `$` sequences and repeated group content are
   // handled correctly.
   const groupIndices = match.indices?.[1];
@@ -642,7 +640,7 @@ function applyArtifactRulesForPackage(
 export function applyConfiguredArtifactRules(
   cwd: string,
   config: VersionaryConfig,
-  plan: SimplePlan,
+  plan: ReleasePlan,
 ): string[] {
   const packageConfigs = config.packages ?? {};
   if (!plan.packages || plan.packages.length === 0) {

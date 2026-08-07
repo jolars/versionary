@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { applyConfiguredArtifactRules } from "../src/release/artifact-rules.js";
-import type { SimplePlan } from "../src/release/plan.js";
+import type { ReleasePlan } from "../src/release/plan.js";
 import type { VersionaryConfig } from "../src/types/config.js";
 
 const tempDirs: string[] = [];
@@ -26,7 +26,7 @@ function read(cwd: string, relative: string): string {
   return fs.readFileSync(path.join(cwd, relative), "utf8");
 }
 
-function basePlan(pathName = "pkg", nextVersion = "1.2.3"): SimplePlan {
+function basePlan(pathName = "pkg", nextVersion = "1.2.3"): ReleasePlan {
   return {
     mode: "simple",
     releaseType: "minor",
@@ -152,24 +152,6 @@ describe("artifact rules", () => {
       'languages = ["Markdown", "Quarto", "RMarkdown"]',
     );
     expect(updated).toContain('version = "1.2.3"');
-  });
-
-  it("supports deprecated jsonpath alias for field-path", () => {
-    const cwd = makeTempDir();
-    write(cwd, "pkg/meta.json", '{\n  "version": "1.2.2"\n}\n');
-    const config: VersionaryConfig = {
-      version: 1,
-      packages: {
-        pkg: {
-          "extra-files": [
-            { type: "json", path: "meta.json", jsonpath: "$.version" },
-          ],
-        },
-      },
-    };
-
-    applyConfiguredArtifactRules(cwd, config, basePlan());
-    expect(read(cwd, "pkg/meta.json")).toContain('"version": "1.2.3"');
   });
 
   it("supports scoped npm package keys in dot notation", () => {

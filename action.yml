@@ -7,10 +7,7 @@ branding:
 inputs:
   token:
     description: GitHub token used by Versionary SCM integration
-    required: false
-  github-token:
-    description: Deprecated alias for token
-    required: false
+    required: true
   versionary-version:
     description: Versionary npm version or dist-tag
     required: false

@@ -188,7 +188,7 @@ describe("config loading", () => {
     expect(() => loadConfig(dir)).toThrow(/nix artifact rules require/i);
   });
 
-  it("supports deprecated jsonpath alias and rejects mixed aliases", () => {
+  it("rejects the removed jsonpath alias for field-path", () => {
     const dir = makeTempDir();
     fs.writeFileSync(
       path.join(dir, "versionary.json"),
@@ -204,28 +204,7 @@ describe("config loading", () => {
       }),
       "utf8",
     );
-    expect(() => loadConfig(dir)).not.toThrow();
-
-    fs.writeFileSync(
-      path.join(dir, "versionary.json"),
-      JSON.stringify({
-        version: 1,
-        packages: {
-          ".": {
-            "extra-files": [
-              {
-                type: "json",
-                path: "package.json",
-                "field-path": "$.version",
-                jsonpath: "$.version",
-              },
-            ],
-          },
-        },
-      }),
-      "utf8",
-    );
-    expect(() => loadConfig(dir)).toThrow(/Specify only one of/i);
+    expect(() => loadConfig(dir)).toThrow();
   });
 
   it("rejects unknown top-level and package keys", () => {
@@ -332,7 +311,7 @@ describe("config loading", () => {
     );
   });
 
-  it("accepts review-mode pr and legacy review alias", () => {
+  it("accepts review-mode pr and rejects unknown modes", () => {
     const dir = makeTempDir();
     fs.writeFileSync(
       path.join(dir, "versionary.json"),
@@ -352,7 +331,7 @@ describe("config loading", () => {
       }),
       "utf8",
     );
-    expect(loadConfig(dir).config["review-mode"]).toBe("review");
+    expect(() => loadConfig(dir)).toThrow();
   });
 
   it("accepts package follows referencing existing packages", () => {

@@ -13,7 +13,7 @@
     },
     "review-mode": {
       "type": "string",
-      "enum": ["direct", "pr", "review"]
+      "enum": ["direct", "pr"]
     },
     "version-file": {
       "type": "string"
@@ -36,9 +36,6 @@
       "type": "string"
     },
     "baseline-file": {
-      "type": "string"
-    },
-    "next-release-file": {
       "type": "string"
     },
     "bootstrap-sha": {
@@ -140,23 +137,9 @@
                     },
                     "field-path": {
                       "type": "string"
-                    },
-                    "jsonpath": {
-                      "type": "string"
                     }
                   },
-                  "required": ["type", "path"],
-                  "anyOf": [
-                    {
-                      "required": ["field-path"]
-                    },
-                    {
-                      "required": ["jsonpath"]
-                    }
-                  ],
-                  "not": {
-                    "required": ["field-path", "jsonpath"]
-                  },
+                  "required": ["type", "path", "field-path"],
                   "additionalProperties": false
                 },
                 {

@@ -8,11 +8,7 @@ import {
 } from "../git/commits.js";
 import { resolveRepositoryWebBaseUrl } from "../git/repo-url.js";
 import type { VersionaryChangelogFormat } from "../types/config.js";
-import {
-  type ReleasePlan,
-  resolvePackageDependencies,
-  type SimplePlan,
-} from "./plan.js";
+import { type ReleasePlan, resolvePackageDependencies } from "./plan.js";
 import { isVersionHeading } from "./semver.js";
 
 const REVIEW_REQUEST_FOOTER =
@@ -316,11 +312,6 @@ export function renderReleasePlanChangelog(
       includeFooter: options.includeFooter,
     },
   );
-}
-
-/** @deprecated Use renderReleasePlanChangelog. */
-export function renderSimpleChangelog(plan: SimplePlan): string {
-  return renderReleasePlanChangelog(plan);
 }
 
 /**

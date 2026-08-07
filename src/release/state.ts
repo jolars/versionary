@@ -97,17 +97,7 @@ export function getBaselineStatePath(cwd: string): string {
     return path.join(cwd, configured);
   }
 
-  const preferred = path.join(cwd, ".versionary-manifest.json");
-  if (fs.existsSync(preferred)) {
-    return preferred;
-  }
-
-  const legacy = path.join(cwd, "versionary.versions.json");
-  if (fs.existsSync(legacy)) {
-    return legacy;
-  }
-
-  return preferred;
+  return path.join(cwd, ".versionary-manifest.json");
 }
 
 export function readBaselineSha(cwd = process.cwd()): string | null {
@@ -135,8 +125,7 @@ export function readReleaseTargets(cwd = process.cwd()): ReleaseTargetState[] {
 
 // The publish set introduced by the current release PR. `release` consumes this
 // so it only publishes/announces what this PR bumped, not every package in the
-// accumulated baseline. Falls back to the accumulated targets for manifests
-// written before this key existed (legacy compatibility).
+// accumulated baseline.
 export function readPendingReleaseTargets(
   cwd = process.cwd(),
 ): ReleaseTargetState[] {
@@ -146,9 +135,7 @@ export function readPendingReleaseTargets(
   }
 
   const parsed = parseStateFile(fs.readFileSync(filePath, "utf8"), filePath);
-  return (
-    parsed[PENDING_RELEASE_TARGETS_KEY] ?? parsed[RELEASE_TARGETS_KEY] ?? []
-  );
+  return parsed[PENDING_RELEASE_TARGETS_KEY] ?? [];
 }
 
 export function writeBaselineSha(

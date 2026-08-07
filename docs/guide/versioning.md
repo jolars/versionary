@@ -86,5 +86,22 @@ The default Markdown format renders an `h2` version heading linking to the
 compare view between the previous and next tags. The R strategy uses the
 [`r-news` format](/reference/strategies#r) instead, with `NEWS.md` conventions.
 
-You can also inject hand-written **highlights** at the top of a release's notes;
-see [`next-release-file`](/reference/configuration#next-release-file).
+## Release highlights
+
+You can inject hand-written **highlights** at the top of a release's notes by
+adding an `Unreleased` section to the top of your changelog:
+
+```markdown
+# Changelog
+
+## Unreleased
+
+This release rewrites the planning engine for faster monorepo runs.
+
+## [1.2.0](https://example.com/compare/v1.1.0...v1.2.0) (2026-01-01)
+```
+
+Any heading whose text is not a version works (`Unreleased`, `Upcoming`, and so
+on). For the `r-news` format, use the `(development version)` heading
+convention instead. When the release is cut, the block's prose is folded into
+the new version's section and the placeholder heading is removed.
