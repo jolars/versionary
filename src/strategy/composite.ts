@@ -105,6 +105,21 @@ export function compositeVersionStrategy(
     };
   }
 
+  if (primary.isPublishable || secondaries.some((s) => s.isPublishable)) {
+    composite.isPublishable = (
+      cwd: string,
+      pkg: StrategyPackagePlanContext,
+    ): boolean | undefined => {
+      // Only strategies that recognize this package's version file have an
+      // opinion; among those, one publishing facet is enough to expose the
+      // package on a registry.
+      const opinions = [primary, ...secondaries]
+        .map((strategy) => strategy.isPublishable?.(cwd, pkg))
+        .filter((opinion): opinion is boolean => typeof opinion === "boolean");
+      return opinions.length === 0 ? undefined : opinions.some(Boolean);
+    };
+  }
+
   if (
     primary.propagateDependentPatchImpacts ||
     secondaries.some((strategy) => strategy.propagateDependentPatchImpacts)

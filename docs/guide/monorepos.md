@@ -95,6 +95,45 @@ Notes and constraints:
 - `follows` cannot be combined with `monorepo-mode: "fixed"` (fixed mode already
   pins everything together).
 
+## Published dependency freshness {#stale-dependencies}
+
+For strategies where packages record a version requirement on their siblings
+(currently Rust), Versionary enforces one invariant when it plans a release: **a
+package that is being published never points at a stale published copy of a
+sibling.**
+
+Two rules produce that guarantee, applied together until they settle:
+
+- **Dependency propagation.** If package A bumps and package B records a version
+  requirement on A, B's requirement is rewritten, so B gets at least a patch
+  bump. The rewrite would otherwise ship without a version to publish it under.
+- **Stale dependencies.** If package A changed since its own last release but
+  produced no bump, and some publishable package being released depends on
+  A—directly or through intermediates—A gets at least a patch bump, recorded as
+  `stale-dependency`.
+
+The second rule deliberately ignores commit type. A commit like
+`refactor: upgrade rowan to 0.17.0` maps to no release type, but it can still
+change what A's *published* manifest would say. If a dependent then ships
+against the old published copy, the registry ends up holding a dependency graph
+that cannot build, even though the workspace builds fine—in-repo builds resolve
+through `path`, so the recorded `version` requirement is never exercised until
+someone installs from the registry.
+
+Because the trigger is "A changed at all", a documentation- or test-only commit
+in A is enough to force a release when a dependent goes out. Use
+[`exclude-paths`](#path-scoped-commit-filtering) on A to narrow what counts as a
+change.
+
+Packages that never reach a registry are exempt, both as the stale package and
+as the dependent that would trigger the rule: Cargo crates with
+`publish = false` (or an empty registry list, including via
+`publish.workspace = true`), and npm packages with `"private": true`.
+
+A release forced this way often has no release-worthy commits to describe. Its
+changelog entry falls back to an **Other changes** section listing the commits
+that are shipping, so the version is never published under a bare heading.
+
 ## Path-scoped commit filtering
 
 `exclude-paths` drops commits that **only** touch the listed paths from a
@@ -112,6 +151,7 @@ subpackage's directory (see `"."` excluding `editors` above).
 
 `allow-stable-major` can be set per package to override the top-level
 [pre-1.0 policy](./versioning#pre-1-0-policy) for that package's own bump
-(including `follows`-driven and dependency-propagation bumps). In `fixed` mode,
+(including `follows`-driven, dependency-propagation, and stale-dependency
+bumps). In `fixed` mode,
 the single shared version is governed by the top-level `allow-stable-major`
 only.

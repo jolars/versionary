@@ -97,12 +97,14 @@ function groupCommitLines(
   fixes: string[];
   performance: string[];
   reverts: string[];
+  other: string[];
 } {
   const breaking: string[] = [];
   const features: string[] = [];
   const fixes: string[] = [];
   const performance: string[] = [];
   const reverts: string[] = [];
+  const other: string[] = [];
   const effectiveCommits = applyRevertSuppression(commits);
 
   const getRevertedSubject = (commit: ParsedCommit): string => {
@@ -133,9 +135,6 @@ function groupCommitLines(
 
   for (const commit of effectiveCommits) {
     const type = inferReleaseTypeFromParsedCommit(commit);
-    if (!type) {
-      continue;
-    }
 
     const { label, message } = formatCommitMessage(commit.subject);
     const short = commit.hash.slice(0, 7);
@@ -147,6 +146,11 @@ function groupCommitLines(
     const line = `- ${label}${message} (${hashLabel})${referencesSuffix}`;
     const commitType = (commit.type ?? "").toLowerCase();
     const isBreaking = type === "major";
+
+    if (!type) {
+      other.push(line);
+      continue;
+    }
 
     if (commit.isRevert) {
       if (!shouldIncludeRevert(commit)) {
@@ -172,7 +176,30 @@ function groupCommitLines(
     }
   }
 
-  return { breaking, features, fixes, performance, reverts };
+  return { breaking, features, fixes, performance, reverts, other };
+}
+
+/**
+ * A forced bump — a stale dependency, or a propagated requirement rewrite —
+ * can carry no release-worthy commits at all. Rather than publish a bare
+ * version heading, such a release falls back to listing whatever else is
+ * shipping under it.
+ */
+function needsOtherChangesFallback(
+  grouped: ReturnType<typeof groupCommitLines>,
+  hasHighlights: boolean,
+  dependencyCount: number,
+): boolean {
+  if (hasHighlights || dependencyCount > 0 || grouped.other.length === 0) {
+    return false;
+  }
+  return (
+    grouped.breaking.length === 0 &&
+    grouped.features.length === 0 &&
+    grouped.fixes.length === 0 &&
+    grouped.performance.length === 0 &&
+    grouped.reverts.length === 0
+  );
 }
 
 export function renderReleaseNotesSection(
@@ -230,6 +257,15 @@ export function renderReleaseNotesSection(
       ),
       "",
     );
+  }
+  if (
+    needsOtherChangesFallback(
+      grouped,
+      trimmedHighlights.length > 0,
+      input.dependencies?.length ?? 0,
+    )
+  ) {
+    sections.push("### Other changes", ...grouped.other, "");
   }
   const body = [header, "", ...sections].join("\n").trimEnd();
   if (options.includeFooter) {
@@ -401,6 +437,9 @@ export function renderRNewsReleaseNotes(input: {
   }
   if (grouped.reverts.length > 0) {
     sections.push("## Reverts", "", ...grouped.reverts, "");
+  }
+  if (needsOtherChangesFallback(grouped, trimmedHighlights.length > 0, 0)) {
+    sections.push("## Other changes", "", ...grouped.other, "");
   }
   return [`# ${input.packageName} ${normalizedVersion}`, "", ...sections]
     .join("\n")

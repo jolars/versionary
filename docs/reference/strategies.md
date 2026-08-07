@@ -54,11 +54,28 @@ The default when `release-type` is omitted.
   Operators (`^`, `~`, `>=`, …) and table vs. string forms are preserved.
 - **Lockfiles:** `Cargo.lock` files are refreshed via `cargo generate-lockfile`.
   `cargo` must be on `PATH` during PR preparation when a `Cargo.lock` exists.
+- **Publishability:** crates with `publish = false`, an empty registry list, or
+  either inherited via `publish.workspace = true`, are exempt from
+  [published dependency freshness](../guide/monorepos#stale-dependencies).
 - **Changelog:** `markdown-changelog`.
 
 **Not done (by design):** external dependency updates, `workspace.dependencies`
 updates, adding missing `version` fields to dependency tables, or publishing to
 crates.io.
+
+### Keep `cargo publish` verification on
+
+Workspace crates carry dual-spec dependencies
+(`{ path = "...", version = "0.1.1" }`). In-repo builds resolve through `path`,
+so the `version` requirement is never exercised until someone installs from the
+registry—a green CI run says nothing about whether the published manifest set is
+coherent.
+
+`cargo publish` builds each crate against its *registry* dependencies, which is
+the one place an incoherent published graph surfaces before users hit it.
+Publishing with `--no-verify` skips that build. Leave it on in the workflow that
+publishes on tag or release events, so a bad set fails to publish rather than
+shipping.
 
 ## python
 

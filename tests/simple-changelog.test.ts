@@ -384,4 +384,68 @@ describe("simple changelog rendering", () => {
     expect(section).toContain("### Dependencies");
     expect(section).toContain("- updated . to v1.1.0");
   });
+
+  it("lists non-releasable commits when a forced bump has nothing else to show", () => {
+    const section = renderReleaseNotesSection({
+      currentVersion: "0.1.0",
+      nextVersion: "0.1.1",
+      commits: [
+        {
+          ...parseConventionalCommitMessage(
+            "refactor: upgrade rowan to 0.17.0",
+          ),
+          hash: "7777777",
+        },
+        {
+          ...parseConventionalCommitMessage("docs: describe the new API"),
+          hash: "8888888",
+        },
+      ],
+    });
+
+    expect(section).toContain("### Other changes");
+    expect(section).toContain("- upgrade rowan to 0.17.0 (");
+    expect(section).toContain("- describe the new API (");
+  });
+
+  it("omits Other changes when the release already has content", () => {
+    const section = renderReleaseNotesSection({
+      currentVersion: "0.1.0",
+      nextVersion: "0.2.0",
+      commits: [
+        {
+          ...parseConventionalCommitMessage("feat: add feature"),
+          hash: "3333333",
+        },
+        {
+          ...parseConventionalCommitMessage(
+            "refactor: upgrade rowan to 0.17.0",
+          ),
+          hash: "7777777",
+        },
+      ],
+    });
+
+    expect(section).toContain("### Features");
+    expect(section).not.toContain("### Other changes");
+  });
+
+  it("omits Other changes when a dependency update is already listed", () => {
+    const section = renderReleaseNotesSection({
+      currentVersion: "0.1.0",
+      nextVersion: "0.1.1",
+      commits: [
+        {
+          ...parseConventionalCommitMessage(
+            "refactor: upgrade rowan to 0.17.0",
+          ),
+          hash: "7777777",
+        },
+      ],
+      dependencies: [{ name: "crates/a", version: "0.1.1" }],
+    });
+
+    expect(section).toContain("### Dependencies");
+    expect(section).not.toContain("### Other changes");
+  });
 });

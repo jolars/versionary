@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { compositeVersionStrategy } from "../src/strategy/composite.js";
+import { nodeVersionStrategy } from "../src/strategy/node.js";
 import { pythonVersionStrategy } from "../src/strategy/python.js";
 import { rustVersionStrategy } from "../src/strategy/rust.js";
 import { simpleVersionStrategy } from "../src/strategy/simple.js";
@@ -301,7 +302,67 @@ describe("compositeVersionStrategy", () => {
     expect(composite.readPackageName).toBeUndefined();
     expect(composite.getDefaultChangelogFormat).toBeUndefined();
     expect(composite.propagateDependentPatchImpacts).toBeUndefined();
+    expect(composite.isPublishable).toBeUndefined();
     expect(composite.finalizeVersionWrites).toBeUndefined();
+  });
+
+  it("node.isPublishable reads the private flag from package.json", () => {
+    const cwd = makeTempDir("node-publishable");
+    writeFile(cwd, "package.json", '{ "name": "demo", "version": "1.0.0" }\n');
+    writeFile(
+      cwd,
+      "apps/web/package.json",
+      '{ "name": "web", "version": "1.0.0", "private": true }\n',
+    );
+    const check = (versionFile: string) =>
+      nodeVersionStrategy.isPublishable?.(cwd, {
+        packagePath: ".",
+        versionFile,
+        currentVersion: "1.0.0",
+        nextVersion: null,
+      });
+
+    expect(check("package.json")).toBe(true);
+    expect(check("apps/web/package.json")).toBe(false);
+    // A version file node does not own carries no opinion.
+    expect(check("Cargo.toml")).toBeUndefined();
+  });
+
+  it("isPublishable counts a package as published if any facet publishes it", () => {
+    const cwd = makeTempDir("composite-publishable");
+    writeFile(
+      cwd,
+      "package.json",
+      '{ "name": "demo", "version": "1.0.0", "private": true }\n',
+    );
+    writeFile(
+      cwd,
+      "Cargo.toml",
+      ["[package]", 'name = "demo"', 'version = "1.0.0"', ""].join("\n"),
+    );
+    const composite = compositeVersionStrategy([
+      nodeVersionStrategy,
+      rustVersionStrategy,
+    ]);
+
+    // node says no for package.json, rust abstains; the reverse holds for
+    // Cargo.toml, where rust says yes.
+    expect(
+      composite.isPublishable?.(cwd, {
+        packagePath: ".",
+        versionFile: "package.json",
+        currentVersion: "1.0.0",
+        nextVersion: null,
+      }),
+    ).toBe(false);
+    expect(
+      composite.isPublishable?.(cwd, {
+        packagePath: ".",
+        versionFile: "Cargo.toml",
+        currentVersion: "1.0.0",
+        nextVersion: null,
+      }),
+    ).toBe(true);
   });
 
   it.runIf(cargoOnPath())(

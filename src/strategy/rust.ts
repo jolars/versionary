@@ -333,12 +333,62 @@ function collectRustTargetManifests(
   );
 }
 
-function isWorkspaceInheritedVersion(rawVersion: unknown): boolean {
+function isWorkspaceInheritedValue(rawVersion: unknown): boolean {
   if (!rawVersion || typeof rawVersion !== "object") {
     return false;
   }
   const versionRecord = rawVersion as Record<string, unknown>;
   return versionRecord.workspace === true;
+}
+
+function isPublishValueUnpublishable(rawPublish: unknown): boolean {
+  // Cargo treats both `publish = false` and an empty registry list as
+  // "never publish"; a non-empty list still reaches a registry.
+  return (
+    rawPublish === false ||
+    (Array.isArray(rawPublish) && rawPublish.length === 0)
+  );
+}
+
+function readManifestPublishable(cwd: string, manifest: string): boolean {
+  const manifestPath = path.join(cwd, manifest);
+  if (!fs.existsSync(manifestPath)) {
+    return true;
+  }
+  const cargoTomlRaw = fs.readFileSync(manifestPath, "utf8");
+  let packageTable: Record<string, unknown> | null;
+  try {
+    ({ packageTable } = parseCargoManifest(manifest, cargoTomlRaw));
+  } catch {
+    return true;
+  }
+  if (!packageTable) {
+    return true;
+  }
+  const rawPublish = packageTable.publish;
+  if (!isWorkspaceInheritedValue(rawPublish)) {
+    return !isPublishValueUnpublishable(rawPublish);
+  }
+
+  let workspaceManifest: string;
+  try {
+    workspaceManifest = findWorkspaceManifestForMember(cwd, manifest);
+  } catch {
+    return true;
+  }
+  const workspaceRaw = fs.readFileSync(
+    path.join(cwd, workspaceManifest),
+    "utf8",
+  );
+  const { workspaceTable } = parseCargoManifest(
+    workspaceManifest,
+    workspaceRaw,
+  );
+  const workspacePackage =
+    workspaceTable?.package && typeof workspaceTable.package === "object"
+      ? (workspaceTable.package as Record<string, unknown>)
+      : null;
+  return !isPublishValueUnpublishable(workspacePackage?.publish);
 }
 
 function readWorkspacePackageVersion(
@@ -425,7 +475,7 @@ function readResolvedCargoVersion(
   if (typeof rawVersion === "string" && rawVersion.trim().length > 0) {
     return rawVersion.trim();
   }
-  if (!isWorkspaceInheritedVersion(rawVersion)) {
+  if (!isWorkspaceInheritedValue(rawVersion)) {
     throw new Error(
       `${manifest} has invalid [package].version. Expected a non-empty SemVer string or version.workspace = true.`,
     );
@@ -592,7 +642,7 @@ function usesWorkspaceInheritedVersion(
     return false;
   }
   const rawVersion = (packageTable as { version?: unknown }).version;
-  return isWorkspaceInheritedVersion(rawVersion);
+  return isWorkspaceInheritedValue(rawVersion);
 }
 
 function isDependencySection(section: string): boolean {
@@ -1058,6 +1108,16 @@ export const rustVersionStrategy: VersionStrategy = {
       return null;
     }
     return readCargoPackageName(cargoTomlRaw, selectedManifest);
+  },
+  isPublishable(
+    cwd: string,
+    pkg: StrategyPackagePlanContext,
+  ): boolean | undefined {
+    const manifest = normalizeSlashPath(pkg.versionFile);
+    if (path.posix.basename(manifest) !== "Cargo.toml") {
+      return undefined;
+    }
+    return readManifestPublishable(cwd, manifest);
   },
   propagateDependentPatchImpacts(
     cwd: string,

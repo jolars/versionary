@@ -722,4 +722,107 @@ describe("rustVersionStrategy", () => {
     );
     expect(impactedPaths).toEqual(["crates/util"]);
   });
+
+  describe("isPublishable", () => {
+    const check = (cwd: string, packagePath: string, versionFile: string) =>
+      rustVersionStrategy.isPublishable?.(cwd, {
+        packagePath,
+        versionFile,
+        currentVersion: "0.1.0",
+        nextVersion: null,
+      });
+
+    it("treats a crate without a publish key as publishable", () => {
+      const cwd = makeTempDir("publishable-default");
+      write(
+        cwd,
+        "Cargo.toml",
+        ["[package]", 'name = "demo"', 'version = "0.1.0"', ""].join("\n"),
+      );
+
+      expect(check(cwd, ".", "Cargo.toml")).toBe(true);
+    });
+
+    it("treats publish = false and an empty registry list as unpublishable", () => {
+      const cwd = makeTempDir("publishable-false");
+      write(
+        cwd,
+        "crates/a/Cargo.toml",
+        [
+          "[package]",
+          'name = "crate-a"',
+          'version = "0.1.0"',
+          "publish = false",
+          "",
+        ].join("\n"),
+      );
+      write(
+        cwd,
+        "crates/b/Cargo.toml",
+        [
+          "[package]",
+          'name = "crate-b"',
+          'version = "0.1.0"',
+          "publish = []",
+          "",
+        ].join("\n"),
+      );
+
+      expect(check(cwd, "crates/a", "crates/a/Cargo.toml")).toBe(false);
+      expect(check(cwd, "crates/b", "crates/b/Cargo.toml")).toBe(false);
+    });
+
+    it("keeps a crate publishable when it names a registry", () => {
+      const cwd = makeTempDir("publishable-registry");
+      write(
+        cwd,
+        "Cargo.toml",
+        [
+          "[package]",
+          'name = "demo"',
+          'version = "0.1.0"',
+          'publish = ["internal"]',
+          "",
+        ].join("\n"),
+      );
+
+      expect(check(cwd, ".", "Cargo.toml")).toBe(true);
+    });
+
+    it("resolves publish inherited from the workspace", () => {
+      const cwd = makeTempDir("publishable-inherited");
+      write(
+        cwd,
+        "Cargo.toml",
+        [
+          "[workspace]",
+          'members = ["crates/*"]',
+          "",
+          "[workspace.package]",
+          "publish = false",
+          "",
+        ].join("\n"),
+      );
+      write(
+        cwd,
+        "crates/a/Cargo.toml",
+        [
+          "[package]",
+          'name = "crate-a"',
+          'version = "0.1.0"',
+          "publish.workspace = true",
+          "",
+        ].join("\n"),
+      );
+
+      expect(check(cwd, "crates/a", "crates/a/Cargo.toml")).toBe(false);
+    });
+
+    it("abstains for version files it does not own", () => {
+      const cwd = makeTempDir("publishable-foreign");
+      write(cwd, "package.json", '{ "name": "demo", "private": true }\n');
+
+      expect(check(cwd, ".", "package.json")).toBeUndefined();
+    });
+  });
 });

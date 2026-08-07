@@ -26,6 +26,7 @@ import { readBaselineSha, readReleaseTargets } from "./state.js";
 type BumpReason =
   | "direct"
   | "dependency-propagation"
+  | "stale-dependency"
   | "follows"
   | "release-as";
 
@@ -240,11 +241,15 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
   ].sort((a, b) => a.path.localeCompare(b.path));
 
   const packageCurrentVersionByPath: Record<string, string> = {};
-  const packageNextVersionByPath: Record<string, string> = {};
   const strategyPackagesByName = new Map<
     string,
     { strategy: VersionStrategy; packages: StrategyPackagePlanContext[] }
   >();
+  // Strategy contexts are shared by reference with their group so that forcing
+  // a bump during the fixpoint below is immediately visible to the next
+  // `propagateDependentPatchImpacts` query.
+  const strategyContextByPath = new Map<string, StrategyPackagePlanContext>();
+  const strategyByPath = new Map<string, VersionStrategy>();
   for (const packagePlan of packagePlans) {
     const packageConfig = loaded.config.packages?.[packagePlan.path] ?? {};
     const packageContext = resolvePackageStrategyContext(
@@ -252,35 +257,204 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
       packagePlan.path,
       packageConfig,
     );
+    const strategyContext: StrategyPackagePlanContext = {
+      packagePath: packagePlan.path,
+      versionFile: packagePlan.resolvedVersionFile,
+      currentVersion: packagePlan.currentVersion,
+      nextVersion: packagePlan.nextVersion,
+    };
+    strategyContextByPath.set(packagePlan.path, strategyContext);
+    strategyByPath.set(packagePlan.path, packageContext.strategy);
     const existingGroup = strategyPackagesByName.get(
       packageContext.strategy.name,
     );
     if (existingGroup) {
-      existingGroup.packages.push({
-        packagePath: packagePlan.path,
-        versionFile: packagePlan.resolvedVersionFile,
-        currentVersion: packagePlan.currentVersion,
-        nextVersion: packagePlan.nextVersion,
-      });
+      existingGroup.packages.push(strategyContext);
     } else {
       strategyPackagesByName.set(packageContext.strategy.name, {
         strategy: packageContext.strategy,
-        packages: [
-          {
-            packagePath: packagePlan.path,
-            versionFile: packagePlan.resolvedVersionFile,
-            currentVersion: packagePlan.currentVersion,
-            nextVersion: packagePlan.nextVersion,
-          },
-        ],
+        packages: [strategyContext],
       });
     }
     packageCurrentVersionByPath[packagePlan.path] = packagePlan.currentVersion;
-    if (packagePlan.nextVersion) {
-      packageNextVersionByPath[packagePlan.path] = packagePlan.nextVersion;
+  }
+
+  const workingPlans = packagePlans.map((pkgPlan) => ({ ...pkgPlan }));
+  const workingPlanByPath = new Map(
+    workingPlans.map((pkgPlan) => [pkgPlan.path, pkgPlan]),
+  );
+
+  const forcePatchBump = (
+    target: (typeof workingPlans)[number],
+    reason: Extract<BumpReason, "dependency-propagation" | "stale-dependency">,
+  ): void => {
+    const current =
+      packageCurrentVersionByPath[target.path] ?? target.currentVersion;
+    target.releaseType = "patch";
+    target.nextVersion = bumpVersion(current, "patch", {
+      allowStableMajor: allowStableMajorForPath(target.path),
+    });
+    target.bumpReason = reason;
+    const strategyContext = strategyContextByPath.get(target.path);
+    if (strategyContext) {
+      strategyContext.nextVersion = target.nextVersion;
+    }
+  };
+
+  /**
+   * Packages that record a version requirement on `sourcePath`, found by
+   * asking the strategy who would need a requirement rewrite if `sourcePath`
+   * alone released. Works whether or not `sourcePath` is currently bumping,
+   * so it doubles as a reverse-edge lookup for a package that has not entered
+   * the plan yet.
+   */
+  const findDependents = (sourcePath: string): string[] => {
+    const strategyContext = strategyContextByPath.get(sourcePath);
+    // The implicit root can name a version file that does not exist. Nothing
+    // can record a requirement on a package that has no manifest, and asking
+    // the strategy would make it read one.
+    if (
+      !strategyContext ||
+      !fs.existsSync(path.join(cwd, strategyContext.versionFile))
+    ) {
+      return [];
+    }
+    const strategy = strategyByPath.get(sourcePath);
+    const strategyGroup = strategy
+      ? strategyPackagesByName.get(strategy.name)
+      : undefined;
+    if (!strategyGroup?.strategy.propagateDependentPatchImpacts) {
+      return [];
+    }
+    const hypotheticalVersion =
+      strategyContext.nextVersion ??
+      bumpVersion(
+        packageCurrentVersionByPath[sourcePath] ??
+          strategyContext.currentVersion,
+        "patch",
+        { allowStableMajor: allowStableMajorForPath(sourcePath) },
+      );
+    return strategyGroup.strategy.propagateDependentPatchImpacts(
+      cwd,
+      strategyGroup.packages.map((pkg) => ({
+        ...pkg,
+        nextVersion:
+          pkg.packagePath === sourcePath ? hypotheticalVersion : null,
+      })),
+    );
+  };
+
+  const isPublishable = (packagePath: string): boolean => {
+    const strategy = strategyByPath.get(packagePath);
+    const strategyContext = strategyContextByPath.get(packagePath);
+    if (!strategy?.isPublishable || !strategyContext) {
+      return true;
+    }
+    // Abstaining counts as publishable: the enforcement below should only be
+    // skipped on a positive signal that nothing reaches a registry.
+    return strategy.isPublishable(cwd, strategyContext) !== false;
+  };
+
+  // Forward dependency edges, inverted from the reverse-edge lookup above.
+  // Whether one package records a requirement on another is a property of the
+  // manifests, not of the versions in flight, so this is computed once.
+  const dependenciesByPath = new Map<string, Set<string>>();
+  for (const pkgPlan of workingPlans) {
+    for (const dependentPath of findDependents(pkgPlan.path)) {
+      const existing = dependenciesByPath.get(dependentPath);
+      if (existing) {
+        existing.add(pkgPlan.path);
+        continue;
+      }
+      dependenciesByPath.set(dependentPath, new Set([pkgPlan.path]));
     }
   }
-  const impactedPaths = new Set<string>();
+
+  /**
+   * Every package reachable by following dependency edges down from a
+   * publishable package that is currently releasing. Staleness matters
+   * transitively: a release that pulls in a stale grandparent resolves against
+   * the stale published copy just as readily as a direct dependency does.
+   */
+  const collectReleasingDependencyClosure = (): Set<string> => {
+    const reachable = new Set<string>();
+    const queue = workingPlans
+      .filter((pkgPlan) => pkgPlan.nextVersion && isPublishable(pkgPlan.path))
+      .map((pkgPlan) => pkgPlan.path);
+    while (queue.length > 0) {
+      const currentPath = queue.shift();
+      if (currentPath === undefined) {
+        continue;
+      }
+      for (const dependencyPath of dependenciesByPath.get(currentPath) ?? []) {
+        if (reachable.has(dependencyPath)) {
+          continue;
+        }
+        reachable.add(dependencyPath);
+        queue.push(dependencyPath);
+      }
+    }
+    return reachable;
+  };
+
+  // Both rules below can enable each other: forcing a bump creates a dependent
+  // whose requirement must be rewritten, and rewriting a dependent can in turn
+  // expose a stale dependency a further level up. Iterating to a fixpoint
+  // avoids having to order them, and terminates because a package can only
+  // ever move from not-releasing to releasing.
+  for (let iteration = 0; iteration <= workingPlans.length; iteration += 1) {
+    let changed = false;
+
+    // Rule 1: a package whose recorded requirement on a releasing sibling
+    // would change must release too, or the rewritten requirement ships in the
+    // release commit without a version to publish it under.
+    for (const strategyGroup of strategyPackagesByName.values()) {
+      const impacted =
+        strategyGroup.strategy.propagateDependentPatchImpacts?.(
+          cwd,
+          strategyGroup.packages,
+        ) ?? [];
+      for (const impactedPath of impacted) {
+        const target = workingPlanByPath.get(impactedPath);
+        if (!target || target.nextVersion) {
+          continue;
+        }
+        forcePatchBump(target, "dependency-propagation");
+        changed = true;
+      }
+    }
+
+    // Rule 2: a package that changed since its own last release but produced
+    // no bump would leave a releasing dependent pointing at a stale published
+    // copy. Commit type is deliberately not consulted — the exposure comes
+    // from the change existing, not from how it was labeled.
+    const reachableDependencies = collectReleasingDependencyClosure();
+    for (const candidate of workingPlans) {
+      if (candidate.nextVersion || candidate.commits.length === 0) {
+        continue;
+      }
+      if (!reachableDependencies.has(candidate.path)) {
+        continue;
+      }
+      if (!isPublishable(candidate.path)) {
+        continue;
+      }
+      forcePatchBump(candidate, "stale-dependency");
+      changed = true;
+    }
+
+    if (!changed) {
+      break;
+    }
+  }
+
+  const packageNextVersionByPath: Record<string, string> = {};
+  for (const pkgPlan of workingPlans) {
+    if (pkgPlan.nextVersion) {
+      packageNextVersionByPath[pkgPlan.path] = pkgPlan.nextVersion;
+    }
+  }
+
   const dependencySourcePathsByPackage = new Map<string, Set<string>>();
 
   const addDependencySourcePath = (
@@ -298,37 +472,20 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
     dependencySourcePathsByPackage.set(targetPath, new Set([sourcePath]));
   };
 
+  // Attribute each dependent's requirement rewrite to the specific sources
+  // driving it, using the settled version set so chained bumps are credited.
   for (const strategyGroup of strategyPackagesByName.values()) {
-    const impactedByAll =
-      strategyGroup.strategy.propagateDependentPatchImpacts?.(
-        cwd,
-        strategyGroup.packages,
-      ) ?? [];
-    for (const pkgPath of impactedByAll) {
-      impactedPaths.add(pkgPath);
-    }
-
-    const sourcePackages = strategyGroup.packages.filter((pkg) =>
-      Boolean(pkg.nextVersion),
-    );
-    for (const sourcePackage of sourcePackages) {
-      const scopedImpacts =
-        strategyGroup.strategy.propagateDependentPatchImpacts?.(
-          cwd,
-          strategyGroup.packages.map((pkg) => ({
-            ...pkg,
-            nextVersion:
-              pkg.packagePath === sourcePackage.packagePath
-                ? sourcePackage.nextVersion
-                : null,
-          })),
-        ) ?? [];
-      for (const impactedPath of scopedImpacts) {
+    for (const sourcePackage of strategyGroup.packages) {
+      if (!sourcePackage.nextVersion) {
+        continue;
+      }
+      for (const impactedPath of findDependents(sourcePackage.packagePath)) {
         addDependencySourcePath(impactedPath, sourcePackage.packagePath);
       }
     }
   }
-  const propagatedPackages = packagePlans.map((pkgPlan) => {
+
+  const propagatedPackages = workingPlans.map((pkgPlan) => {
     const dependencySourcePaths = [
       ...(dependencySourcePathsByPackage.get(pkgPlan.path) ??
         new Set<string>()),
@@ -336,24 +493,11 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
       .filter((sourcePath) => Boolean(packageNextVersionByPath[sourcePath]))
       .sort((a, b) => a.localeCompare(b));
 
-    if (pkgPlan.nextVersion || !impactedPaths.has(pkgPlan.path)) {
-      if (dependencySourcePaths.length === 0) {
-        return pkgPlan;
-      }
-      return {
-        ...pkgPlan,
-        dependencySourcePaths,
-      };
+    if (dependencySourcePaths.length === 0) {
+      return pkgPlan;
     }
-    const current =
-      packageCurrentVersionByPath[pkgPlan.path] ?? pkgPlan.currentVersion;
     return {
       ...pkgPlan,
-      releaseType: "patch" as ReleaseType,
-      nextVersion: bumpVersion(current, "patch", {
-        allowStableMajor: allowStableMajorForPath(pkgPlan.path),
-      }),
-      bumpReason: "dependency-propagation" as const,
       dependencySourcePaths,
     };
   });
@@ -398,6 +542,7 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
     const sourceDrove =
       combinedReleaseType !== ownReleaseType ||
       pkgPlan.bumpReason === "dependency-propagation" ||
+      pkgPlan.bumpReason === "stale-dependency" ||
       pkgPlan.bumpReason === undefined;
     const baseVersion =
       packageCurrentVersionByPath[pkgPlan.path] ?? pkgPlan.currentVersion;

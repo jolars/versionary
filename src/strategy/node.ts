@@ -1,11 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { VersionaryConfig } from "../types/config.js";
-import type { VersionStrategy } from "./types.js";
+import type { StrategyPackagePlanContext, VersionStrategy } from "./types.js";
 
 interface NodePackageJson {
   name?: string;
   version?: string;
+  private?: boolean;
   [key: string]: unknown;
 }
 
@@ -98,5 +99,22 @@ export const nodeVersionStrategy: VersionStrategy = {
       return null;
     }
     return name.trim();
+  },
+  isPublishable(
+    cwd: string,
+    pkg: StrategyPackagePlanContext,
+  ): boolean | undefined {
+    if (path.basename(pkg.versionFile) !== "package.json") {
+      return undefined;
+    }
+    const versionPath = path.join(cwd, pkg.versionFile);
+    if (!fs.existsSync(versionPath)) {
+      return true;
+    }
+    try {
+      return readJsonFile<NodePackageJson>(versionPath).private !== true;
+    } catch {
+      return true;
+    }
   },
 };
