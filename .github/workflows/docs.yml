@@ -1,13 +1,12 @@
 name: Docs
 
-# Publish docs for the current released version only: on published releases
-# (and tag pushes as a fallback), or manually via workflow_dispatch.
+# Publish docs for the current released version only: on published releases,
+# or manually via workflow_dispatch. Deliberately not on tag pushes; the
+# release tag lands just before the release itself, so both would fire for one
+# release and the concurrency group below would discard one of them.
 on:
   release:
     types: [published]
-  push:
-    tags:
-      - "v*"
   workflow_dispatch:
 
 permissions:
