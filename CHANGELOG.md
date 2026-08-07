@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.0](https://github.com/jolars/versionary/compare/v0.32.0...v1.0.0) (2026-08-07)
+
+### Breaking changes
+- remove deprecated APIs and config keys ([`ae5d264`](https://github.com/jolars/versionary/commit/ae5d2647c6d7d2e5856f5819a8686bb05ed4fe08))
+- force releases for stale published dependencies ([`4e4f4b9`](https://github.com/jolars/versionary/commit/4e4f4b9a7d26aa8eba53648a573468b3efdc9344)), closes [#77](https://github.com/jolars/versionary/issues/77)
+
+### Features
+- remove deprecated APIs and config keys ([`ae5d264`](https://github.com/jolars/versionary/commit/ae5d2647c6d7d2e5856f5819a8686bb05ed4fe08))
+- force releases for stale published dependencies ([`4e4f4b9`](https://github.com/jolars/versionary/commit/4e4f4b9a7d26aa8eba53648a573468b3efdc9344)), closes [#77](https://github.com/jolars/versionary/issues/77)
+- **plan:** support Release-As footer to pin next version ([`10c2914`](https://github.com/jolars/versionary/commit/10c29141bca14c74601d10c1bb236b108c5cc396))
+
 ## [0.32.0](https://github.com/jolars/versionary/compare/v0.31.0...v0.32.0) (2026-07-04)
 
 ### Features
