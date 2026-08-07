@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
-import { loadConfig } from "../config/load-config.js";
 import {
   prependChangelog,
   renderReleasePlanChangelog,
