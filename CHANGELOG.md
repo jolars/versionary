@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.0.1](https://github.com/jolars/versionary/compare/v1.0.0...v1.0.1) (2026-08-12)
+
+### Bug Fixes
+- report root release from its own package plan ([`2ff8149`](https://github.com/jolars/versionary/commit/2ff8149e32fa802dfe2942321a8c23a813fef0f7))
+
 ## [1.0.0](https://github.com/jolars/versionary/compare/v0.32.0...v1.0.0) (2026-08-07)
 
 ### Breaking changes

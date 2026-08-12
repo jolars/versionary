@@ -1,6 +1,6 @@
 {
   "name": "versionary",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Automatic release framework based on conventional commits and semantic versioning",
   "keywords": [
     "releasing",
