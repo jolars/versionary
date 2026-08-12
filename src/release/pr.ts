@@ -432,8 +432,14 @@ export function prepareReleasePr(
   );
   const highlights = highlightsResult.highlights;
   const section = renderReleasePlanChangelog(plan, { highlights, cwd });
-  prependChangelog(cwd, plan.changelogFile, section, plan.changelogFormat);
-  const updatedChangelogFiles = [plan.changelogFile];
+  const updatedChangelogFiles: string[] = [];
+  // An empty section means root itself is not releasing, only siblings are.
+  // Writing then would leave a bare heading behind and, worse, strip the
+  // manual-notes block that nothing has folded in yet.
+  if (section.length > 0) {
+    prependChangelog(cwd, plan.changelogFile, section, plan.changelogFormat);
+    updatedChangelogFiles.push(plan.changelogFile);
+  }
   for (const packagePlan of plan.packages ?? []) {
     if (!packagePlan.nextVersion || packagePlan.path === ".") {
       continue;

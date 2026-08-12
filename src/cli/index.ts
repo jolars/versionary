@@ -5,7 +5,7 @@ import {
   prependChangelog,
   renderReleasePlanChangelog,
 } from "../release/changelog.js";
-import { createReleasePlan } from "../release/plan.js";
+import { createReleasePlan, type ReleasePlan } from "../release/plan.js";
 import {
   closeStaleReviewRequestIfExists,
   isReleaseCommitMessage,
@@ -16,6 +16,24 @@ import {
 } from "../release/pr.js";
 import { runRelease, runReleaseDetailed } from "../release/release.js";
 import { verifyProject } from "../release/verify-project.js";
+
+/**
+ * What a dry run would actually release. `plan.nextVersion` is the repository
+ * aggregate, which in a monorepo names no real release, so prefer the
+ * per-package versions whenever the plan has them.
+ */
+function formatDryRunReleaseSubject(plan: ReleasePlan): string {
+  const releasing = (plan.packages ?? []).filter((pkg) => pkg.nextVersion);
+  if (releasing.length === 0) {
+    return plan.nextVersion ?? "";
+  }
+  return releasing
+    .map(
+      (pkg) =>
+        `${pkg.path === "." ? plan.packageName : pkg.path} ${pkg.nextVersion}`,
+    )
+    .join(", ");
+}
 
 function printVerifyResult(): number {
   const result = verifyProject();
@@ -167,7 +185,7 @@ async function main(): Promise<number> {
     }
 
     if (flags["dry-run"]) {
-      const dryRunMessage = `Dry run: would prepare release PR branch ${plan.releaseBranchPrefix} for ${plan.nextVersion}`;
+      const dryRunMessage = `Dry run: would prepare release PR branch ${plan.releaseBranchPrefix} for ${formatDryRunReleaseSubject(plan)}`;
       if (flags.json) {
         emitJson({
           action: "pr-dry-run",
@@ -299,7 +317,7 @@ async function main(): Promise<number> {
 
     if (flags["dry-run"]) {
       console.log(
-        `Dry run: would prepare release PR branch ${plan.releaseBranchPrefix} for ${plan.nextVersion}`,
+        `Dry run: would prepare release PR branch ${plan.releaseBranchPrefix} for ${formatDryRunReleaseSubject(plan)}`,
       );
       return 0;
     }

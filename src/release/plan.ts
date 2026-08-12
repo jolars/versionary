@@ -659,6 +659,43 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
   };
 }
 
+/**
+ * The root package's own release, as distinct from the plan-level aggregate.
+ *
+ * `plan.releaseType`/`plan.nextVersion`/`plan.commits` describe the repository
+ * as a whole: the aggregate release type folds in every package's commits and
+ * is then applied to root's version number. That answers "is anything
+ * releasing, and how large is the biggest change anywhere" — not "what is root
+ * releasing". A sibling's `feat` therefore lifts the aggregate to a minor even
+ * when root's own `exclude-paths` drop that commit, so anything that names or
+ * describes root's release must go through here instead. Using the aggregate
+ * would report a version no version file carries and list commits root
+ * deliberately excluded.
+ *
+ * Falls back to the aggregate when the plan has no explicit root package: the
+ * top-level changelog is then a repository-wide summary with no package of its
+ * own to describe.
+ */
+export function resolveRootReleaseView(plan: ReleasePlan): {
+  currentVersion: string;
+  nextVersion: string | null;
+  commits: ParsedCommit[];
+} {
+  const rootPackage = plan.packages?.find((pkg) => pkg.path === ".");
+  if (!rootPackage) {
+    return {
+      currentVersion: plan.currentVersion,
+      nextVersion: plan.nextVersion,
+      commits: plan.commits,
+    };
+  }
+  return {
+    currentVersion: rootPackage.currentVersion,
+    nextVersion: rootPackage.nextVersion,
+    commits: rootPackage.commits,
+  };
+}
+
 export function resolvePackageDependencies(
   plan: ReleasePlan,
   packagePath: string,

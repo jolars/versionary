@@ -269,6 +269,82 @@ describe("review request body rendering", () => {
     expect(body).toContain("---");
   });
 
+  it("renders the root section from root's own release, not the aggregate", () => {
+    const prevServer = process.env.GITHUB_SERVER_URL;
+    const prevRepo = process.env.GITHUB_REPOSITORY;
+    const rootFix = {
+      ...parseConventionalCommitMessage("fix(cli): don't wait on stdin"),
+      hash: "c7170eb1",
+    };
+    const siblingFeat = {
+      ...parseConventionalCommitMessage("feat(parser): add FrameVerdict"),
+      hash: "a2d74463",
+    };
+    let body = "";
+    try {
+      process.env.GITHUB_SERVER_URL = "https://github.com";
+      process.env.GITHUB_REPOSITORY = "jolars/panache";
+      body = renderSimpleReviewRequestBody(
+        "3.4.0",
+        "3.3.0",
+        [],
+        {
+          mode: "simple",
+          // The aggregate reads 3.4.0 because the sibling crate carries a
+          // `feat` that root's `exclude-paths` drops.
+          releaseType: "minor",
+          currentVersion: "3.3.0",
+          nextVersion: "3.4.0",
+          packageName: "panache",
+          versionFile: "Cargo.toml",
+          changelogFile: "CHANGELOG.md",
+          changelogFormat: "markdown-changelog",
+          releaseBranchPrefix: "versionary/release",
+          baselineSha: null,
+          commits: [rootFix, siblingFeat],
+          packages: [
+            {
+              path: ".",
+              releaseType: "patch",
+              currentVersion: "3.3.0",
+              nextVersion: "3.3.1",
+              bumpReason: "direct",
+              dependencySourcePaths: ["crates/panache-parser"],
+              commits: [rootFix],
+            },
+            {
+              path: "crates/panache-parser",
+              releaseType: "minor",
+              currentVersion: "0.25.0",
+              nextVersion: "0.26.0",
+              bumpReason: "direct",
+              commits: [siblingFeat],
+            },
+          ],
+        },
+        // The root section's label is the working directory's basename.
+        "/tmp/panache",
+      );
+    } finally {
+      process.env.GITHUB_SERVER_URL = prevServer;
+      process.env.GITHUB_REPOSITORY = prevRepo;
+    }
+
+    // Heading label and compare link must agree, and both must be root's own.
+    expect(body).toContain(
+      "## [panache: 3.3.1](https://github.com/jolars/panache/compare/v3.3.0...v3.3.1)",
+    );
+    expect(body).not.toContain("v3.3.0...v3.4.0");
+    // The parser's feat belongs to the parser section only.
+    expect(body).toContain(
+      "## [crates/panache-parser: 0.26.0](https://github.com/jolars/panache/compare/crates-panache-parser-v0.25.0...crates-panache-parser-v0.26.0)",
+    );
+    const featMatches = body.match(/FrameVerdict/gu) ?? [];
+    expect(featMatches).toHaveLength(1);
+    // Root still records that it picked the parser bump up as a dependency.
+    expect(body).toContain("- updated crates/panache-parser to v0.26.0");
+  });
+
   it("renders only actual propagated dependency sources per package", () => {
     const prevServer = process.env.GITHUB_SERVER_URL;
     const prevRepo = process.env.GITHUB_REPOSITORY;

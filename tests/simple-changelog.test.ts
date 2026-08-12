@@ -290,6 +290,93 @@ describe("simple changelog rendering", () => {
     expect(changelog).toContain("- updated crates/panache-parser to v0.4.2");
   });
 
+  it("heads the root changelog with root's own version, not the aggregate", () => {
+    const prevServer = process.env.GITHUB_SERVER_URL;
+    const prevRepo = process.env.GITHUB_REPOSITORY;
+    let changelog = "";
+    try {
+      process.env.GITHUB_SERVER_URL = "https://github.com";
+      process.env.GITHUB_REPOSITORY = "jolars/panache";
+      const rootFix = {
+        ...parseConventionalCommitMessage("fix(cli): don't wait on stdin"),
+        hash: "c7170eb1",
+      };
+      const siblingFeat = {
+        ...parseConventionalCommitMessage("feat(parser): add FrameVerdict"),
+        hash: "a2d74463",
+      };
+      const plan = makePlan();
+      // The aggregate folds the sibling's `feat` in and applies it to root's
+      // number, so it reads 3.4.0 while root itself only earns a patch.
+      plan.releaseType = "minor";
+      plan.currentVersion = "3.3.0";
+      plan.nextVersion = "3.4.0";
+      plan.commits = [rootFix, siblingFeat];
+      plan.packages = [
+        {
+          path: ".",
+          releaseType: "patch",
+          currentVersion: "3.3.0",
+          nextVersion: "3.3.1",
+          bumpReason: "direct",
+          commits: [rootFix],
+        },
+        {
+          path: "crates/panache-parser",
+          releaseType: "minor",
+          currentVersion: "0.25.0",
+          nextVersion: "0.26.0",
+          bumpReason: "direct",
+          commits: [siblingFeat],
+        },
+      ];
+      changelog = renderReleasePlanChangelog(plan);
+    } finally {
+      process.env.GITHUB_SERVER_URL = prevServer;
+      process.env.GITHUB_REPOSITORY = prevRepo;
+    }
+
+    expect(changelog).toContain(
+      "## [3.3.1](https://github.com/jolars/panache/compare/v3.3.0...v3.3.1)",
+    );
+    expect(changelog).not.toContain("3.4.0");
+    // The sibling's commit is not root's, so it must not appear under root.
+    expect(changelog).not.toContain("### Features");
+    expect(changelog).not.toContain("FrameVerdict");
+    expect(changelog).toContain("### Bug Fixes");
+    expect(changelog).toContain("don't wait on stdin");
+  });
+
+  it("renders no root changelog section when only siblings release", () => {
+    const plan = makePlan();
+    plan.nextVersion = "3.4.0";
+    plan.commits = [];
+    plan.packages = [
+      {
+        path: ".",
+        releaseType: null,
+        currentVersion: "3.3.0",
+        nextVersion: null,
+        commits: [],
+      },
+      {
+        path: "crates/panache-parser",
+        releaseType: "minor",
+        currentVersion: "0.25.0",
+        nextVersion: "0.26.0",
+        bumpReason: "direct",
+        commits: [
+          {
+            ...parseConventionalCommitMessage("feat(parser): add FrameVerdict"),
+            hash: "a2d74463",
+          },
+        ],
+      },
+    ];
+
+    expect(renderReleasePlanChangelog(plan)).toBe("");
+  });
+
   it("deduplicates root changelog commits by hash when commit ranges overlap", () => {
     const prevServer = process.env.GITHUB_SERVER_URL;
     const prevRepo = process.env.GITHUB_REPOSITORY;

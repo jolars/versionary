@@ -8,7 +8,11 @@ import {
 } from "../git/commits.js";
 import { resolveRepositoryWebBaseUrl } from "../git/repo-url.js";
 import type { VersionaryChangelogFormat } from "../types/config.js";
-import { type ReleasePlan, resolvePackageDependencies } from "./plan.js";
+import {
+  type ReleasePlan,
+  resolvePackageDependencies,
+  resolveRootReleaseView,
+} from "./plan.js";
 import { isVersionHeading } from "./semver.js";
 
 const REVIEW_REQUEST_FOOTER =
@@ -283,16 +287,19 @@ export function renderReleasePlanChangelog(
     highlights?: string;
   } = {},
 ): string {
-  if (!plan.nextVersion) {
+  // Root's changelog describes root's own release, so it must be driven by the
+  // root package's version and commit set rather than the plan-level aggregate.
+  const root = resolveRootReleaseView(plan);
+  if (!root.nextVersion) {
     return "";
   }
   const dedupedCommits = [
-    ...new Map(plan.commits.map((commit) => [commit.hash, commit])).values(),
+    ...new Map(root.commits.map((commit) => [commit.hash, commit])).values(),
   ];
   if (plan.changelogFormat === "r-news") {
     return renderRNewsReleaseNotes({
       packageName: plan.packageName,
-      nextVersion: plan.nextVersion,
+      nextVersion: root.nextVersion,
       commits: dedupedCommits,
       cwd: process.cwd(),
       highlights: options.highlights,
@@ -300,8 +307,8 @@ export function renderReleasePlanChangelog(
   }
   return renderReleaseNotesSection(
     {
-      currentVersion: plan.currentVersion,
-      nextVersion: plan.nextVersion,
+      currentVersion: root.currentVersion,
+      nextVersion: root.nextVersion,
       commits: dedupedCommits,
       cwd: options.cwd ?? process.cwd(),
       dependencies: resolvePackageDependencies(plan, "."),
