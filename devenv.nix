@@ -18,7 +18,7 @@
 
       pnpm = {
         enable = true;
-        package = pkgs.pnpm_10_34_0;
+        package = pkgs.pnpm_10;
       };
     };
 
