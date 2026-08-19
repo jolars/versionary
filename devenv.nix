@@ -16,7 +16,10 @@
 
       lsp.enable = true;
 
-      corepack.enable = true;
+      pnpm = {
+        enable = true;
+        package = pkgs.pnpm_10_34_0;
+      };
     };
 
     rust = {

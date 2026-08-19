@@ -18,7 +18,7 @@
   "license": "MIT",
   "author": "Johan Larsson",
   "type": "module",
-  "packageManager": "pnpm@10.33.0",
+  "packageManager": "pnpm@10.34.0",
   "bin": {
     "versionary": "dist/cli/index.js"
   },
