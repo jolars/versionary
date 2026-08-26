@@ -159,7 +159,7 @@ describe("artifact rules", () => {
     write(
       cwd,
       "pkg/package.json",
-      JSON.stringify(
+      `${JSON.stringify(
         {
           name: "panache-pre-commit",
           version: "1.2.2",
@@ -169,7 +169,7 @@ describe("artifact rules", () => {
         },
         null,
         2,
-      ) + "\n",
+      )}\n`,
     );
 
     const config: VersionaryConfig = {
@@ -202,7 +202,7 @@ describe("artifact rules", () => {
     write(
       cwd,
       "pkg/package.json",
-      JSON.stringify(
+      `${JSON.stringify(
         {
           name: "panache-cli",
           version: "1.2.2",
@@ -214,7 +214,7 @@ describe("artifact rules", () => {
         },
         null,
         2,
-      ) + "\n",
+      )}\n`,
     );
 
     const config: VersionaryConfig = {
