@@ -308,7 +308,93 @@ describe("artifact rules", () => {
 
     expect(() =>
       applyConfiguredArtifactRules(cwd, config2, basePlan()),
-    ).toThrow(/must match exactly one occurrence/);
+    ).toThrow(/expected 1 match; matched 2/);
+  });
+
+  it("updates the configured number of regex capture matches", () => {
+    const cwd = makeTempDir();
+    write(
+      cwd,
+      "pkg/README.md",
+      "Install versionary@v1.2.2. See versionary@v1.2.2 for details.\n",
+    );
+
+    const config: VersionaryConfig = {
+      version: 1,
+      packages: {
+        pkg: {
+          "extra-files": [
+            {
+              type: "regex",
+              path: "README.md",
+              pattern: "versionary@v(\\d+\\.\\d+\\.\\d+)",
+              "expected-matches": 2,
+            },
+          ],
+        },
+      },
+    };
+
+    applyConfiguredArtifactRules(cwd, config, basePlan());
+    expect(read(cwd, "pkg/README.md")).toBe(
+      "Install versionary@v1.2.3. See versionary@v1.2.3 for details.\n",
+    );
+  });
+
+  it("updates the configured number of templated regex matches", () => {
+    const cwd = makeTempDir();
+    write(
+      cwd,
+      "pkg/README.md",
+      "uses: jolars/panache-action@v1\nuses: jolars/panache-action@v1\n",
+    );
+
+    const config: VersionaryConfig = {
+      version: 1,
+      packages: {
+        pkg: {
+          "extra-files": [
+            {
+              type: "regex",
+              path: "README.md",
+              pattern: "jolars/panache-action@v(\\d+)",
+              replacement: "jolars/panache-action@v{{major}}",
+              "expected-matches": 2,
+            },
+          ],
+        },
+      },
+    };
+
+    applyConfiguredArtifactRules(cwd, config, basePlan("pkg", "2.0.0"));
+    expect(read(cwd, "pkg/README.md")).toBe(
+      "uses: jolars/panache-action@v2\nuses: jolars/panache-action@v2\n",
+    );
+  });
+
+  it("reports configured regex match count mismatches", () => {
+    const cwd = makeTempDir();
+    write(cwd, "pkg/file.txt", "v1.2.2 v1.2.2 v1.2.2");
+
+    const config: VersionaryConfig = {
+      version: 1,
+      packages: {
+        pkg: {
+          "extra-files": [
+            {
+              type: "regex",
+              path: "file.txt",
+              pattern: "/v(\\d+\\.\\d+\\.\\d+)/",
+              "expected-matches": 2,
+            },
+          ],
+        },
+      },
+    };
+
+    expect(() => applyConfiguredArtifactRules(cwd, config, basePlan())).toThrow(
+      "Regex pattern expected 2 matches; matched 3.",
+    );
   });
 
   it("substitutes templated replacement tokens in regex rules", () => {

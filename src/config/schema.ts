@@ -7,6 +7,7 @@ const artifactRuleSchema = z
     "field-path": z.string().optional(),
     pattern: z.string().optional(),
     replacement: z.string().optional(),
+    "expected-matches": z.number().int().positive().optional(),
   })
   .superRefine((value, ctx) => {
     const needsFieldPath =
@@ -33,6 +34,13 @@ const artifactRuleSchema = z
         code: z.ZodIssueCode.custom,
         message: `${value.type} artifact rules do not support "replacement".`,
         path: ["replacement"],
+      });
+    }
+    if (needsFieldPath && value["expected-matches"] !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${value.type} artifact rules do not support "expected-matches".`,
+        path: ["expected-matches"],
       });
     }
     if (value.type === "regex" && !value.pattern) {

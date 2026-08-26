@@ -99,18 +99,26 @@ rule is an **artifact rule**:
 | `field-path` | string | `json`/`toml`/`yaml`/`nix` | JSONPath-style locator of the version field (e.g. `$.version`). Required for these types. |
 | `pattern`    | string | `regex`               | Regex with a capturing group (or a named `(?<version>…)` group) around the version. Required for `regex`. |
 | `replacement`| string | `regex`               | Optional template for the substituted text. When set, the **entire match** is replaced with the rendered template. |
+| `expected-matches` | positive integer | `regex` | Exact number of occurrences the pattern must match. Defaults to `1`. |
 
 Validation rules enforced by the schema:
 
 - `json`/`toml`/`yaml`/`nix` rules **require** `field-path` and **must not** use
   `pattern` or `replacement`.
 - `regex` rules **require** `pattern` and **must not** use `field-path`.
+- `expected-matches` is available only for `regex` rules and must be a positive
+  integer.
 
 ### Regex substitution
 
 Without a `replacement`, the first capturing group is replaced with the full
 computed version, leaving the rest of the match intact. This keeps a full
 `versionary@1.2.3`-style reference in sync.
+
+By default, the pattern must match exactly once. Set `expected-matches` when a
+file intentionally contains several occurrences. Versionary updates every
+match and aborts if the actual count differs, guarding against missing or
+overly broad matches.
 
 With a `replacement`, the whole match is replaced by the rendered template. The
 following `{{token}}` placeholders are available:

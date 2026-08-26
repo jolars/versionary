@@ -158,6 +158,10 @@
                     },
                     "replacement": {
                       "type": "string"
+                    },
+                    "expected-matches": {
+                      "type": "integer",
+                      "minimum": 1
                     }
                   },
                   "required": ["type", "path", "pattern"],

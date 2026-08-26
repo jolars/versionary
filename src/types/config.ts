@@ -8,6 +8,7 @@ export interface VersionaryArtifactRule {
   "field-path"?: string;
   pattern?: string;
   replacement?: string;
+  "expected-matches"?: number;
 }
 
 export interface VersionaryPackage {

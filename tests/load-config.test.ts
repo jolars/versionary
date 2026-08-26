@@ -188,6 +188,49 @@ describe("config loading", () => {
     expect(() => loadConfig(dir)).toThrow(/nix artifact rules require/i);
   });
 
+  it("validates expected-matches for regex artifact rules", () => {
+    const dir = makeTempDir();
+    const configPath = path.join(dir, "versionary.json");
+    const writeConfig = (rule: Record<string, unknown>): void => {
+      fs.writeFileSync(
+        configPath,
+        JSON.stringify({
+          version: 1,
+          packages: { ".": { "extra-files": [rule] } },
+        }),
+        "utf8",
+      );
+    };
+
+    writeConfig({
+      type: "regex",
+      path: "README.md",
+      pattern: "v(\\d+)",
+      "expected-matches": 2,
+    });
+    expect(
+      loadConfig(dir).config.packages?.["."]?.["extra-files"]?.[0],
+    ).toMatchObject({ "expected-matches": 2 });
+
+    writeConfig({
+      type: "regex",
+      path: "README.md",
+      pattern: "v(\\d+)",
+      "expected-matches": 0,
+    });
+    expect(() => loadConfig(dir)).toThrow();
+
+    writeConfig({
+      type: "json",
+      path: "package.json",
+      "field-path": "$.version",
+      "expected-matches": 2,
+    });
+    expect(() => loadConfig(dir)).toThrow(
+      /json artifact rules do not support.*expected-matches/i,
+    );
+  });
+
   it("rejects the removed jsonpath alias for field-path", () => {
     const dir = makeTempDir();
     fs.writeFileSync(

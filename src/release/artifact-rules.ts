@@ -254,6 +254,7 @@ function applyRegexRule(
   content: string,
   pattern: string,
   version: string,
+  expectedMatches: number,
   replacementTemplate?: string,
 ): string {
   const regex = parseRegexPattern(pattern);
@@ -265,37 +266,38 @@ function applyRegexRule(
     matchFlags.includes("d") ? matchFlags : `${matchFlags}d`,
   );
   const matches = [...content.matchAll(globalRegex)];
-  if (matches.length !== 1) {
+  if (matches.length !== expectedMatches) {
     throw new Error(
-      `Regex pattern must match exactly one occurrence; matched ${matches.length}.`,
+      `Regex pattern expected ${expectedMatches} ${expectedMatches === 1 ? "match" : "matches"}; matched ${matches.length}.`,
     );
   }
-  const match = matches[0];
-  if (!match) {
-    throw new Error("Regex match result missing.");
-  }
-  const start = match.index;
-  if (start === undefined) {
-    throw new Error("Regex match did not include an index.");
-  }
-  const full = match[0];
 
-  // With a replacement template, render it and replace the entire match.
-  if (replacementTemplate !== undefined) {
-    const rendered = renderReplacementTemplate(replacementTemplate, version);
-    return `${content.slice(0, start)}${rendered}${content.slice(start + full.length)}`;
-  }
+  const renderedReplacement =
+    replacementTemplate === undefined
+      ? undefined
+      : renderReplacementTemplate(replacementTemplate, version);
+  let updated = content;
+  for (let index = matches.length - 1; index >= 0; index -= 1) {
+    const match = matches[index];
+    if (!match || match.index === undefined) {
+      throw new Error("Regex match did not include an index.");
+    }
 
-  // Without a template: substitute the full version into the first capture
-  // group, leaving the rest of the match intact. Splice by group indices rather than
-  // `String.replace` so literal `$` sequences and repeated group content are
-  // handled correctly.
-  const groupIndices = match.indices?.[1];
-  if (!groupIndices) {
-    return `${content.slice(0, start)}${version}${content.slice(start + full.length)}`;
+    // Apply edits from right to left so every match keeps its original indices.
+    if (renderedReplacement !== undefined) {
+      updated = `${updated.slice(0, match.index)}${renderedReplacement}${updated.slice(match.index + match[0].length)}`;
+      continue;
+    }
+
+    // Splice by group indices so literal `$` sequences and repeated group content
+    // are handled correctly.
+    const [start, end] = match.indices?.[1] ?? [
+      match.index,
+      match.index + match[0].length,
+    ];
+    updated = `${updated.slice(0, start)}${version}${updated.slice(end)}`;
   }
-  const [groupStart, groupEnd] = groupIndices;
-  return `${content.slice(0, groupStart)}${version}${content.slice(groupEnd)}`;
+  return updated;
 }
 
 function applyTomlRulePreservingFormatting(
@@ -572,7 +574,13 @@ function applyArtifactRuleToContent(
     if (!rule.pattern) {
       throw new Error('regex artifact rules require "pattern".');
     }
-    return applyRegexRule(content, rule.pattern, version, rule.replacement);
+    return applyRegexRule(
+      content,
+      rule.pattern,
+      version,
+      rule["expected-matches"] ?? 1,
+      rule.replacement,
+    );
   }
   if (rule.type === "json") {
     const parsed = JSON.parse(content) as unknown;
