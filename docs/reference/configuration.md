@@ -59,6 +59,7 @@ owns the configured token. The comment body itself is signed by Versionary.
 | `release-type` | Default `version-file` |
 | -------------- | ---------------------- |
 | `simple`       | `version.txt`          |
+| `cmake`        | `CMakeLists.txt`        |
 | `node`         | `package.json`         |
 | `rust`         | `Cargo.toml`           |
 | `r`            | `DESCRIPTION`          |

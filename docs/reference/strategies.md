@@ -10,6 +10,7 @@ get updated.
 | `release-type` | Version source     | Default changelog | Notes |
 | -------------- | ------------------ | ----------------- | ----- |
 | `simple`       | `version.txt`      | `CHANGELOG.md`    | Plain text. The default. |
+| `cmake`        | `CMakeLists.txt`    | `CHANGELOG.md`    | Literal `project(... VERSION X.Y.Z ...)`. |
 | `node`         | `package.json`     | `CHANGELOG.md`    | Syncs npm lockfiles. |
 | `rust`         | `Cargo.toml`       | `CHANGELOG.md`    | Workspace inheritance, internal deps, `Cargo.lock`. |
 | `python`       | `pyproject.toml`   | `CHANGELOG.md`    | Or a `.py` `__version__` file; refreshes lockfiles. |
@@ -31,6 +32,22 @@ The default when `release-type` is omitted.
 - **Reads/writes:** the trimmed contents of the file; writes `version\n`.
 - No dependency management, no lockfiles. Ideal for docs sites, non-standard
   projects, or anything without a language manifest.
+
+## cmake
+
+- **Version source:** `CMakeLists.txt` by default. Versionary reads and updates
+  the literal `VERSION` argument in `project()`.
+- **Supported versions:** `X.Y.Z` and CMake's four-component `X.Y.Z.W` form.
+  Variable expansion, prerelease identifiers, and build metadata are not
+  supported because Versionary does not evaluate CMake code and CMake's
+  `project(VERSION)` syntax accepts only numeric components.
+- **Package name:** the first literal argument to the same `project()` call.
+- The parser accepts multiline declarations, comments, case-insensitive command
+  names, and flexible keyword ordering. The write preserves surrounding
+  formatting and comments.
+- The version file must contain exactly one `project()` declaration with a
+  `VERSION` argument.
+- **Changelog:** `markdown-changelog`.
 
 ## node
 

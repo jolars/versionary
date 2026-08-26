@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { afterEach, expect } from "vitest";
+import { cmakeVersionStrategy } from "../src/strategy/cmake.js";
 import { juliaVersionStrategy } from "../src/strategy/julia.js";
 import { latexVersionStrategy } from "../src/strategy/latex.js";
 import { nodeVersionStrategy } from "../src/strategy/node.js";
@@ -28,6 +29,24 @@ defineVersionStrategyContractSuite({
       "version.txt": "1.2.3\n",
     },
     expectedUpdatedFiles: ["version.txt"],
+  },
+});
+
+defineVersionStrategyContractSuite({
+  name: "cmake",
+  strategy: cmakeVersionStrategy,
+  config: { version: 1, "release-type": "cmake" },
+  initialVersion: "6.5.0",
+  nextVersion: "6.6.0",
+  fixture: {
+    files: {
+      "CMakeLists.txt": "project(slope VERSION 6.5.0 LANGUAGES CXX)\n",
+    },
+    expectedUpdatedFiles: ["CMakeLists.txt"],
+    malformedFiles: {
+      "CMakeLists.txt": "project(slope LANGUAGES CXX)\n",
+    },
+    malformedReadError: /literal VERSION argument/i,
   },
 });
 

@@ -1,4 +1,5 @@
 import type { VersionaryConfig } from "../types/config.js";
+import { cmakeVersionStrategy } from "./cmake.js";
 import { compositeVersionStrategy } from "./composite.js";
 import { juliaVersionStrategy } from "./julia.js";
 import { latexVersionStrategy } from "./latex.js";
@@ -10,6 +11,7 @@ import { simpleVersionStrategy } from "./simple.js";
 import type { VersionStrategy } from "./types.js";
 
 const strategyRegistry: Record<string, VersionStrategy> = {
+  cmake: cmakeVersionStrategy,
   julia: juliaVersionStrategy,
   latex: latexVersionStrategy,
   simple: simpleVersionStrategy,

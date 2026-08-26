@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { cmakeVersionStrategy } from "../src/strategy/cmake.js";
 import { latexVersionStrategy } from "../src/strategy/latex.js";
 import { nodeVersionStrategy } from "../src/strategy/node.js";
 import { pythonVersionStrategy } from "../src/strategy/python.js";
@@ -11,6 +12,26 @@ import { rustVersionStrategy } from "../src/strategy/rust.js";
 import type { VersionaryConfig } from "../src/types/config.js";
 
 describe("resolveVersionStrategy", () => {
+  it("routes release-type cmake to cmake strategy", () => {
+    const config: VersionaryConfig = {
+      version: 1,
+      "release-type": "cmake",
+    };
+
+    const strategy = resolveVersionStrategy(config);
+    expect(strategy).toBe(cmakeVersionStrategy);
+    expect(strategy.name).toBe("cmake");
+  });
+
+  it("uses CMakeLists.txt as cmake strategy default version file", () => {
+    expect(
+      cmakeVersionStrategy.getVersionFile({
+        version: 1,
+        "release-type": "cmake",
+      }),
+    ).toBe("CMakeLists.txt");
+  });
+
   it("routes release-type rust to rust strategy", () => {
     const config: VersionaryConfig = {
       version: 1,
@@ -135,6 +156,7 @@ describe("resolveVersionStrategy", () => {
 
   it("lists known release types from internal strategy registry", () => {
     expect(listKnownReleaseTypes()).toEqual([
+      "cmake",
       "julia",
       "latex",
       "node",
