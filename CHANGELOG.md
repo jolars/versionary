@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.1.0](https://github.com/jolars/versionary/compare/v1.0.1...v1.1.0) (2026-08-27)
+
+### Features
+- add cmake version strategy ([`8441c03`](https://github.com/jolars/versionary/commit/8441c030e5ff15a7bc291031d1882d63478755c1))
+- **artifact-rules:** add expected match counts ([`6edddd1`](https://github.com/jolars/versionary/commit/6edddd1a2dee5603953d400b13996439eec64f77))
+
+### Bug Fixes
+- **action:** ship stale-run guard ([`f139bd5`](https://github.com/jolars/versionary/commit/f139bd5a3f831678cc240ea12c1a5f16d72b8b85))
+- **ci:** refresh nixpkgs lock ([`4306b74`](https://github.com/jolars/versionary/commit/4306b74a137b2812711a624f6393d44eef907db7))
+
 ## [1.0.1](https://github.com/jolars/versionary/compare/v1.0.0...v1.0.1) (2026-08-12)
 
 ### Bug Fixes
