@@ -32,6 +32,7 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "biome ci .",
+    "gen:action": "tsx scripts/generate-action.ts",
     "gen:schema": "tsx scripts/generate-schema.ts && biome format --write schemas/config.json",
     "test": "vitest run",
     "verify": "tsx src/cli/index.ts verify",

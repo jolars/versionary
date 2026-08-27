@@ -71,6 +71,11 @@ jobs:
           devenv shell -- pnpm gen:schema
           git diff --exit-code schemas/config.json
 
+      - name: Verify generated action entrypoint is up to date
+        run: |
+          devenv shell -- pnpm gen:action
+          git diff --exit-code action/index.js
+
   versionary:
     name: Versionary integration
     runs-on: ubuntu-latest

@@ -18,8 +18,8 @@ inputs:
     default: .
 outputs:
   action:
-    description: Versionary action taken (noop, pr-prepared, release-published,
-      release-skipped)
+    description: Versionary action taken (noop, stale-run-skipped, pr-prepared,
+      release-published, release-skipped)
   message:
     description: Human-readable result message
   release_created:
