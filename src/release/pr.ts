@@ -228,15 +228,26 @@ function buildReleaseTargets(
   plan: ReleasePlan,
   loadedConfig: ReturnType<typeof loadConfig>["config"],
 ): ReleaseTargetState[] {
+  const releasingPaths = new Set(
+    plan.packages?.filter((pkg) => pkg.nextVersion).map((pkg) => pkg.path) ?? [
+      ".",
+    ],
+  );
   const releaseTargets: ReleaseTargetState[] = plan.packages
     ? plan.packages
         .filter((pkg) => pkg.nextVersion)
         .map((pkg) => {
+          const dependencies = (pkg.dependencySourcePaths ?? []).filter(
+            (dependencyPath) => releasingPaths.has(dependencyPath),
+          );
+          const releaseDependencies =
+            dependencies.length > 0 ? { dependencies } : {};
           if (pkg.path === ".") {
             return {
               path: pkg.path,
               version: pkg.nextVersion ?? "",
               tag: `v${pkg.nextVersion ?? ""}`,
+              ...releaseDependencies,
             };
           }
           const packageConfig = loadedConfig.packages?.[pkg.path] ?? {};
@@ -257,6 +268,7 @@ function buildReleaseTargets(
             path: pkg.path,
             version: pkg.nextVersion ?? "",
             tag: `${tagPrefix}-v${pkg.nextVersion ?? ""}`,
+            ...releaseDependencies,
           };
         })
     : [

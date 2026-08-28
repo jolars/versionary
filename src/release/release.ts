@@ -18,6 +18,7 @@ import {
   readPendingReleaseTargets,
   readRecordedPendingReleaseTargets,
 } from "./state.js";
+import { releaseTargetHandoff } from "./targets.js";
 
 function escapeRegExp(input: string): string {
   return input.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
@@ -212,6 +213,12 @@ export type RunReleaseResult =
         tag: string;
         version: string;
       }[];
+      releaseTargets: {
+        path: string;
+        tag: string;
+        version: string;
+        dependencies: string[];
+      }[];
     }
   | {
       action: "release-published";
@@ -221,6 +228,12 @@ export type RunReleaseResult =
         url: string;
         tagStatus: "created" | "exists";
         metadataStatus: "created" | "exists";
+      }[];
+      releaseTargets: {
+        path: string;
+        tag: string;
+        version: string;
+        dependencies: string[];
       }[];
     };
 
@@ -282,6 +295,7 @@ export async function runReleaseDetailed(
             tag: `v${version as string}`,
           },
         ];
+  const releaseTargetPlan = releaseTargetHandoff(targets, options.logger);
 
   if (options["dry-run"]) {
     const targetList = targets.map(
@@ -293,6 +307,7 @@ export async function runReleaseDetailed(
         tag: target.tag,
         version: target.version,
       })),
+      releaseTargets: releaseTargetPlan,
       message: `Dry run: would publish releases ${targetList.join(", ")}`,
     };
   }
@@ -390,6 +405,7 @@ export async function runReleaseDetailed(
   return {
     action: "release-published",
     releases,
+    releaseTargets: releaseTargetPlan,
     message: `Published releases ${published.join(", ")}`,
   };
 }

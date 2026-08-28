@@ -150,9 +150,18 @@ describe("separate release PR preparation", () => {
 
     expect(prepared).toHaveLength(1);
     expect(prepared[0]?.packagePaths).toEqual(["packages/a", "packages/b"]);
-    expect(prepared[0]?.targets.map((target) => target.path)).toEqual([
-      "packages/a",
-      "packages/b",
+    expect(prepared[0]?.targets).toEqual([
+      {
+        path: "packages/a",
+        version: "1.1.0",
+        tag: "packages-a-v1.1.0",
+      },
+      {
+        path: "packages/b",
+        version: "1.1.0",
+        tag: "packages-b-v1.1.0",
+        dependencies: ["packages/a"],
+      },
     ]);
     const changed = git(
       cwd,

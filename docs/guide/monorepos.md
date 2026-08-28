@@ -62,6 +62,9 @@ would produce invalid or conflicting changes. This happens when packages are
 connected by `follows` or strategy dependency propagation, or when their
 generated changes touch the same file—for example, a shared lockfile. Cohort
 membership is computed to a fixed point, so indirect overlaps are grouped too.
+When such a cohort is released, the GitHub Action's `release_targets` output
+provides its targets in dependency-first order for an external registry
+publisher. Versionary itself does not publish registry artifacts.
 
 After one package PR merges, the same `versionary run` publishes its untagged
 targets and rebases the remaining package PRs onto the new trunk state. Stale

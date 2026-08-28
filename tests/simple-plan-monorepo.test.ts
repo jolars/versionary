@@ -170,6 +170,62 @@ describe("simple monorepo planning", () => {
     );
   });
 
+  it("records dependencies added to a fixed-mode release", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(
+      cwd,
+      "crates/a-app/Cargo.toml",
+      [
+        "[package]",
+        'name = "a-app"',
+        'version = "1.0.0"',
+        "",
+        "[dependencies]",
+        'z-core = { path = "../z-core", version = "1.0.0" }',
+        "",
+      ].join("\n"),
+    );
+    write(cwd, "crates/a-app/src/lib.rs", "pub fn app() {}\n");
+    write(
+      cwd,
+      "crates/z-core/Cargo.toml",
+      ["[package]", 'name = "z-core"', 'version = "1.0.0"', ""].join("\n"),
+    );
+    write(cwd, "crates/z-core/src/lib.rs", "pub fn core() {}\n");
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "release-type": "rust",
+        "version-file": "Cargo.toml",
+        "monorepo-mode": "fixed",
+        packages: {
+          "crates/a-app": {},
+          "crates/z-core": {},
+        },
+      }),
+    );
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v1.0.0");
+
+    write(cwd, "crates/a-app/src/lib.rs", "pub fn app_v2() {}\n");
+    git(cwd, "add", "crates/a-app/src/lib.rs");
+    git(cwd, "commit", "-m", "feat: update app");
+
+    const plan = createReleasePlan(cwd);
+    const app = plan.packages?.find((pkg) => pkg.path === "crates/a-app");
+    const core = plan.packages?.find((pkg) => pkg.path === "crates/z-core");
+    expect(app?.nextVersion).toBe("1.1.0");
+    expect(core?.nextVersion).toBe("1.1.0");
+    expect(app?.dependencySourcePaths).toEqual(["crates/z-core"]);
+  });
+
   it("auto-includes root for fixed-mode baseline without listing it in packages", () => {
     const cwd = makeTempDir();
     git(cwd, "init");

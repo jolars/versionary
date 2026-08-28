@@ -102,6 +102,12 @@ interface RunJsonResult {
   branch?: string;
   title?: string;
   reviewRequests?: ReviewRequestRunResult[];
+  releaseTargets?: {
+    path: string;
+    tag: string;
+    version: string;
+    dependencies: string[];
+  }[];
   targets?: {
     tag: string;
     version: string;
@@ -330,6 +336,7 @@ async function main(): Promise<number> {
             message: release.message,
             releaseCreated: false,
             tagNames: release.targets.map((target) => target.tag),
+            releaseTargets: release.releaseTargets,
             targets: release.targets,
           });
         } else {
@@ -354,6 +361,7 @@ async function main(): Promise<number> {
           message: release.message,
           releaseCreated: release.releases.length > 0,
           tagNames: release.releases.map((target) => target.tag),
+          releaseTargets: release.releaseTargets,
           reviewUrl: primary?.reviewUrl,
           branch: primary?.branch,
           title: primary?.title,

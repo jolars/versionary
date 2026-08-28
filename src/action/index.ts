@@ -7,6 +7,7 @@ interface RunJsonResult {
   message?: string;
   releaseCreated?: boolean;
   tagNames?: unknown;
+  releaseTargets?: unknown;
   reviewUrl?: string;
   branch?: string;
   title?: string;
@@ -140,6 +141,7 @@ function main(): void {
       setOutput("release_created", "false");
       setOutput("tag_name", "");
       setOutput("tag_names", "[]");
+      setOutput("release_targets", "[]");
       setOutput("review_url", "");
       setOutput("review_requests", "[]");
       setOutput("branch", "");
@@ -191,6 +193,12 @@ function main(): void {
   setOutput("release_created", releaseCreated);
   setOutput("tag_name", firstTag);
   setOutput("tag_names", JSON.stringify(tagNames));
+  setOutput(
+    "release_targets",
+    JSON.stringify(
+      Array.isArray(payload.releaseTargets) ? payload.releaseTargets : [],
+    ),
+  );
   setOutput("review_url", payload.reviewUrl ?? "");
   setOutput(
     "review_requests",

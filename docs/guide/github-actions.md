@@ -180,6 +180,7 @@ untouched.
 | `release_created` | `"true"` when at least one release was published.             |
 | `tag_name`        | First published tag (single-target flows).                    |
 | `tag_names`       | JSON array of all published tags.                             |
+| `release_targets` | Dependency-first JSON array of released package targets.      |
 | `review_url`      | Primary release PR URL when PRs were prepared.                 |
 | `review_requests` | JSON array of all package/cohort release PR results.           |
 | `branch`          | Primary release branch name when PRs were prepared.            |
@@ -192,8 +193,10 @@ The primary outputs preserve compatibility with single-PR workflows. Parse
 ## Publishing to a registry
 
 Versionary does **not** publish to npm, crates.io, PyPI, CRAN, etc. It creates
-the tag and the GitHub Release; your CI publishes from that event. Trigger a
-separate workflow on `release.published`:
+the tag and the GitHub Release; your CI performs registry publication.
+
+For a single package, or packages without release dependencies, a separate
+workflow can trigger on `release.published`:
 
 ```yaml
 name: Publish
@@ -212,6 +215,53 @@ jobs:
 
 Remember the [`GITHUB_TOKEN` caveat](#choosing-a-token): for this workflow to
 fire, Versionary must have created the release with a PAT, bot, or App token.
+
+For a coupled package cohort, consume `release_targets` from a job that depends
+on the Versionary job:
+
+```yaml
+jobs:
+  versionary:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.versionary.outputs.release_created }}
+      release_targets: ${{ steps.versionary.outputs.release_targets }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - id: versionary
+        uses: jolars/versionary@v1
+        with:
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+  publish:
+    needs: versionary
+    if: needs.versionary.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Publish dependency-first targets
+        env:
+          RELEASE_TARGETS: ${{ needs.versionary.outputs.release_targets }}
+        run: ./scripts/publish-release-targets "$RELEASE_TARGETS"
+```
+
+Each target has `path`, `version`, `tag`, and `dependencies` fields. Entries are
+ordered dependencies first; `dependencies` contains configured package paths
+from the same release. Dependency cycles cannot be ordered dependencies first,
+so those targets fall back to package-path order. The publishing script or specialized ecosystem action
+remains responsible for registry authentication, selecting publishable
+packages, publishing them, and waiting until each dependency is available
+before publishing its dependents.
+
+`tag_name` and `tag_names` retain their historical target order for
+compatibility. Use `release_targets`, not those tag projections, when dependency
+order matters.
+
+Do not use one independently triggered workflow per target when publication
+order matters. GitHub Actions does not serialize separate workflow runs merely
+because Versionary created their releases in a particular order.
 
 ## Keeping `@v1` current
 

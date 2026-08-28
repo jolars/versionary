@@ -28,6 +28,8 @@ outputs:
     description: Primary release tag (first tag when multiple targets release)
   tag_names:
     description: JSON array of published release tags
+  release_targets:
+    description: Dependency-ordered JSON array of released package targets
   review_url:
     description: Primary review request URL when release PRs were prepared
   review_requests:

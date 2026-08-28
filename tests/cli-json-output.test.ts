@@ -321,6 +321,90 @@ describe("cli run --json", () => {
     expect(git(cwd, "tag", "--list")).toBe("");
   });
 
+  it("exposes a dependency-first release target handoff", () => {
+    const cwd = makeTempDir("versionary-cli-json-release-targets-");
+    const testsDir = path.dirname(fileURLToPath(import.meta.url));
+    const repoRoot = path.resolve(testsDir, "..");
+    const tsx = path.join(repoRoot, "node_modules", ".bin", "tsx");
+    const cliEntry = path.join(repoRoot, "src", "cli", "index.ts");
+
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "separate-release-prs": true,
+        packages: {
+          "packages/a": { "release-type": "simple" },
+          "packages/b": { "release-type": "simple" },
+        },
+      }),
+    );
+    for (const name of ["a", "b"]) {
+      write(cwd, `packages/${name}/version.txt`, "1.1.0\n");
+      write(cwd, `packages/${name}/CHANGELOG.md`, "# Changelog\n");
+    }
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initialize");
+    const baselineSha = git(cwd, "rev-parse", "HEAD");
+    const branch = "versionary/release-a-111111111111";
+    for (const target of [
+      {
+        path: "packages/a",
+        version: "1.1.0",
+        tag: "a-v1.1.0",
+        dependencies: ["packages/b"],
+      },
+      { path: "packages/b", version: "1.1.0", tag: "b-v1.1.0" },
+    ]) {
+      write(
+        cwd,
+        `.versionary-manifest.json.d/${target.path.endsWith("a") ? "a" : "b"}.json`,
+        `${JSON.stringify({
+          "manifest-version": 1,
+          path: target.path,
+          "baseline-sha": baselineSha,
+          "release-target": target,
+          "release-branch": branch,
+        })}\n`,
+      );
+    }
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore(release): a-v1.1.0 (+1 more)");
+
+    const output = execFileSync(tsx, [cliEntry, "run", "--json", "--dry-run"], {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+    const parsed = JSON.parse(output) as {
+      tagNames: string[];
+      releaseTargets: Array<{
+        path: string;
+        dependencies: string[];
+      }>;
+    };
+
+    expect(parsed.tagNames).toEqual(["a-v1.1.0", "b-v1.1.0"]);
+    expect(parsed.releaseTargets).toEqual([
+      {
+        path: "packages/b",
+        version: "1.1.0",
+        tag: "b-v1.1.0",
+        dependencies: [],
+      },
+      {
+        path: "packages/a",
+        version: "1.1.0",
+        tag: "a-v1.1.0",
+        dependencies: ["packages/b"],
+      },
+    ]);
+  });
+
   it("detects a merged package release from its sidecar state", () => {
     const cwd = makeTempDir("versionary-cli-json-package-release-");
     const testsDir = path.dirname(fileURLToPath(import.meta.url));

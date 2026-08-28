@@ -65,6 +65,33 @@ See [Release workflows](/guide/workflows) for what counts as a release commit.
 }
 ```
 
+`releaseTargets` is present for `release-dry-run` and `release-published`
+results:
+
+```json
+[
+  {
+    "path": "crates/parser",
+    "version": "0.4.0",
+    "tag": "parser-v0.4.0",
+    "dependencies": []
+  },
+  {
+    "path": "crates/formatter",
+    "version": "0.3.0",
+    "tag": "formatter-v0.3.0",
+    "dependencies": ["crates/parser"]
+  }
+]
+```
+
+Entries are ordered so every target appears after the targets in its
+`dependencies` array. Dependencies are configured package paths in the same
+release set. If those dependencies form a cycle, the cyclic targets fall back
+to package-path order and Versionary logs a warning; the release itself still
+proceeds. This is a handoff for external registry-publishing automation;
+Versionary does not publish registry artifacts.
+
 `reviewRequests` is the authoritative array when
 `separate-release-prs` is enabled. `reviewUrl`, `branch`, and `title` remain as
 compatibility projections of the first entry.

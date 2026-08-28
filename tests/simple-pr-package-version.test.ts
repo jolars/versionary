@@ -5,6 +5,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { prependChangelog } from "../src/release/changelog.js";
 import { prepareReleasePr } from "../src/release/pr.js";
+import { runReleaseDetailed } from "../src/release/release.js";
 import { readReleaseTargets } from "../src/release/state.js";
 
 const tempDirs: string[] = [];
@@ -341,6 +342,81 @@ describe("release PR package version update", () => {
     expect(targets.map((target) => target.tag).sort()).toEqual([
       "packages-a-v1.1.0",
       "packages-b-v1.0.1",
+    ]);
+  });
+
+  it("hands off fixed-mode targets in dependency-first order", async () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "CHANGELOG.md", "# Changelog\n\n");
+    write(
+      cwd,
+      "crates/a-app/Cargo.toml",
+      [
+        "[package]",
+        'name = "a-app"',
+        'version = "1.0.0"',
+        "",
+        "[dependencies]",
+        'z-core = { path = "../z-core", version = "1.0.0" }',
+        "",
+      ].join("\n"),
+    );
+    write(cwd, "crates/a-app/CHANGELOG.md", "# Changelog\n\n");
+    write(cwd, "crates/a-app/src/lib.rs", "pub fn app() {}\n");
+    write(
+      cwd,
+      "crates/z-core/Cargo.toml",
+      ["[package]", 'name = "z-core"', 'version = "1.0.0"', ""].join("\n"),
+    );
+    write(cwd, "crates/z-core/CHANGELOG.md", "# Changelog\n\n");
+    write(cwd, "crates/z-core/src/lib.rs", "pub fn core() {}\n");
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "release-type": "rust",
+        "version-file": "Cargo.toml",
+        "review-mode": "direct",
+        "monorepo-mode": "fixed",
+        packages: {
+          "crates/a-app": {},
+          "crates/z-core": {},
+        },
+      }),
+    );
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v1.0.0");
+
+    write(cwd, "crates/a-app/src/lib.rs", "pub fn app_v2() {}\n");
+    git(cwd, "add", "crates/a-app/src/lib.rs");
+    git(cwd, "commit", "-m", "feat: update app");
+
+    prepareReleasePr(cwd);
+    const release = await runReleaseDetailed(cwd, { "dry-run": true });
+    if (release.action !== "release-dry-run") {
+      throw new Error(
+        `Expected a release dry run, received ${release.action}.`,
+      );
+    }
+    expect(release.releaseTargets).toEqual([
+      {
+        path: "crates/z-core",
+        version: "1.1.0",
+        tag: "z-core-v1.1.0",
+        dependencies: [],
+      },
+      {
+        path: "crates/a-app",
+        version: "1.1.0",
+        tag: "a-app-v1.1.0",
+        dependencies: ["crates/z-core"],
+      },
     ]);
   });
 

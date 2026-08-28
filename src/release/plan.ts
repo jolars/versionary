@@ -394,6 +394,57 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
     return reachable;
   };
 
+  const withReleasingDependencies = (
+    plans: typeof workingPlans,
+  ): typeof workingPlans => {
+    const releasingPaths = new Set(
+      plans
+        .filter((pkgPlan) => pkgPlan.nextVersion)
+        .map((pkgPlan) => pkgPlan.path),
+    );
+    for (const pkgPlan of plans) {
+      const strategyContext = strategyContextByPath.get(pkgPlan.path);
+      if (strategyContext) {
+        strategyContext.nextVersion = pkgPlan.nextVersion;
+      }
+    }
+    const dependencySourcePathsByPackage = new Map<string, Set<string>>();
+    for (const sourcePackage of plans) {
+      if (!sourcePackage.nextVersion) {
+        continue;
+      }
+      for (const impactedPath of findDependents(sourcePackage.path)) {
+        if (impactedPath === sourcePackage.path) {
+          continue;
+        }
+        const existing = dependencySourcePathsByPackage.get(impactedPath);
+        if (existing) {
+          existing.add(sourcePackage.path);
+        } else {
+          dependencySourcePathsByPackage.set(
+            impactedPath,
+            new Set([sourcePackage.path]),
+          );
+        }
+      }
+    }
+    return plans.map((pkgPlan) => {
+      const dependencySourcePaths = [
+        ...(dependencySourcePathsByPackage.get(pkgPlan.path) ??
+          new Set<string>()),
+      ]
+        .filter((sourcePath) => releasingPaths.has(sourcePath))
+        .sort((a, b) => a.localeCompare(b));
+      if (dependencySourcePaths.length === 0) {
+        return pkgPlan;
+      }
+      return {
+        ...pkgPlan,
+        dependencySourcePaths,
+      };
+    });
+  };
+
   // Both rules below can enable each other: forcing a bump creates a dependent
   // whose requirement must be rewritten, and rewriting a dependent can in turn
   // expose a stale dependency a further level up. Iterating to a fixpoint
@@ -445,59 +496,9 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
     }
   }
 
-  const packageNextVersionByPath: Record<string, string> = {};
-  for (const pkgPlan of workingPlans) {
-    if (pkgPlan.nextVersion) {
-      packageNextVersionByPath[pkgPlan.path] = pkgPlan.nextVersion;
-    }
-  }
-
-  const dependencySourcePathsByPackage = new Map<string, Set<string>>();
-
-  const addDependencySourcePath = (
-    targetPath: string,
-    sourcePath: string,
-  ): void => {
-    if (targetPath === sourcePath) {
-      return;
-    }
-    const existing = dependencySourcePathsByPackage.get(targetPath);
-    if (existing) {
-      existing.add(sourcePath);
-      return;
-    }
-    dependencySourcePathsByPackage.set(targetPath, new Set([sourcePath]));
-  };
-
   // Attribute each dependent's requirement rewrite to the specific sources
   // driving it, using the settled version set so chained bumps are credited.
-  for (const strategyGroup of strategyPackagesByName.values()) {
-    for (const sourcePackage of strategyGroup.packages) {
-      if (!sourcePackage.nextVersion) {
-        continue;
-      }
-      for (const impactedPath of findDependents(sourcePackage.packagePath)) {
-        addDependencySourcePath(impactedPath, sourcePackage.packagePath);
-      }
-    }
-  }
-
-  const propagatedPackages = workingPlans.map((pkgPlan) => {
-    const dependencySourcePaths = [
-      ...(dependencySourcePathsByPackage.get(pkgPlan.path) ??
-        new Set<string>()),
-    ]
-      .filter((sourcePath) => Boolean(packageNextVersionByPath[sourcePath]))
-      .sort((a, b) => a.localeCompare(b));
-
-    if (dependencySourcePaths.length === 0) {
-      return pkgPlan;
-    }
-    return {
-      ...pkgPlan,
-      dependencySourcePaths,
-    };
-  });
+  const propagatedPackages = withReleasingDependencies(workingPlans);
 
   const followsByPath = new Map<string, string[]>();
   for (const [packagePath, packageConfig] of Object.entries(
@@ -601,11 +602,15 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
       : analyzedFixedType
         ? bumpVersion(fixedBaseVersion, analyzedFixedType, { allowStableMajor })
         : null;
-    const adjusted = adjustedPackages.map((pkgPlan) => ({
-      ...pkgPlan,
-      releaseType: fixedType,
-      nextVersion: fixedNextVersion,
-    }));
+    // Fixed mode can promote unchanged dependencies into the release, so the
+    // final shared version set must drive dependency attribution.
+    const adjusted = withReleasingDependencies(
+      adjustedPackages.map((pkgPlan) => ({
+        ...pkgPlan,
+        releaseType: fixedType,
+        nextVersion: fixedNextVersion,
+      })),
+    );
     return {
       mode: "simple",
       releaseType: fixedType,

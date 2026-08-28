@@ -28,6 +28,7 @@ export interface ReleaseTargetState {
   path: string;
   version: string;
   tag: string;
+  dependencies?: string[];
 }
 
 export interface PendingReleaseCohort {
@@ -99,6 +100,17 @@ function validateReleaseTargets(
     ) {
       throw new Error(
         `Invalid release manifest at ${filePath}: ${key} must contain string path, version, and tag.`,
+      );
+    }
+    if (
+      record.dependencies !== undefined &&
+      (!Array.isArray(record.dependencies) ||
+        !record.dependencies.every(
+          (dependency) => typeof dependency === "string",
+        ))
+    ) {
+      throw new Error(
+        `Invalid release manifest at ${filePath}: ${key} dependencies must be an array of package-path strings.`,
       );
     }
   }
