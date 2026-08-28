@@ -102,4 +102,66 @@ process.exit(91);
     expect(actionOutput).toContain("release_created<<");
     expect(actionOutput).toContain("false");
   });
+
+  it("exports all package review requests while retaining primary outputs", () => {
+    const cwd = makeTempDir("versionary-action-multiple-prs-");
+    const binDir = path.join(cwd, "bin");
+    const outputPath = path.join(cwd, "github-output.txt");
+    fs.mkdirSync(binDir);
+
+    writeExecutable(
+      path.join(binDir, "git"),
+      `#!/usr/bin/env node
+const args = process.argv.slice(2);
+if (args[0] === "config") {
+  process.stdout.write("configured\\n");
+  process.exit(0);
+}
+if (args[0] === "remote" && args[1] === "get-url") {
+  process.exit(1);
+}
+process.stderr.write("Unexpected git invocation: " + args.join(" ") + "\\n");
+process.exit(2);
+`,
+    );
+    writeExecutable(
+      path.join(binDir, "npx"),
+      `#!/usr/bin/env node
+process.stdout.write(JSON.stringify({
+  action: "pr-prepared",
+  message: "Prepared 2 package release PRs.",
+  releaseCreated: false,
+  tagNames: [],
+  reviewUrl: "https://example.test/pr/1",
+  branch: "versionary/release/a-111",
+  title: "chore(release): a-v1.1.0",
+  reviewRequests: [
+    { branch: "versionary/release/a-111", reviewUrl: "https://example.test/pr/1" },
+    { branch: "versionary/release/b-222", reviewUrl: "https://example.test/pr/2" }
+  ]
+}) + "\\n");
+`,
+    );
+
+    const testsDir = path.dirname(fileURLToPath(import.meta.url));
+    const repoRoot = path.resolve(testsDir, "..");
+    const actionEntrypoint = path.join(repoRoot, "action", "index.js");
+    execFileSync(process.execPath, [actionEntrypoint], {
+      cwd,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        PATH: `${binDir}${path.delimiter}${process.env.PATH ?? ""}`,
+        GITHUB_OUTPUT: outputPath,
+        INPUT_TOKEN: "test-token",
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    const actionOutput = fs.readFileSync(outputPath, "utf8");
+    expect(actionOutput).toContain("review_requests<<");
+    expect(actionOutput).toContain("https://example.test/pr/2");
+    expect(actionOutput).toContain("branch<<");
+    expect(actionOutput).toContain("versionary/release/a-111");
+  });
 });

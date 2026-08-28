@@ -24,6 +24,18 @@ export interface ScmReviewRequestResult {
   state: "open" | "closed" | "merged";
 }
 
+export interface ScmListReviewRequestsInput {
+  baseBranch: string;
+  headBranchPrefix: string;
+  labels?: string[];
+}
+
+export interface ScmReviewRequestSummary extends ScmReviewRequestResult {
+  baseBranch: string;
+  headBranch: string;
+  title: string;
+}
+
 export interface ScmCloseReviewRequestInput {
   baseBranch: string;
   headBranch: string;
@@ -72,6 +84,10 @@ export interface ScmClient {
     input: ScmReviewRequestInput,
     context: ScmClientContext,
   ) => Promise<ScmReviewRequestResult>;
+  listOpenReviewRequests: (
+    input: ScmListReviewRequestsInput,
+    context: ScmClientContext,
+  ) => Promise<ScmReviewRequestSummary[]>;
   closeReviewRequestIfExists: (
     input: ScmCloseReviewRequestInput,
     context: ScmClientContext,

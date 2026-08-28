@@ -12,13 +12,18 @@ import {
   isReleaseCommitMessage,
   openOrUpdateReviewRequest,
   preparePendingReleasePr,
+  preparePendingSeparateReleasePrs,
   prepareReleasePr,
+  prepareSeparateReleasePrs,
   pushReleaseBranch,
+  type ReviewRequestRunResult,
+  reconcileSeparateReviewRequests,
   resolveReleaseHighlights,
 } from "../release/pr.js";
 import { runRelease, runReleaseDetailed } from "../release/release.js";
 import {
   hasFullyUntaggedPendingRelease,
+  hasReleaseStateChangeAtHead,
   readPendingReleaseTargets,
 } from "../release/state.js";
 import { verifyProject } from "../release/verify-project.js";
@@ -96,6 +101,7 @@ interface RunJsonResult {
   reviewUrl?: string;
   branch?: string;
   title?: string;
+  reviewRequests?: ReviewRequestRunResult[];
   targets?: {
     tag: string;
     version: string;
@@ -113,6 +119,65 @@ function emitJson(payload: RunJsonResult): void {
   process.stdout.write(`${JSON.stringify(payload)}\n`);
 }
 
+function reviewResultPayload(
+  action: RunJsonResult["action"],
+  message: string,
+  reviewRequests: ReviewRequestRunResult[],
+): RunJsonResult {
+  const primary = reviewRequests[0];
+  return {
+    action,
+    message,
+    releaseCreated: false,
+    tagNames: [],
+    reviewUrl: primary?.reviewUrl,
+    branch: primary?.branch,
+    title: primary?.title,
+    reviewRequests,
+    targets: reviewRequests.flatMap((request) =>
+      request.targets.map((target) => ({
+        tag: target.tag,
+        version: target.version,
+      })),
+    ),
+  };
+}
+
+function printReviewResults(
+  message: string,
+  reviewRequests: ReviewRequestRunResult[],
+): void {
+  console.log(message);
+  for (const request of reviewRequests) {
+    console.log(`${request.branch}: ${request.title}`);
+    if (request.reviewUrl) {
+      console.log(request.reviewUrl);
+    }
+  }
+}
+
+async function prepareCurrentSeparateReviewRequests(
+  flags: CliFlags,
+  logger?: Console,
+): Promise<{
+  reviewRequests: ReviewRequestRunResult[];
+  updated: boolean;
+}> {
+  const cwd = process.cwd();
+  const prepared = prepareSeparateReleasePrs(cwd, {
+    logger,
+    "dry-run": flags["dry-run"],
+  });
+  const reviewRequests = await reconcileSeparateReviewRequests(cwd, prepared, {
+    logger,
+    "dry-run": flags["dry-run"],
+  });
+  return {
+    reviewRequests,
+    updated: reviewRequests.some((request) => request.status === "prepared"),
+  };
+}
+
 async function recoverPendingReleaseIfNeeded(
   flags: CliFlags,
   logger?: Console,
@@ -123,8 +188,40 @@ async function recoverPendingReleaseIfNeeded(
   }
 
   const pendingTargets = readPendingReleaseTargets(cwd);
-  const releaseBranch =
-    loadConfig(cwd).config["release-branch"] ?? "versionary/release";
+  const loaded = loadConfig(cwd);
+  const releaseBranch = loaded.config["release-branch"] ?? "versionary/release";
+  if (loaded.config["separate-release-prs"]) {
+    const prepared = preparePendingSeparateReleasePrs(cwd, {
+      logger,
+      "dry-run": flags["dry-run"],
+    });
+    const reviewRequests = await reconcileSeparateReviewRequests(
+      cwd,
+      prepared,
+      {
+        logger,
+        "dry-run": flags["dry-run"],
+        recovered: true,
+      },
+    );
+    const action = flags["dry-run"]
+      ? "pr-dry-run"
+      : reviewRequests.some((request) => request.status === "recovered")
+        ? "pr-prepared"
+        : "pr-up-to-date";
+    const message = flags["dry-run"]
+      ? `Dry run: would recover ${prepared.length} pending package release PR${prepared.length === 1 ? "" : "s"}.`
+      : action === "pr-prepared"
+        ? `Prepared ${prepared.length} pending package release recovery PR${prepared.length === 1 ? "" : "s"}.`
+        : "Pending package release recovery PRs are already up to date.";
+    if (flags.json) {
+      emitJson(reviewResultPayload(action, message, reviewRequests));
+      return true;
+    }
+    printReviewResults(message, reviewRequests);
+    return true;
+  }
+
   if (flags["dry-run"]) {
     const message = `Dry run: would recover pending releases ${pendingTargets.map((target) => target.tag).join(", ")} on branch ${releaseBranch}`;
     if (flags.json) {
@@ -205,32 +302,29 @@ async function main(): Promise<number> {
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();
 
-    if (isReleaseCommitMessage(commitMessage)) {
-      if (flags["dry-run"] && !flags.json) {
-        const release = await runReleaseDetailed(process.cwd(), {
-          logger,
-          "dry-run": true,
-        });
-        if (release.action === "release-dry-run") {
-          console.log(release.message);
-          return 0;
-        }
-      }
-      if (flags.json) {
-        const release = await runReleaseDetailed(process.cwd(), {
-          logger,
-          "dry-run": flags["dry-run"],
-        });
-        if (release.action === "release-skipped") {
+    if (
+      isReleaseCommitMessage(commitMessage) ||
+      hasReleaseStateChangeAtHead(process.cwd())
+    ) {
+      const release = await runReleaseDetailed(process.cwd(), {
+        logger,
+        "dry-run": flags["dry-run"],
+      });
+      if (release.action === "release-skipped") {
+        if (flags.json) {
           emitJson({
             action: "release-skipped",
             message: release.reason,
             releaseCreated: false,
             tagNames: [],
           });
-          return 0;
+        } else {
+          console.log(release.reason);
         }
-        if (release.action === "release-dry-run") {
+        return 0;
+      }
+      if (release.action === "release-dry-run") {
+        if (flags.json) {
           emitJson({
             action: "release-dry-run",
             message: release.message,
@@ -238,18 +332,42 @@ async function main(): Promise<number> {
             tagNames: release.targets.map((target) => target.tag),
             targets: release.targets,
           });
-          return 0;
+        } else {
+          console.log(release.message);
         }
+        return 0;
+      }
+
+      let reviewRequests: ReviewRequestRunResult[] = [];
+      if (loadConfig(process.cwd()).config["separate-release-prs"]) {
+        reviewRequests = (
+          await prepareCurrentSeparateReviewRequests(
+            { ...flags, "dry-run": false },
+            logger,
+          )
+        ).reviewRequests;
+      }
+      if (flags.json) {
+        const primary = reviewRequests[0];
         emitJson({
           action: "release-published",
           message: release.message,
           releaseCreated: release.releases.length > 0,
           tagNames: release.releases.map((target) => target.tag),
+          reviewUrl: primary?.reviewUrl,
+          branch: primary?.branch,
+          title: primary?.title,
+          reviewRequests,
         });
-        return 0;
+      } else {
+        console.log(release.message);
+        if (reviewRequests.length > 0) {
+          printReviewResults(
+            `Reconciled ${reviewRequests.length} remaining package release PR${reviewRequests.length === 1 ? "" : "s"}.`,
+            reviewRequests,
+          );
+        }
       }
-      const message = await runRelease(process.cwd());
-      console.log(message);
       return 0;
     }
 
@@ -273,6 +391,27 @@ async function main(): Promise<number> {
         return 0;
       }
       console.log(message);
+      return 0;
+    }
+
+    if (loadConfig(process.cwd()).config["separate-release-prs"]) {
+      const { reviewRequests, updated } =
+        await prepareCurrentSeparateReviewRequests(flags, logger);
+      const action = flags["dry-run"]
+        ? "pr-dry-run"
+        : updated
+          ? "pr-prepared"
+          : "pr-up-to-date";
+      const message = flags["dry-run"]
+        ? `Dry run: would prepare ${reviewRequests.length} package release PR${reviewRequests.length === 1 ? "" : "s"}.`
+        : updated
+          ? `Prepared ${reviewRequests.length} package release PR${reviewRequests.length === 1 ? "" : "s"}.`
+          : "Package release PRs are already up to date.";
+      if (flags.json) {
+        emitJson(reviewResultPayload(action, message, reviewRequests));
+      } else {
+        printReviewResults(message, reviewRequests);
+      }
       return 0;
     }
 
@@ -410,6 +549,18 @@ async function main(): Promise<number> {
         });
       }
       console.log("No releasable commits found. Nothing to do.");
+      return 0;
+    }
+
+    if (loadConfig(process.cwd()).config["separate-release-prs"]) {
+      const { reviewRequests, updated } =
+        await prepareCurrentSeparateReviewRequests(flags, console);
+      const message = flags["dry-run"]
+        ? `Dry run: would prepare ${reviewRequests.length} package release PR${reviewRequests.length === 1 ? "" : "s"}.`
+        : updated
+          ? `Prepared ${reviewRequests.length} package release PR${reviewRequests.length === 1 ? "" : "s"}.`
+          : "Package release PRs are already up to date.";
+      printReviewResults(message, reviewRequests);
       return 0;
     }
 

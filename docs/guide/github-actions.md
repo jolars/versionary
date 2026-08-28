@@ -180,9 +180,14 @@ untouched.
 | `release_created` | `"true"` when at least one release was published.             |
 | `tag_name`        | First published tag (single-target flows).                    |
 | `tag_names`       | JSON array of all published tags.                             |
-| `review_url`      | Release PR URL when a PR was prepared.                         |
-| `branch`          | Release branch name when a PR was prepared.                   |
-| `title`           | Release PR title when a PR was prepared.                       |
+| `review_url`      | Primary release PR URL when PRs were prepared.                 |
+| `review_requests` | JSON array of all package/cohort release PR results.           |
+| `branch`          | Primary release branch name when PRs were prepared.            |
+| `title`           | Primary release PR title when PRs were prepared.               |
+
+The primary outputs preserve compatibility with single-PR workflows. Parse
+`review_requests` when
+[`separate-release-prs`](/guide/monorepos#separate-release-prs) is enabled.
 
 ## Publishing to a registry
 

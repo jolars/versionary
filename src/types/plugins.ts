@@ -1,5 +1,6 @@
 import type {
   ScmClientContext,
+  ScmListReviewRequestsInput,
   ScmProvider,
   ScmReleaseMetadataInput,
   ScmReleaseMetadataResult,
@@ -7,6 +8,7 @@ import type {
   ScmReleaseReferenceCommentsResult,
   ScmReviewRequestInput,
   ScmReviewRequestResult,
+  ScmReviewRequestSummary,
 } from "../scm/types.js";
 
 export type VersionaryPluginCapability =
@@ -17,6 +19,10 @@ export type VersionaryPluginCapability =
 export type VersionaryScmReviewRequestInput = ScmReviewRequestInput;
 
 export type VersionaryScmReviewRequestResult = ScmReviewRequestResult;
+
+export type VersionaryScmListReviewRequestsInput = ScmListReviewRequestsInput;
+
+export type VersionaryScmReviewRequestSummary = ScmReviewRequestSummary;
 
 export type VersionaryScmReleaseMetadataInput = ScmReleaseMetadataInput;
 

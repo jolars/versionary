@@ -4,11 +4,15 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  getPackageStateDirectory,
   hasFullyUntaggedPendingRelease,
+  hasReleaseStateChangeAtHead,
   readBaselineSha,
+  readPendingReleaseCohorts,
   readPendingReleaseTargets,
   readReleaseTargets,
   writeBaselineSha,
+  writePackageReleaseState,
 } from "../src/release/state.js";
 
 const tempDirs: string[] = [];
@@ -53,6 +57,98 @@ afterEach(() => {
 });
 
 describe("simple baseline state", () => {
+  it("stores independently mergeable package release state", () => {
+    const cwd = makeRepo();
+    writePackageReleaseState(
+      cwd,
+      "base-a",
+      [{ path: "packages/a", version: "1.1.0", tag: "a-v1.1.0" }],
+      "versionary/release/a",
+    );
+    writePackageReleaseState(
+      cwd,
+      "base-b",
+      [{ path: "packages/b", version: "2.0.1", tag: "b-v2.0.1" }],
+      "versionary/release/b",
+    );
+
+    expect(fs.existsSync(path.join(cwd, ".versionary-manifest.json"))).toBe(
+      false,
+    );
+    expect(fs.readdirSync(getPackageStateDirectory(cwd))).toHaveLength(2);
+    expect(readReleaseTargets(cwd)).toEqual([
+      { path: "packages/a", version: "1.1.0", tag: "a-v1.1.0" },
+      { path: "packages/b", version: "2.0.1", tag: "b-v2.0.1" },
+    ]);
+    expect(readPendingReleaseCohorts(cwd)).toEqual([
+      {
+        branch: "versionary/release/a",
+        targets: [{ path: "packages/a", version: "1.1.0", tag: "a-v1.1.0" }],
+      },
+      {
+        branch: "versionary/release/b",
+        targets: [{ path: "packages/b", version: "2.0.1", tag: "b-v2.0.1" }],
+      },
+    ]);
+  });
+
+  it("treats independently tagged cohorts independently", () => {
+    const cwd = makeRepo();
+    writePackageReleaseState(
+      cwd,
+      "base",
+      [{ path: "packages/a", version: "1.1.0", tag: "a-v1.1.0" }],
+      "versionary/release/a",
+    );
+    writePackageReleaseState(
+      cwd,
+      "base",
+      [{ path: "packages/b", version: "2.0.1", tag: "b-v2.0.1" }],
+      "versionary/release/b",
+    );
+    git(cwd, "tag", "a-v1.1.0");
+
+    expect(readPendingReleaseTargets(cwd)).toEqual([
+      { path: "packages/b", version: "2.0.1", tag: "b-v2.0.1" },
+    ]);
+    expect(hasFullyUntaggedPendingRelease(cwd)).toBe(true);
+  });
+
+  it("rejects partial tags within one package cohort", () => {
+    const cwd = makeRepo();
+    writePackageReleaseState(
+      cwd,
+      "base",
+      [
+        { path: "packages/a", version: "1.1.0", tag: "a-v1.1.0" },
+        { path: "packages/b", version: "2.0.1", tag: "b-v2.0.1" },
+      ],
+      "versionary/release/a",
+    );
+    git(cwd, "tag", "a-v1.1.0");
+
+    expect(() => readPendingReleaseCohorts(cwd)).toThrow(/partially tagged/i);
+    expect(readPendingReleaseTargets(cwd)).toEqual([
+      { path: "packages/a", version: "1.1.0", tag: "a-v1.1.0" },
+      { path: "packages/b", version: "2.0.1", tag: "b-v2.0.1" },
+    ]);
+  });
+
+  it("detects package state introduced by the head commit", () => {
+    const cwd = makeRepo();
+    expect(hasReleaseStateChangeAtHead(cwd)).toBe(false);
+    writePackageReleaseState(
+      cwd,
+      "base",
+      [{ path: "packages/a", version: "1.1.0", tag: "a-v1.1.0" }],
+      "versionary/release/a",
+    );
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "merge package release state");
+
+    expect(hasReleaseStateChangeAtHead(cwd)).toBe(true);
+  });
+
   it("detects pending targets until every tag has been created", () => {
     const cwd = makeRepo();
     writeBaselineSha(cwd, undefined, [

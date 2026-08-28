@@ -31,6 +31,7 @@ is the single source of truth for the config shape.
 | `changelog-file`             | string                | `CHANGELOG.md` / `NEWS.md` | Path to the changelog. Defaults to `NEWS.md` for the R strategy, `CHANGELOG.md` otherwise. |
 | `changelog-format`           | `"markdown-changelog"` \| `"r-news"` | strategy-specific | Changelog format. Defaults to `r-news` for the R strategy, `markdown-changelog` otherwise. |
 | `release-branch`             | string                | `"versionary/release"`   | Branch used for the release PR/commit. |
+| `separate-release-prs`       | boolean               | `false`                  | Open an independent release PR for each releasable package or coupled package cohort. See [monorepos](/guide/monorepos#separate-release-prs). |
 | `baseline-file`              | string                | `".versionary-manifest.json"` | File tracking the baseline SHA for deterministic commit ranges. |
 | `bootstrap-sha`              | string                | —                        | First-run baseline commit when adopting Versionary on existing history. |
 | `release-draft`              | boolean               | `false`                  | Publish GitHub Releases as drafts. |
@@ -181,6 +182,9 @@ configuration errors:
 - following an unknown package path
 - `follows` cycles (reported with the offending chain)
 - combining `follows` with `monorepo-mode: "fixed"`
+- enabling `separate-release-prs` without a non-empty `packages` map
+- combining `separate-release-prs` with `monorepo-mode: "fixed"` or
+  `review-mode: "direct"`
 
 Run [`versionary verify`](/reference/cli#verify) to check your config and
 version files before relying on them in CI.

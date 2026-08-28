@@ -87,6 +87,7 @@ export const configSchema = z
       .enum(["off", "best-effort", "strict"])
       .optional(),
     "release-branch": z.string().optional(),
+    "separate-release-prs": z.boolean().optional(),
     "baseline-file": z.string().optional(),
     "bootstrap-sha": z.string().optional(),
     "monorepo-mode": z.enum(["independent", "fixed"]).optional(),
@@ -102,6 +103,31 @@ export const configSchema = z
   .strict()
   .superRefine((value, ctx) => {
     const packages = value.packages;
+    if (value["separate-release-prs"]) {
+      if (!packages || Object.keys(packages).length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: '"separate-release-prs" requires a non-empty packages map.',
+          path: ["separate-release-prs"],
+        });
+      }
+      if (value["monorepo-mode"] === "fixed") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            '"separate-release-prs" cannot be combined with monorepo-mode "fixed".',
+          path: ["separate-release-prs"],
+        });
+      }
+      if (value["review-mode"] === "direct") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            '"separate-release-prs" cannot be combined with review-mode "direct".',
+          path: ["separate-release-prs"],
+        });
+      }
+    }
     if (!packages) {
       return;
     }

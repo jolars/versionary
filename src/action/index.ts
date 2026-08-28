@@ -10,6 +10,7 @@ interface RunJsonResult {
   reviewUrl?: string;
   branch?: string;
   title?: string;
+  reviewRequests?: unknown;
 }
 
 function getInput(name: string): string {
@@ -140,6 +141,7 @@ function main(): void {
       setOutput("tag_name", "");
       setOutput("tag_names", "[]");
       setOutput("review_url", "");
+      setOutput("review_requests", "[]");
       setOutput("branch", "");
       setOutput("title", "");
       return;
@@ -190,6 +192,12 @@ function main(): void {
   setOutput("tag_name", firstTag);
   setOutput("tag_names", JSON.stringify(tagNames));
   setOutput("review_url", payload.reviewUrl ?? "");
+  setOutput(
+    "review_requests",
+    JSON.stringify(
+      Array.isArray(payload.reviewRequests) ? payload.reviewRequests : [],
+    ),
+  );
   setOutput("branch", payload.branch ?? "");
   setOutput("title", payload.title ?? "");
 }

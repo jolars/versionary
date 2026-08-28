@@ -31,6 +31,7 @@ export interface VersionaryConfig {
   "release-draft"?: boolean;
   "release-reference-comments"?: ReleaseReferenceCommentsMode;
   "release-branch"?: string;
+  "separate-release-prs"?: boolean;
   "baseline-file"?: string;
   "bootstrap-sha"?: string;
   "monorepo-mode"?: "independent" | "fixed";

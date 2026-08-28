@@ -211,6 +211,51 @@ describe("github plugin hardening matrix", () => {
     expect(result).toMatchObject({ number: 34, state: "open" });
   });
 
+  it("lists matching open release PRs under a branch prefix", async () => {
+    process.env.GITHUB_REPOSITORY = "owner/repo";
+    process.env.GITHUB_TOKEN = "token";
+    mockApi.pulls.list.mockResolvedValueOnce({
+      data: [
+        {
+          ...pr(7),
+          title: "release a",
+          head: { ref: "versionary/release/a" },
+          base: { ref: "main" },
+          labels: [{ name: "release" }],
+        },
+        {
+          ...pr(8),
+          title: "unrelated",
+          head: { ref: "feature/example" },
+          base: { ref: "main" },
+          labels: [{ name: "release" }],
+        },
+      ],
+    });
+    const plugin = createGitHubPlugin();
+
+    const result = await plugin.listOpenReviewRequests(
+      {
+        baseBranch: "main",
+        headBranchPrefix: "versionary/release/",
+        labels: ["release"],
+      },
+      { cwd: process.cwd() },
+    );
+
+    expect(result).toEqual([
+      {
+        id: "70",
+        number: 7,
+        url: "https://github.com/owner/repo/pull/7",
+        state: "open",
+        baseBranch: "main",
+        headBranch: "versionary/release/a",
+        title: "release a",
+      },
+    ]);
+  });
+
   it("closes matching open release PR and comments reason", async () => {
     process.env.GITHUB_REPOSITORY = "owner/repo";
     process.env.GITHUB_TOKEN = "token";

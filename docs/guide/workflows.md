@@ -40,6 +40,11 @@ carries a `Versionary-Release: true` footer. This is exactly the commit
 Versionary writes when preparing a release, so merging a release PR naturally
 triggers the publish path on the next run.
 
+With [`separate-release-prs`](/guide/monorepos#separate-release-prs), `run`
+also recognizes a merged package-state sidecar as release context. It publishes
+only the untagged package cohorts represented in the merged tree, then updates
+or closes the remaining package release PRs against the new trunk state.
+
 `run` supports:
 
 - `--json` — emit a machine-readable result (used by the
@@ -63,6 +68,9 @@ commands (`verify`, `plan`, `changelog`, `pr`, `release`).
    GitHub Release.
 6. A separate, release-triggered workflow publishes to your registry.
 
+In a separate-PR monorepo, steps 2–5 happen independently for each package or
+coupled cohort. Merging one package PR does not require merging the others.
+
 In `direct` mode, steps 2–4 collapse: the release branch is prepared without a
 review request, and publishing follows once the release commit is on the branch
 you run against.
@@ -83,6 +91,12 @@ The next `run` recreates the release PR with an empty release-marker commit on
 top of the corrected base. It does not plan a later version—even when the
 corrective commit would ordinarily cause a semantic-version bump. After that PR
 merges and CI succeeds, Versionary publishes the original pending tags.
+
+Separate package releases recover on their original cohort branches. A tag
+created for one independent cohort does not block recovery of another. A
+partially tagged multi-package cohort cannot move to a corrected commit; rerun
+the original release workflow so its idempotent publish path can finish the
+remaining targets.
 
 Versionary **fails fast** when recovery would be unsafe—for example, when a
 local and a remote tag of the same name point to different commits. The error

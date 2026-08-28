@@ -47,11 +47,27 @@ See [Release workflows](/guide/workflows) for what counts as a release commit.
   "reviewUrl": "https://github.com/owner/repo/pull/42", // when a PR is opened
   "branch": "versionary/release",
   "title": "chore(release): v1.3.0",
+  "reviewRequests": [             // all PRs in separate-release-prs mode
+    {
+      "packagePaths": ["packages/api"],
+      "branch": "versionary/release-api-0123456789ab",
+      "title": "chore(release): api-v1.3.0",
+      "reviewUrl": "https://github.com/owner/repo/pull/42",
+      "status": "prepared",
+      "targets": [
+        { "path": "packages/api", "tag": "api-v1.3.0", "version": "1.3.0" }
+      ]
+    }
+  ],
   "targets": [                    // present for dry-run / multi-target flows
     { "tag": "v1.3.0", "version": "1.3.0" }
   ]
 }
 ```
+
+`reviewRequests` is the authoritative array when
+`separate-release-prs` is enabled. `reviewUrl`, `branch`, and `title` remain as
+compatibility projections of the first entry.
 
 `action` is one of:
 
@@ -118,6 +134,9 @@ versionary pr
 ```
 
 If there are no releasable commits, it closes any stale release PR and exits.
+
+With `separate-release-prs`, this command prepares, pushes, and reconciles all
+currently releasable package or cohort PRs.
 
 ## `release`
 

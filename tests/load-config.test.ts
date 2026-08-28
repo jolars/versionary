@@ -377,6 +377,63 @@ describe("config loading", () => {
     expect(() => loadConfig(dir)).toThrow();
   });
 
+  it("accepts separate release PRs for independent reviewed packages", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        "review-mode": "pr",
+        "monorepo-mode": "independent",
+        "separate-release-prs": true,
+        packages: {
+          "packages/a": {},
+          "packages/b": {},
+        },
+      }),
+      "utf8",
+    );
+
+    expect(loadConfig(dir).config["separate-release-prs"]).toBe(true);
+  });
+
+  it.each([
+    {
+      name: "a missing packages map",
+      config: { version: 1, "separate-release-prs": true },
+      message: /requires a non-empty packages map/i,
+    },
+    {
+      name: "fixed monorepo mode",
+      config: {
+        version: 1,
+        "separate-release-prs": true,
+        "monorepo-mode": "fixed",
+        packages: { "packages/a": {} },
+      },
+      message: /cannot be combined.*fixed/i,
+    },
+    {
+      name: "direct review mode",
+      config: {
+        version: 1,
+        "separate-release-prs": true,
+        "review-mode": "direct",
+        packages: { "packages/a": {} },
+      },
+      message: /cannot be combined.*direct/i,
+    },
+  ])("rejects separate release PRs with $name", ({ config, message }) => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify(config),
+      "utf8",
+    );
+
+    expect(() => loadConfig(dir)).toThrow(message);
+  });
+
   it("accepts package follows referencing existing packages", () => {
     const dir = makeTempDir();
     fs.writeFileSync(

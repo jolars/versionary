@@ -29,11 +29,13 @@ outputs:
   tag_names:
     description: JSON array of published release tags
   review_url:
-    description: Review request URL when a release PR was prepared
+    description: Primary review request URL when release PRs were prepared
+  review_requests:
+    description: JSON array of prepared or reconciled release review requests
   branch:
-    description: Release branch name when a release PR was prepared
+    description: Primary release branch name when release PRs were prepared
   title:
-    description: Release PR title when a release PR was prepared
+    description: Primary release PR title when release PRs were prepared
 runs:
   using: node24
   main: action/index.js

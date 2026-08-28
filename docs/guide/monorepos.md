@@ -32,6 +32,45 @@ of per-package keys.
 - **`fixed`** — all configured packages share a single version, computed from
   one combined bump across them.
 
+## Separate release PRs {#separate-release-prs}
+
+Independent monorepos can keep each package release independently mergeable:
+
+```jsonc
+{
+  "version": 1,
+  "monorepo-mode": "independent",
+  "separate-release-prs": true,
+  "packages": {
+    "packages/api": { "release-type": "node" },
+    "packages/cli": { "release-type": "node" }
+  }
+}
+```
+
+Each releasable package normally gets its own deterministic branch derived from
+the configured `release-branch`, such as
+`versionary/release-api-0123456789ab`. The names are siblings of
+`release-branch` rather than children of it, so a repository migrating from the
+combined release PR can keep its existing `versionary/release` branch; that
+leftover PR is closed as stale on the first separate run. Versionary writes
+package state to separate files under `<baseline-file>.d`, so merging one
+release PR does not claim or publish another package's pending version.
+
+Versionary combines packages into one atomic **cohort** when separating them
+would produce invalid or conflicting changes. This happens when packages are
+connected by `follows` or strategy dependency propagation, or when their
+generated changes touch the same file—for example, a shared lockfile. Cohort
+membership is computed to a fixed point, so indirect overlaps are grouped too.
+
+After one package PR merges, the same `versionary run` publishes its untagged
+targets and rebases the remaining package PRs onto the new trunk state. Stale
+cohort PRs are closed. If several package PRs merge before the workflow runs,
+all fully untagged cohorts present in the merged state are published together.
+
+`separate-release-prs` requires a non-empty `packages` map and cannot be used
+with fixed monorepo mode or `review-mode: "direct"`.
+
 ## Per-package strategies
 
 A package may use a different [strategy](/reference/strategies) than the root.

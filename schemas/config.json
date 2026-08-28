@@ -35,6 +35,9 @@
     "release-branch": {
       "type": "string"
     },
+    "separate-release-prs": {
+      "type": "boolean"
+    },
     "baseline-file": {
       "type": "string"
     },

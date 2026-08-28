@@ -226,6 +226,69 @@ describe("cli run --json", () => {
     expect(git(cwd, "status", "--short")).toBe("");
   });
 
+  it("prints one dry-run review result per independent package", () => {
+    const cwd = makeTempDir("versionary-cli-json-separate-prs-");
+    const testsDir = path.dirname(fileURLToPath(import.meta.url));
+    const repoRoot = path.resolve(testsDir, "..");
+    const tsx = path.join(repoRoot, "node_modules", ".bin", "tsx");
+    const cliEntry = path.join(repoRoot, "src", "cli", "index.ts");
+
+    git(cwd, "init", "-b", "main");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "separate-release-prs": true,
+        packages: {
+          "packages/a": { "release-type": "simple" },
+          "packages/b": { "release-type": "simple" },
+        },
+      }),
+    );
+    for (const name of ["a", "b"]) {
+      write(cwd, `packages/${name}/version.txt`, "1.0.0\n");
+      write(cwd, `packages/${name}/CHANGELOG.md`, "# Changelog\n");
+      write(cwd, `packages/${name}/index.ts`, `export const ${name} = 1;\n`);
+    }
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initialize");
+    write(cwd, "packages/a/index.ts", "export const a = 2;\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "feat: improve a");
+    write(cwd, "packages/b/index.ts", "export const b = 2;\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "fix: repair b");
+
+    const output = execFileSync(tsx, [cliEntry, "run", "--json", "--dry-run"], {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+    const parsed = JSON.parse(output) as {
+      action: string;
+      branch?: string;
+      reviewRequests?: Array<{
+        packagePaths: string[];
+        branch: string;
+        status: string;
+      }>;
+    };
+
+    expect(parsed.action).toBe("pr-dry-run");
+    expect(
+      parsed.reviewRequests?.map((request) => request.packagePaths),
+    ).toEqual([["packages/a"], ["packages/b"]]);
+    expect(
+      parsed.reviewRequests?.every((request) => request.status === "dry-run"),
+    ).toBe(true);
+    expect(parsed.branch).toBe(parsed.reviewRequests?.[0]?.branch);
+    expect(git(cwd, "branch", "--list", "versionary/release*")).toBe("");
+    expect(git(cwd, "status", "--short")).toBe("");
+  });
+
   it("prints machine-readable dry-run release result without side effects", () => {
     const cwd = makeTempDir("versionary-cli-json-dry-release-");
     const testsDir = path.dirname(fileURLToPath(import.meta.url));
@@ -256,6 +319,165 @@ describe("cli run --json", () => {
     expect(parsed.tagNames).toEqual(["v1.2.3"]);
     expect(parsed.releaseCreated).toBe(false);
     expect(git(cwd, "tag", "--list")).toBe("");
+  });
+
+  it("detects a merged package release from its sidecar state", () => {
+    const cwd = makeTempDir("versionary-cli-json-package-release-");
+    const testsDir = path.dirname(fileURLToPath(import.meta.url));
+    const repoRoot = path.resolve(testsDir, "..");
+    const tsx = path.join(repoRoot, "node_modules", ".bin", "tsx");
+    const cliEntry = path.join(repoRoot, "src", "cli", "index.ts");
+
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "separate-release-prs": true,
+        packages: { "packages/a": { "release-type": "simple" } },
+      }),
+    );
+    write(cwd, "packages/a/version.txt", "1.1.0\n");
+    write(cwd, "packages/a/CHANGELOG.md", "# Changelog\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initialize");
+    write(
+      cwd,
+      ".versionary-manifest.json.d/a.json",
+      `${JSON.stringify({
+        "manifest-version": 1,
+        path: "packages/a",
+        "baseline-sha": git(cwd, "rev-parse", "HEAD"),
+        "release-target": {
+          path: "packages/a",
+          version: "1.1.0",
+          tag: "a-v1.1.0",
+        },
+        "release-branch": "versionary/release-a-111111111111",
+      })}\n`,
+    );
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "Merge package release PR");
+
+    const output = execFileSync(tsx, [cliEntry, "run", "--json", "--dry-run"], {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+    const parsed = JSON.parse(output) as {
+      action: string;
+      tagNames: string[];
+    };
+
+    expect(parsed.action).toBe("release-dry-run");
+    expect(parsed.tagNames).toEqual(["a-v1.1.0"]);
+  });
+
+  it("does not fall back to a root release after a package tag exists", () => {
+    const cwd = makeTempDir("versionary-cli-json-tagged-package-");
+    const testsDir = path.dirname(fileURLToPath(import.meta.url));
+    const repoRoot = path.resolve(testsDir, "..");
+    const tsx = path.join(repoRoot, "node_modules", ".bin", "tsx");
+    const cliEntry = path.join(repoRoot, "src", "cli", "index.ts");
+
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "separate-release-prs": true,
+        packages: { "packages/a": { "release-type": "simple" } },
+      }),
+    );
+    write(cwd, "packages/a/version.txt", "1.1.0\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initialize");
+    write(
+      cwd,
+      ".versionary-manifest.json.d/a.json",
+      `${JSON.stringify({
+        "manifest-version": 1,
+        path: "packages/a",
+        "baseline-sha": "0000000000000000000000000000000000000000",
+        "release-target": {
+          path: "packages/a",
+          version: "1.1.0",
+          tag: "a-v1.1.0",
+        },
+        "release-branch": "versionary/release-a-111111111111",
+      })}\n`,
+    );
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "Merge package release PR");
+    git(cwd, "tag", "a-v1.1.0");
+
+    const output = execFileSync(tsx, [cliEntry, "run", "--json", "--dry-run"], {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+    const parsed = JSON.parse(output) as { action: string; message: string };
+
+    expect(parsed.action).toBe("release-skipped");
+    expect(parsed.message).toContain("No untagged package release targets");
+  });
+
+  it("replays an already published legacy release instead of tagging the root", () => {
+    const cwd = makeTempDir("versionary-cli-json-legacy-rerun-");
+    const testsDir = path.dirname(fileURLToPath(import.meta.url));
+    const repoRoot = path.resolve(testsDir, "..");
+    const tsx = path.join(repoRoot, "node_modules", ".bin", "tsx");
+    const cliEntry = path.join(repoRoot, "src", "cli", "index.ts");
+
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        packages: { "packages/a": { "release-type": "simple" } },
+      }),
+    );
+    write(cwd, "version.txt", "9.9.9\n");
+    write(cwd, "packages/a/version.txt", "1.1.0\n");
+    write(
+      cwd,
+      ".versionary-manifest.json",
+      `${JSON.stringify({
+        "manifest-version": 1,
+        "baseline-sha": "0000000000000000000000000000000000000000",
+        "release-targets": [
+          { path: "packages/a", version: "1.1.0", tag: "a-v1.1.0" },
+        ],
+        "pending-release-targets": [
+          { path: "packages/a", version: "1.1.0", tag: "a-v1.1.0" },
+        ],
+      })}\n`,
+    );
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore(release): a-v1.1.0");
+    git(cwd, "tag", "a-v1.1.0");
+
+    const output = execFileSync(tsx, [cliEntry, "run", "--json", "--dry-run"], {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+    const parsed = JSON.parse(output) as {
+      action: string;
+      tagNames: string[];
+    };
+
+    expect(parsed.action).toBe("release-dry-run");
+    expect(parsed.tagNames).toEqual(["a-v1.1.0"]);
   });
 
   it("prints machine-readable up-to-date PR result on repeated run", () => {

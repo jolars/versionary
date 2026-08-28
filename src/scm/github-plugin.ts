@@ -5,6 +5,7 @@ import type {
   ScmClientContext,
   ScmCloseReviewRequestInput,
   ScmCloseReviewRequestResult,
+  ScmListReviewRequestsInput,
   ScmReleaseMetadataInput,
   ScmReleaseMetadataResult,
   ScmReleaseReferenceCommentsInput,
@@ -12,6 +13,7 @@ import type {
   ScmReleaseReferenceCommentsResult,
   ScmReviewRequestInput,
   ScmReviewRequestResult,
+  ScmReviewRequestSummary,
 } from "./types.js";
 
 interface ParsedRepo {
@@ -314,6 +316,61 @@ export function createGitHubPlugin(): VersionaryPluginRuntime & ScmClient {
           `pull request #${created.number} in ${repoRef(repo)}`,
         ),
       };
+    },
+    async listOpenReviewRequests(
+      input: ScmListReviewRequestsInput,
+      _context: ScmClientContext,
+    ): Promise<ScmReviewRequestSummary[]> {
+      const repo = getRepoFromEnv();
+      const octokit = new Octokit({ auth: getGitHubToken() });
+      const pulls: Awaited<ReturnType<typeof octokit.pulls.list>>["data"] = [];
+      try {
+        for (let page = 1; ; page += 1) {
+          const response = await octokit.pulls.list({
+            owner: repo.owner,
+            repo: repo.repo,
+            state: "open",
+            base: input.baseBranch,
+            per_page: 100,
+            page,
+          });
+          pulls.push(...response.data);
+          if (response.data.length < 100) {
+            break;
+          }
+        }
+      } catch (error: unknown) {
+        const { message } = parseGitHubError(error);
+        throw new Error(
+          `Failed listing open pull requests into "${input.baseBranch}": [${repoRef(repo)}] ${message}`,
+        );
+      }
+      const requiredLabels = new Set(input.labels ?? []);
+      return pulls
+        .filter((pull) => pull.head.ref.startsWith(input.headBranchPrefix))
+        .filter((pull) => {
+          const labels = new Set(
+            pull.labels
+              .map((label) =>
+                typeof label === "string" ? label : (label.name ?? ""),
+              )
+              .filter(Boolean),
+          );
+          return [...requiredLabels].every((label) => labels.has(label));
+        })
+        .map((pull) => ({
+          id: String(pull.id),
+          number: pull.number,
+          url: pull.html_url,
+          state: toReviewRequestState(
+            pull,
+            `pull request #${pull.number} in ${repoRef(repo)}`,
+          ),
+          baseBranch: pull.base.ref,
+          headBranch: pull.head.ref,
+          title: pull.title,
+        }))
+        .sort((a, b) => a.headBranch.localeCompare(b.headBranch));
     },
     async closeReviewRequestIfExists(
       input: ScmCloseReviewRequestInput,

@@ -9,6 +9,7 @@ export { createGitHubPlugin } from "./scm/github-plugin.js";
 export type {
   ScmClient,
   ScmClientContext,
+  ScmListReviewRequestsInput,
   ScmProvider,
   ScmReleaseMetadataInput,
   ScmReleaseMetadataResult,
@@ -16,6 +17,7 @@ export type {
   ScmReleaseReferenceCommentsResult,
   ScmReviewRequestInput,
   ScmReviewRequestResult,
+  ScmReviewRequestSummary,
 } from "./scm/types.js";
 export { resolveVersionStrategy } from "./strategy/resolve.js";
 export type {
@@ -27,10 +29,12 @@ export type {
   VersionaryPluginCapability,
   VersionaryPluginContext,
   VersionaryPluginRuntime,
+  VersionaryScmListReviewRequestsInput,
   VersionaryScmReleaseMetadataInput,
   VersionaryScmReleaseMetadataResult,
   VersionaryScmReleaseReferenceCommentsInput,
   VersionaryScmReleaseReferenceCommentsResult,
   VersionaryScmReviewRequestInput,
   VersionaryScmReviewRequestResult,
+  VersionaryScmReviewRequestSummary,
 } from "./types/plugins.js";
