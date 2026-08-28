@@ -49,6 +49,111 @@ afterEach(() => {
 });
 
 describe("cli run --json", () => {
+  it.each([
+    "ci: repair release workflow",
+    "fix(ci): repair release workflow",
+    "feat: land queued work",
+  ])("recovers an untagged pending version after %s", (followUpMessage) => {
+    const { cwd } = setupRepoWithOrigin("versionary-cli-pending-release");
+    const testsDir = path.dirname(fileURLToPath(import.meta.url));
+    const repoRoot = path.resolve(testsDir, "..");
+    const tsx = path.join(repoRoot, "node_modules", ".bin", "tsx");
+    const cliEntry = path.join(repoRoot, "src", "cli", "index.ts");
+
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({ version: 1, "review-mode": "direct" }),
+    );
+    write(cwd, "version.txt", "1.2.0\n");
+    write(cwd, "CHANGELOG.md", "# Changelog\n\n## 1.2.0\n\n- Added.\n");
+    write(
+      cwd,
+      ".versionary-manifest.json",
+      `${JSON.stringify(
+        {
+          "manifest-version": 1,
+          "baseline-sha": "0000000000000000000000000000000000000000",
+          "release-targets": [{ path: ".", version: "1.2.0", tag: "v1.2.0" }],
+          "pending-release-targets": [
+            { path: ".", version: "1.2.0", tag: "v1.2.0" },
+          ],
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore(release): v1.2.0");
+    git(cwd, "branch", "-M", "main");
+    write(cwd, ".github/workflows/ci.yml", "fixed: true\n");
+    git(cwd, "add", ".github/workflows/ci.yml");
+    git(cwd, "commit", "-m", followUpMessage);
+    const correctedHead = git(cwd, "rev-parse", "HEAD");
+    git(cwd, "push", "-u", "origin", "main");
+
+    const dryRunOutput = execFileSync(
+      tsx,
+      [cliEntry, "run", "--json", "--dry-run"],
+      {
+        cwd,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        env: {
+          ...process.env,
+          GITHUB_REPOSITORY: "jolars/versionary",
+        },
+      },
+    ).trim();
+    const dryRun = JSON.parse(dryRunOutput) as {
+      action: string;
+      targets?: { tag: string; version: string }[];
+    };
+    expect(dryRun.action).toBe("pr-dry-run");
+    expect(dryRun.targets).toEqual([{ tag: "v1.2.0", version: "1.2.0" }]);
+    expect(git(cwd, "branch", "--list", "versionary/release")).toBe("");
+
+    const output = execFileSync(tsx, [cliEntry, "run", "--json"], {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      env: {
+        ...process.env,
+        GITHUB_REPOSITORY: "jolars/versionary",
+      },
+    }).trim();
+    const parsed = JSON.parse(output) as {
+      action: string;
+      branch?: string;
+      title?: string;
+    };
+
+    expect(parsed.action).toBe("pr-prepared");
+    expect(parsed.branch).toBe("versionary/release");
+    expect(parsed.title).toBe("chore(release): v1.2.0");
+    expect(git(cwd, "show", "-s", "--format=%P", "HEAD")).toBe(correctedHead);
+    expect(fs.readFileSync(path.join(cwd, "version.txt"), "utf8")).toBe(
+      "1.2.0\n",
+    );
+
+    git(cwd, "checkout", "main");
+    const repeatedOutput = execFileSync(tsx, [cliEntry, "run", "--json"], {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      env: {
+        ...process.env,
+        GITHUB_REPOSITORY: "jolars/versionary",
+      },
+    }).trim();
+    const repeated = JSON.parse(repeatedOutput) as {
+      action: string;
+      title?: string;
+    };
+    expect(repeated.action).toBe("pr-up-to-date");
+    expect(repeated.title).toBe("chore(release): v1.2.0");
+  });
+
   it("prints machine-readable noop result when no releasable commits exist", () => {
     const cwd = makeTempDir("versionary-cli-json-");
     const testsDir = path.dirname(fileURLToPath(import.meta.url));

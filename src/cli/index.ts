@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
+import { loadConfig } from "../config/load-config.js";
 import {
   prependChangelog,
   renderReleasePlanChangelog,
@@ -10,11 +11,16 @@ import {
   closeStaleReviewRequestIfExists,
   isReleaseCommitMessage,
   openOrUpdateReviewRequest,
+  preparePendingReleasePr,
   prepareReleasePr,
   pushReleaseBranch,
   resolveReleaseHighlights,
 } from "../release/pr.js";
 import { runRelease, runReleaseDetailed } from "../release/release.js";
+import {
+  hasFullyUntaggedPendingRelease,
+  readPendingReleaseTargets,
+} from "../release/state.js";
 import { verifyProject } from "../release/verify-project.js";
 
 /**
@@ -107,6 +113,88 @@ function emitJson(payload: RunJsonResult): void {
   process.stdout.write(`${JSON.stringify(payload)}\n`);
 }
 
+async function recoverPendingReleaseIfNeeded(
+  flags: CliFlags,
+  logger?: Console,
+): Promise<boolean> {
+  const cwd = process.cwd();
+  if (!hasFullyUntaggedPendingRelease(cwd)) {
+    return false;
+  }
+
+  const pendingTargets = readPendingReleaseTargets(cwd);
+  const releaseBranch =
+    loadConfig(cwd).config["release-branch"] ?? "versionary/release";
+  if (flags["dry-run"]) {
+    const message = `Dry run: would recover pending releases ${pendingTargets.map((target) => target.tag).join(", ")} on branch ${releaseBranch}`;
+    if (flags.json) {
+      emitJson({
+        action: "pr-dry-run",
+        message,
+        releaseCreated: false,
+        tagNames: [],
+        branch: releaseBranch,
+        targets: pendingTargets.map((target) => ({
+          tag: target.tag,
+          version: target.version,
+        })),
+      });
+      return true;
+    }
+    console.log(message);
+    return true;
+  }
+
+  const recovery = preparePendingReleasePr(cwd, { logger });
+  if (!recovery.updated) {
+    const message = `Pending release recovery branch ${recovery.branch} is already up to date.`;
+    if (flags.json) {
+      emitJson({
+        action: "pr-up-to-date",
+        message,
+        releaseCreated: false,
+        tagNames: [],
+        branch: recovery.branch,
+        title: recovery.title,
+      });
+      return true;
+    }
+    console.log(message);
+    console.log(`Title: ${recovery.title}`);
+    return true;
+  }
+
+  pushReleaseBranch(cwd, recovery.branch);
+  const primaryVersion = recovery.targets[0]?.version ?? "";
+  const reviewResult = await openOrUpdateReviewRequest(
+    cwd,
+    recovery.branch,
+    recovery.title,
+    primaryVersion,
+    primaryVersion,
+    [],
+    null,
+    { logger, body: recovery.body },
+  );
+  const message = `Prepared pending release recovery PR branch ${recovery.branch}`;
+  if (flags.json) {
+    emitJson({
+      action: "pr-prepared",
+      message,
+      releaseCreated: false,
+      tagNames: [],
+      reviewUrl: reviewResult,
+      branch: recovery.branch,
+      title: recovery.title,
+    });
+    return true;
+  }
+  console.log(message);
+  console.log(`Title: ${recovery.title}`);
+  console.log(reviewResult);
+  return true;
+}
+
 async function main(): Promise<number> {
   const [, , command, ...args] = process.argv;
   const flags = parseFlags(args);
@@ -162,6 +250,10 @@ async function main(): Promise<number> {
       }
       const message = await runRelease(process.cwd());
       console.log(message);
+      return 0;
+    }
+
+    if (await recoverPendingReleaseIfNeeded(flags, logger)) {
       return 0;
     }
 
@@ -304,6 +396,12 @@ async function main(): Promise<number> {
   }
 
   if (command === "pr") {
+    if (
+      await recoverPendingReleaseIfNeeded({ ...flags, json: false }, console)
+    ) {
+      return 0;
+    }
+
     const plan = createReleasePlan();
     if (!plan.nextVersion) {
       if (!flags["dry-run"]) {

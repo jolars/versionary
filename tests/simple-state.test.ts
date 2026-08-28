@@ -1,8 +1,10 @@
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  hasFullyUntaggedPendingRelease,
   readBaselineSha,
   readPendingReleaseTargets,
   readReleaseTargets,
@@ -17,6 +19,30 @@ function makeTempDir(): string {
   return dir;
 }
 
+function git(cwd: string, ...args: string[]): string {
+  return execFileSync("git", args, {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  }).trim();
+}
+
+function makeRepo(): string {
+  const cwd = makeTempDir();
+  git(cwd, "init");
+  git(cwd, "config", "user.name", "Test User");
+  git(cwd, "config", "user.email", "test@example.com");
+  fs.writeFileSync(
+    path.join(cwd, "versionary.json"),
+    JSON.stringify({ version: 1 }),
+    "utf8",
+  );
+  fs.writeFileSync(path.join(cwd, "version.txt"), "1.2.0\n", "utf8");
+  git(cwd, "add", ".");
+  git(cwd, "commit", "-m", "chore: init");
+  return cwd;
+}
+
 afterEach(() => {
   while (tempDirs.length > 0) {
     const dir = tempDirs.pop();
@@ -27,6 +53,22 @@ afterEach(() => {
 });
 
 describe("simple baseline state", () => {
+  it("detects pending targets until every tag has been created", () => {
+    const cwd = makeRepo();
+    writeBaselineSha(cwd, undefined, [
+      { path: ".", version: "1.2.0", tag: "v1.2.0" },
+      { path: "pkg/a", version: "0.4.0", tag: "a-v0.4.0" },
+    ]);
+
+    expect(hasFullyUntaggedPendingRelease(cwd)).toBe(true);
+    git(cwd, "tag", "v1.2.0");
+    expect(() => hasFullyUntaggedPendingRelease(cwd)).toThrow(
+      /partially tagged/,
+    );
+    git(cwd, "tag", "a-v0.4.0");
+    expect(hasFullyUntaggedPendingRelease(cwd)).toBe(false);
+  });
+
   it("reads null when state file missing", () => {
     const dir = makeTempDir();
     fs.writeFileSync(

@@ -35,7 +35,9 @@ import {
 } from "./plan.js";
 import {
   getBaselineStatePath,
+  hasFullyUntaggedPendingRelease,
   type ReleaseTargetState,
+  readPendingReleaseTargets,
   writeBaselineSha,
 } from "./state.js";
 
@@ -316,6 +318,92 @@ function formatReleaseCommitTitle(
     return `chore(release): ${tags[0]}`;
   }
   return `chore(release): ${tags[0]} (+${tags.length - 1} more)`;
+}
+
+export interface PendingReleasePrResult {
+  branch: string;
+  title: string;
+  updated: boolean;
+  targets: ReleaseTargetState[];
+  body: string;
+}
+
+function getCommitSubject(cwd: string, revision: string): string {
+  return execFileSync("git", ["show", "-s", "--format=%s", revision], {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  }).trim();
+}
+
+function getFirstParent(cwd: string, revision: string): string {
+  return execFileSync("git", ["rev-parse", `${revision}^`], {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  }).trim();
+}
+
+export function renderPendingReleaseReviewRequestBody(
+  targets: ReleaseTargetState[],
+): string {
+  const releases = targets
+    .map((target) => `- \`${target.tag}\` (${target.path})`)
+    .join("\n");
+  return `## Pending release recovery\n\nThis PR retries a release that did not reach the publish stage. Its empty release commit records the corrected CI-tested commit as the release target; it does not advance any versions.\n\n${releases}\n\n${renderReviewRequestFooter()}`;
+}
+
+/**
+ * Recreate the release marker on the corrected base without advancing an
+ * untagged version. The empty commit is intentional: the version and
+ * changelog changes were already reviewed in the original release PR.
+ */
+export function preparePendingReleasePr(
+  cwd = process.cwd(),
+  options: { logger?: VersionaryPluginContext["logger"] } = {},
+): PendingReleasePrResult {
+  const targets = readPendingReleaseTargets(cwd);
+  if (!hasFullyUntaggedPendingRelease(cwd)) {
+    throw new Error("No unpublished pending release found to recover.");
+  }
+
+  ensureCleanWorktree(cwd, options.logger);
+  const loaded = loadConfig(cwd);
+  const branch = loaded.config["release-branch"] ?? "versionary/release";
+  const title = formatReleaseCommitTitle(targets);
+  const releaseBaselineSha = execFileSync("git", ["rev-parse", "HEAD"], {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  }).trim();
+  const hasRemoteReleaseBranch = remoteReleaseBranchExists(cwd, branch);
+  const remoteReleaseRef = hasRemoteReleaseBranch
+    ? fetchRemoteReleaseBranch(cwd, branch)
+    : null;
+
+  execFileSync("git", ["checkout", "-B", branch], {
+    cwd,
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  ensureGitIdentity(cwd);
+  execFileSync(
+    "git",
+    ["commit", "--allow-empty", "-m", title, "-m", VERSIONARY_RELEASE_TRAILER],
+    { cwd, stdio: ["ignore", "pipe", "ignore"] },
+  );
+
+  const updated =
+    !remoteReleaseRef ||
+    getFirstParent(cwd, remoteReleaseRef) !== releaseBaselineSha ||
+    getCommitSubject(cwd, remoteReleaseRef) !== title;
+
+  return {
+    branch,
+    title,
+    updated,
+    targets,
+    body: renderPendingReleaseReviewRequestBody(targets),
+  };
 }
 
 export function prepareReleasePr(
@@ -649,6 +737,7 @@ export async function openOrUpdateReviewRequest(
   options: {
     logger?: VersionaryPluginContext["logger"];
     highlights?: string;
+    body?: string;
   } = {},
 ): Promise<string> {
   const loaded = loadConfig(cwd);
@@ -663,15 +752,17 @@ export async function openOrUpdateReviewRequest(
       baseBranch: process.env.VERSIONARY_BASE_BRANCH ?? "main",
       headBranch: branch,
       title,
-      body: renderSimpleReviewRequestBody(
-        version,
-        previousVersion,
-        commits,
-        plan,
-        cwd,
-        options.highlights ?? "",
-        loaded.config,
-      ),
+      body:
+        options.body ??
+        renderSimpleReviewRequestBody(
+          version,
+          previousVersion,
+          commits,
+          plan,
+          cwd,
+          options.highlights ?? "",
+          loaded.config,
+        ),
       labels: ["release"],
     },
     {

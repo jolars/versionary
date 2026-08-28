@@ -138,6 +138,48 @@ export function readPendingReleaseTargets(
   return parsed[PENDING_RELEASE_TARGETS_KEY] ?? [];
 }
 
+function hasLocalTag(cwd: string, tag: string): boolean {
+  try {
+    execFileSync(
+      "git",
+      ["show-ref", "--verify", "--quiet", `refs/tags/${tag}`],
+      {
+        cwd,
+        stdio: "ignore",
+      },
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Pending targets remain in the manifest after publishing, so the tag set is
+ * the durable evidence that the pending release actually completed.
+ */
+export function hasFullyUntaggedPendingRelease(cwd = process.cwd()): boolean {
+  const pending = readPendingReleaseTargets(cwd);
+  if (pending.length === 0) {
+    return false;
+  }
+  const tagged = pending.filter((target) => hasLocalTag(cwd, target.tag));
+  if (tagged.length === 0) {
+    return true;
+  }
+  if (tagged.length === pending.length) {
+    return false;
+  }
+  const existingTags = tagged.map((target) => target.tag).join(", ");
+  const missingTags = pending
+    .filter((target) => !tagged.includes(target))
+    .map((target) => target.tag)
+    .join(", ");
+  throw new Error(
+    `Pending release is partially tagged and cannot move to a corrected commit safely. Existing tags: ${existingTags}. Missing tags: ${missingTags}. Rerun the original release workflow to complete it.`,
+  );
+}
+
 export function writeBaselineSha(
   cwd = process.cwd(),
   sha?: string,

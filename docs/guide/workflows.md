@@ -77,6 +77,13 @@ are safe:
 - if a previous run created/pushed the tag but failed before creating metadata,
   a rerun creates the missing metadata and proceeds
 
+If CI fails before Versionary reaches the publish job and a corrective commit
+must land on the base branch, Versionary preserves the untagged pending version.
+The next `run` recreates the release PR with an empty release-marker commit on
+top of the corrected base. It does not plan a later version—even when the
+corrective commit would ordinarily cause a semantic-version bump. After that PR
+merges and CI succeeds, Versionary publishes the original pending tags.
+
 Versionary **fails fast** when recovery would be unsafe—for example, when a
 local and a remote tag of the same name point to different commits. The error
 message includes remediation guidance so CI logs stay actionable.
