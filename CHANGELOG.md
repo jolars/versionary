@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.0](https://github.com/jolars/versionary/compare/v1.0.1...v1.1.0) (2026-08-28)
+
+### Features
+- expose ordered release targets ([`4c35593`](https://github.com/jolars/versionary/commit/4c3559311f0eb53918ac61bdc31cbf5f61c0260b))
+- add separate package release PRs ([`afd0310`](https://github.com/jolars/versionary/commit/afd03100d99e812fd353e7d90c374e6f7da62226))
+- add cmake version strategy ([`8441c03`](https://github.com/jolars/versionary/commit/8441c030e5ff15a7bc291031d1882d63478755c1))
+- **artifact-rules:** add expected match counts ([`6edddd1`](https://github.com/jolars/versionary/commit/6edddd1a2dee5603953d400b13996439eec64f77))
+
+### Bug Fixes
+- **release:** recover untagged pending releases ([`91928b7`](https://github.com/jolars/versionary/commit/91928b76918f3e2f57d5f442f398612cc4a09f6b))
+- **action:** ship stale-run guard ([`f139bd5`](https://github.com/jolars/versionary/commit/f139bd5a3f831678cc240ea12c1a5f16d72b8b85))
+- **ci:** refresh nixpkgs lock ([`4306b74`](https://github.com/jolars/versionary/commit/4306b74a137b2812711a624f6393d44eef907db7))
+
 ## [1.0.1](https://github.com/jolars/versionary/compare/v1.0.0...v1.0.1) (2026-08-12)
 
 ### Bug Fixes
