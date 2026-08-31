@@ -53,6 +53,10 @@ if (args[0] === "ls-remote") {
   process.stdout.write(process.env.TEST_REMOTE_SHA + "\\t" + args[2] + "\\n");
   process.exit(0);
 }
+if (args[0] === "show" && args[1] === "-s") {
+  process.stdout.write("feat: add a newer feature\\n");
+  process.exit(0);
+}
 process.stderr.write("Unexpected git invocation: " + args.join(" ") + "\\n");
 process.exit(2);
 `,
@@ -103,6 +107,115 @@ process.exit(91);
     expect(actionOutput).toContain("false");
     expect(actionOutput).toContain("release_targets<<");
     expect(actionOutput).toContain("[]");
+  });
+
+  it("publishes a stale release-marker push only while it remains on the branch", () => {
+    const cwd = makeTempDir("versionary-action-release-");
+    const binDir = path.join(cwd, "bin");
+    const outputPath = path.join(cwd, "github-output.txt");
+    fs.mkdirSync(binDir);
+
+    writeExecutable(
+      path.join(binDir, "git"),
+      `#!/usr/bin/env node
+const args = process.argv.slice(2);
+if (args[0] === "config") {
+  process.stdout.write("configured\\n");
+  process.exit(0);
+}
+if (args[0] === "remote" && args[1] === "get-url") {
+  process.stdout.write("https://github.com/jolars/libslope.git\\n");
+  process.exit(0);
+}
+if (args[0] === "remote" && args[1] === "set-url") {
+  process.exit(0);
+}
+if (args[0] === "ls-remote") {
+  process.stdout.write(process.env.TEST_REMOTE_SHA + "\\t" + args[2] + "\\n");
+  process.exit(0);
+}
+if (args[0] === "show" && args[1] === "-s") {
+  process.stdout.write("chore(release): v1.2.3\\n\\nVersionary-Release: true\\n");
+  process.exit(0);
+}
+if (args[0] === "merge-base" && args[1] === "--is-ancestor") {
+  process.exit(process.env.TEST_IS_ANCESTOR === "true" ? 0 : 1);
+}
+process.stderr.write("Unexpected git invocation: " + args.join(" ") + "\\n");
+process.exit(2);
+`,
+    );
+    writeExecutable(
+      path.join(binDir, "npx"),
+      `#!/usr/bin/env node
+process.stdout.write(JSON.stringify({
+  action: "release-published",
+  message: "Published v1.2.3.",
+  releaseCreated: true,
+  tagNames: ["v1.2.3"]
+}) + "\\n");
+`,
+    );
+
+    const testsDir = path.dirname(fileURLToPath(import.meta.url));
+    const repoRoot = path.resolve(testsDir, "..");
+    const actionEntrypoint = path.join(repoRoot, "action", "index.js");
+    const eventSha = "1111111111111111111111111111111111111111";
+    const remoteSha = "2222222222222222222222222222222222222222";
+    const stdout = execFileSync(process.execPath, [actionEntrypoint], {
+      cwd,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        PATH: `${binDir}${path.delimiter}${process.env.PATH ?? ""}`,
+        GITHUB_EVENT_NAME: "push",
+        GITHUB_OUTPUT: outputPath,
+        GITHUB_REF: "refs/heads/main",
+        GITHUB_REPOSITORY: "jolars/libslope",
+        GITHUB_SHA: eventSha,
+        INPUT_TOKEN: "test-token",
+        TEST_IS_ANCESTOR: "true",
+        TEST_REMOTE_SHA: remoteSha,
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+
+    expect(JSON.parse(stdout)).toMatchObject({
+      action: "release-published",
+      releaseCreated: true,
+      tagNames: ["v1.2.3"],
+    });
+
+    const actionOutput = fs.readFileSync(outputPath, "utf8");
+    expect(actionOutput).toContain("release_created<<");
+    expect(actionOutput).toContain("true");
+    expect(actionOutput).toContain("tag_name<<");
+    expect(actionOutput).toContain("v1.2.3");
+
+    const removedOutputPath = path.join(cwd, "removed-output.txt");
+    const removedStdout = execFileSync(process.execPath, [actionEntrypoint], {
+      cwd,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        PATH: `${binDir}${path.delimiter}${process.env.PATH ?? ""}`,
+        GITHUB_EVENT_NAME: "push",
+        GITHUB_OUTPUT: removedOutputPath,
+        GITHUB_REF: "refs/heads/main",
+        GITHUB_REPOSITORY: "jolars/libslope",
+        GITHUB_SHA: eventSha,
+        INPUT_TOKEN: "test-token",
+        TEST_IS_ANCESTOR: "false",
+        TEST_REMOTE_SHA: remoteSha,
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+
+    expect(JSON.parse(removedStdout)).toMatchObject({
+      action: "stale-run-skipped",
+      releaseCreated: false,
+      tagNames: [],
+    });
   });
 
   it("exports all package review requests while retaining primary outputs", () => {

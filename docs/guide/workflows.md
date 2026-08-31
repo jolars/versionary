@@ -75,6 +75,15 @@ In `direct` mode, steps 2–4 collapse: the release branch is prepared without a
 review request, and publishing follows once the release commit is on the branch
 you run against.
 
+The GitHub Action skips an outdated ordinary push run after the branch advances,
+which prevents an older run from overwriting release planning based on a newer
+commit. A commit with the explicit `Versionary-Release: true` marker is an
+exception: if it remains an ancestor of the current branch tip, its run may
+publish that exact commit. An unrelated commit can therefore land while the
+release checks are running without forcing a recovery PR. If the release commit
+is no longer on the branch—for example, after a force-push—the Action still
+skips it.
+
 ## Idempotency, retries, and recovery
 
 Publishing is **idempotent by target tag**, so reruns after a partial failure
