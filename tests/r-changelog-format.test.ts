@@ -98,7 +98,7 @@ describe("R changelog support", () => {
     };
 
     const rendered = renderReleasePlanChangelog(plan);
-    expect(rendered).toContain("# versionary 1.2");
+    expect(rendered).toContain("# versionary 1.2.0");
     expect(rendered).toContain("## Features");
     expect(rendered).toContain("## Bug fixes");
   });
@@ -134,7 +134,7 @@ describe("R changelog support", () => {
     const result = prepareReleasePr(cwd);
     expect(result.version).toBe("1.2.0");
     const news = fs.readFileSync(path.join(cwd, "NEWS.md"), "utf8");
-    expect(news).toContain("# versionary 1.2");
+    expect(news).toContain("# versionary 1.2.0");
     expect(news).toContain("## Features");
     expect(news).toContain("add exported helper");
   });
@@ -185,7 +185,7 @@ describe("R changelog support", () => {
     prepareReleasePr(cwd);
 
     const news = fs.readFileSync(path.join(cwd, "NEWS.md"), "utf8");
-    expect(news).toContain("# eulerr 7.0");
+    expect(news).toMatch(/^# eulerr 7\.0\.5$/mu);
     expect(news).not.toContain("# eulerr (development version)");
     expect(news).toContain("# eulerr 7.0.4");
   });

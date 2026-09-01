@@ -410,7 +410,6 @@ export function renderRNewsReleaseNotes(input: {
 }): string {
   const repoUrl = resolveRepositoryWebBaseUrl(input.cwd ?? process.cwd());
   const grouped = groupCommitLines(input.commits, repoUrl);
-  const normalizedVersion = input.nextVersion.replace(/\.\d+$/u, "");
   const sections: string[] = [];
   const trimmedHighlights = input.highlights?.trim() ?? "";
   if (trimmedHighlights.length > 0) {
@@ -439,7 +438,7 @@ export function renderRNewsReleaseNotes(input: {
   if (needsOtherChangesFallback(grouped, trimmedHighlights.length > 0, 0)) {
     sections.push("## Other changes", "", ...grouped.other, "");
   }
-  return [`# ${input.packageName} ${normalizedVersion}`, "", ...sections]
+  return [`# ${input.packageName} ${input.nextVersion}`, "", ...sections]
     .join("\n")
     .trimEnd();
 }

@@ -185,7 +185,7 @@ describe("review request body rendering", () => {
     // r-news: version heading is h1, subsections (manual highlights and
     // auto-generated groups alike) are h2. The manual "## Highlights" must not
     // land at a higher level than "## Features".
-    expect(body).toContain("# mypkg 1.3");
+    expect(body).toContain("# mypkg 1.3.0");
     expect(body).toContain("## Highlights");
     expect(body).toContain("## Features");
     expect(body).not.toContain("### Features");
