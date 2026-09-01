@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.0](https://github.com/jolars/versionary/compare/v1.1.0...v1.2.0) (2026-09-01)
+
+### Features
+- **r:** display full x.y.z versions ([`1dbb957`](https://github.com/jolars/versionary/commit/1dbb957ba77a0c92ed0d1c22d850808ae7b816a1))
+
+### Bug Fixes
+- **action:** publish stale release commits ([`4c8ac29`](https://github.com/jolars/versionary/commit/4c8ac291bfe21aea5c355f465449ddd99acb87e0))
+
 ## [1.1.0](https://github.com/jolars/versionary/compare/v1.0.1...v1.1.0) (2026-08-28)
 
 ### Features
