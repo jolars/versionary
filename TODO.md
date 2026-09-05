@@ -22,6 +22,10 @@ workflows.
       incorrect bumps.
 - [x] Add first-class pre-1.0.0 behavior controls (including conventional-commit
       expectations).
+- [ ] Wire `bump-minor-pre-major` into release planning, document its interaction
+      with `allow-stable-major`, and test both enabled and disabled behavior.
+- [ ] Wire `include-commit-authors` into Git commit ingestion and changelog
+      rendering, including identity fallbacks when no SCM login is available.
 - [x] Add tests for edge-case commit parsing across scopes, breaking markers,
       and multi-line bodies.
 
