@@ -67,12 +67,26 @@ const packageSchema = z
     "package-name": z.string().optional(),
     "changelog-file": z.string().optional(),
     "changelog-format": z.enum(["markdown-changelog", "r-news"]).optional(),
+    "bump-minor-pre-major": z.boolean().optional(),
     "allow-stable-major": z.boolean().optional(),
     "exclude-paths": z.array(z.string()).optional(),
     "extra-files": z.array(artifactRuleSchema).optional(),
     follows: z.array(z.string().min(1)).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, ctx) => {
+    if (
+      value["bump-minor-pre-major"] !== undefined &&
+      value["allow-stable-major"] !== undefined
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          '"bump-minor-pre-major" and "allow-stable-major" are inverse aliases; configure only one.',
+        path: ["bump-minor-pre-major"],
+      });
+    }
+  });
 
 export const configSchema = z
   .object({
@@ -102,6 +116,17 @@ export const configSchema = z
   })
   .strict()
   .superRefine((value, ctx) => {
+    if (
+      value["bump-minor-pre-major"] !== undefined &&
+      value["allow-stable-major"] !== undefined
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          '"bump-minor-pre-major" and "allow-stable-major" are inverse aliases; configure only one.',
+        path: ["bump-minor-pre-major"],
+      });
+    }
     const packages = value.packages;
     if (value["separate-release-prs"]) {
       if (!packages || Object.keys(packages).length === 0) {

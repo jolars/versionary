@@ -38,10 +38,14 @@ is the single source of truth for the config shape.
 | `release-reference-comments` | `"off"` \| `"best-effort"` \| `"strict"` | `"off"` | Whether to comment on linked issues/PRs when released. See below. |
 | `monorepo-mode`              | `"independent"` \| `"fixed"` | —                 | Enables [monorepo](/guide/monorepos) planning. |
 | `packages`                   | object                | —                        | Per-package configuration (see [packages](#packages)). |
-| `allow-stable-major`         | boolean               | `false`                  | Allow a breaking change on `0.y.z` to bump to `1.0.0`. See [pre-1.0 policy](/guide/versioning#pre-1-0-policy). |
+| `allow-stable-major`         | boolean               | `false`                  | Inverse alias for `bump-minor-pre-major`; set to `true` to allow a breaking `0.y.z` release to become `1.0.0`. |
 | `exclude-paths`              | string[]              | —                        | Glob/path prefixes whose changes don't, on their own, count toward a bump. Applies repo-wide and to every package. |
-| `bump-minor-pre-major`       | boolean               | —                        | Accepted by the schema; not yet wired into release logic. Use `allow-stable-major` for pre-1.0 control. |
+| `bump-minor-pre-major`       | boolean               | `true`                   | Keep breaking releases below `1.0.0` by bumping the minor version. See [pre-1.0 policy](/guide/versioning#pre-1-0-policy). |
 | `include-commit-authors`     | boolean               | —                        | Accepted by the schema; not yet wired into changelog rendering. |
+
+`bump-minor-pre-major` and `allow-stable-major` are inverse aliases. Configure
+only one in the same object; Versionary rejects ambiguous configurations that
+contain both.
 
 ### `release-reference-comments`
 
@@ -75,16 +79,17 @@ See [Strategies](/reference/strategies) for the full behavior of each.
 A map keyed by package path (`"."` for the repository root). Used with
 `monorepo-mode`. Each entry inherits the top-level config and may override:
 
-| Key                  | Type               | Description |
-| -------------------- | ------------------ | ----------- |
-| `release-type`       | string \| string[] | Strategy for this package, overriding the top-level value. |
-| `package-name`       | string             | Override the release/tag name (otherwise derived from the version file or path). |
-| `changelog-file`     | string             | Package-specific changelog path (written under the package directory). |
-| `changelog-format`   | `"markdown-changelog"` \| `"r-news"` | Package-specific changelog format. |
-| `allow-stable-major` | boolean            | Override the pre-1.0 policy for this package's own bump. |
-| `exclude-paths`      | string[]           | Paths (relative to the package) to exclude; unioned with the top-level list. |
-| `follows`            | string[]           | Source packages this package follows; see [follows](/guide/monorepos#follows). |
-| `extra-files`        | artifact-rule[]    | Additional files to update with the new version (see below). |
+| Key                     | Type                                      | Description |
+| ----------------------- | ----------------------------------------- | ----------- |
+| `release-type`          | string \| string[]                        | Strategy for this package, overriding the top-level value. |
+| `package-name`          | string                                    | Override the release/tag name (otherwise derived from the version file or path). |
+| `changelog-file`        | string                                    | Package-specific changelog path (written under the package directory). |
+| `changelog-format`      | `"markdown-changelog"` \| `"r-news"`    | Package-specific changelog format. |
+| `bump-minor-pre-major`  | boolean                                   | Override the pre-1.0 policy for this package's own bump. |
+| `allow-stable-major`    | boolean                                   | Inverse alias for the package's `bump-minor-pre-major` policy. |
+| `exclude-paths`         | string[]                                  | Paths (relative to the package) to exclude; unioned with the top-level list. |
+| `follows`               | string[]                                  | Source packages this package follows; see [follows](/guide/monorepos#follows). |
+| `extra-files`           | artifact-rule[]                           | Additional files to update with the new version (see below). |
 
 See the [monorepos guide](/guide/monorepos) for tag naming, `follows`, and
 filtering semantics.

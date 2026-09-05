@@ -22,7 +22,7 @@ export interface ParsedVersion {
 }
 
 export interface BumpVersionOptions {
-  allowStableMajor?: boolean;
+  bumpMinorPreMajor?: boolean;
 }
 
 const SEMVER_PATTERN =
@@ -180,13 +180,10 @@ export function bumpVersion(
   options: BumpVersionOptions = {},
 ): string {
   const parsed = parseVersion(current);
-  const allowStableMajor = options.allowStableMajor ?? false;
+  const bumpMinorPreMajor = options.bumpMinorPreMajor ?? true;
   if (releaseType === "major") {
-    if (parsed.major === 0 && !allowStableMajor) {
+    if (parsed.major === 0 && bumpMinorPreMajor) {
       return `0.${parsed.minor + 1}.0`;
-    }
-    if (parsed.major === 0 && allowStableMajor) {
-      return "1.0.0";
     }
     return `${parsed.major + 1}.0.0`;
   }

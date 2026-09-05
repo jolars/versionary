@@ -29,11 +29,12 @@ The breaking check is evaluated first, so a `feat!:` or a `fix:` with a
 
 Given the current version and the resolved bump:
 
-| Current     | `patch`   | `minor`   | `major`            |
-| ----------- | --------- | --------- | ------------------ |
-| `1.4.2`     | `1.4.3`   | `1.5.0`   | `2.0.0`            |
-| `0.7.3` (default) | `0.7.4` | `0.8.0` | `0.8.0`          |
-| `0.7.3` (with `allow-stable-major`) | `0.7.4` | `0.8.0` | `1.0.0` |
+| Current                                     | `patch` | `minor` | `major` |
+| ------------------------------------------- | ------- | ------- | ------- |
+| `1.4.2`                                     | `1.4.3` | `1.5.0` | `2.0.0` |
+| `0.7.3` (default)                           | `0.7.4` | `0.8.0` | `0.8.0` |
+| `0.7.3` (`bump-minor-pre-major: false`)     | `0.7.4` | `0.8.0` | `1.0.0` |
+| `0.7.3` (`allow-stable-major: true`)        | `0.7.4` | `0.8.0` | `1.0.0` |
 
 ### Pre-1.0 policy
 
@@ -43,10 +44,14 @@ Versionary is conservative by default:
 - a **breaking** change bumps the **minor** (`0.y.z` → `0.(y+1).0`) instead of
   going to `1.0.0`.
 
-To opt into the stable transition, set
-[`allow-stable-major`](/reference/configuration#allow-stable-major) to `true`.
-Then a breaking change on a `0.y.z` version produces `1.0.0`. This can also be
-set [per package](/reference/configuration#packages) in a monorepo.
+`bump-minor-pre-major` expresses this policy directly and defaults to `true`.
+Set it to `false` when a breaking change on `0.y.z` should produce `1.0.0`.
+`allow-stable-major` is the inverse alias: `true` produces `1.0.0`, while
+`false` retains the default minor bump.
+
+Configure only one alias in the same object. In a monorepo, either alias may be
+set [per package](/reference/configuration#packages); a package-level setting
+overrides the complete top-level policy, even when it uses the other alias.
 
 > Once a project is at `1.0.0` or above, breaking changes bump the major as
 > usual.

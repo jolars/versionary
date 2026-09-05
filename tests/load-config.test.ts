@@ -65,7 +65,6 @@ describe("config loading", () => {
         version: 1,
         "bootstrap-sha": "abc123",
         "bump-minor-pre-major": true,
-        "allow-stable-major": true,
         "include-commit-authors": true,
         "release-type": "node",
         "changelog-format": "markdown-changelog",
@@ -78,12 +77,45 @@ describe("config loading", () => {
     const loaded = loadConfig(dir);
     expect(loaded.config["bootstrap-sha"]).toBe("abc123");
     expect(loaded.config["bump-minor-pre-major"]).toBe(true);
-    expect(loaded.config["allow-stable-major"]).toBe(true);
     expect(loaded.config["include-commit-authors"]).toBe(true);
     expect(loaded.config["release-type"]).toBe("node");
     expect(loaded.config["changelog-format"]).toBe("markdown-changelog");
     expect(loaded.config["release-draft"]).toBe(true);
     expect(loaded.config["release-reference-comments"]).toBe("strict");
+  });
+
+  it.each([
+    {
+      name: "the repository root",
+      config: {
+        version: 1,
+        "bump-minor-pre-major": true,
+        "allow-stable-major": false,
+      },
+    },
+    {
+      name: "a package",
+      config: {
+        version: 1,
+        packages: {
+          "packages/a": {
+            "bump-minor-pre-major": true,
+            "allow-stable-major": false,
+          },
+        },
+      },
+    },
+  ])("rejects both pre-major aliases at $name", ({ config }) => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify(config),
+      "utf8",
+    );
+
+    expect(() => loadConfig(dir)).toThrow(
+      /bump-minor-pre-major.*allow-stable-major.*only one/i,
+    );
   });
 
   it("loads manifest-style packages object", () => {

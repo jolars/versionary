@@ -82,7 +82,7 @@ describe("simple monorepo planning", () => {
     expect(packageB?.nextVersion).toBe("1.0.1");
   });
 
-  it("honors per-package allow-stable-major override on breaking bumps", () => {
+  it("lets a package pre-major policy override the root across aliases", () => {
     const cwd = makeTempDir();
     git(cwd, "init");
     git(cwd, "config", "user.name", "Test User");
@@ -95,9 +95,10 @@ describe("simple monorepo planning", () => {
       JSON.stringify({
         version: 1,
         "monorepo-mode": "independent",
+        "allow-stable-major": true,
         packages: {
           "packages/a": {
-            "allow-stable-major": true,
+            "bump-minor-pre-major": true,
           },
           "packages/b": {},
         },
@@ -121,9 +122,9 @@ describe("simple monorepo planning", () => {
     const packageA = plan.packages?.find((pkg) => pkg.path === "packages/a");
     const packageB = plan.packages?.find((pkg) => pkg.path === "packages/b");
     expect(packageA?.releaseType).toBe("major");
-    expect(packageA?.nextVersion).toBe("1.0.0");
+    expect(packageA?.nextVersion).toBe("0.2.0");
     expect(packageB?.releaseType).toBe("major");
-    expect(packageB?.nextVersion).toBe("0.2.0");
+    expect(packageB?.nextVersion).toBe("1.0.0");
   });
 
   it("uses one shared bump in fixed monorepo mode", () => {
@@ -166,6 +167,46 @@ describe("simple monorepo planning", () => {
       true,
     );
     expect(plan.packages?.every((pkg) => pkg.nextVersion === "2.1.0")).toBe(
+      true,
+    );
+  });
+
+  it("uses only the root pre-major policy in fixed mode", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+
+    write(cwd, "version.txt", "0.4.2\n");
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "monorepo-mode": "fixed",
+        "bump-minor-pre-major": false,
+        packages: {
+          "packages/a": {
+            "bump-minor-pre-major": true,
+          },
+          "packages/b": {},
+        },
+      }),
+    );
+    write(cwd, "packages/a/index.ts", "export const a = 1;\n");
+    write(cwd, "packages/b/index.ts", "export const b = 1;\n");
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    git(cwd, "tag", "v0.4.2");
+
+    write(cwd, "packages/a/index.ts", "export const a = 2;\n");
+    git(cwd, "add", "packages/a/index.ts");
+    git(cwd, "commit", "-m", "feat!: break package a");
+
+    const plan = createReleasePlan(cwd);
+    expect(plan.releaseType).toBe("major");
+    expect(plan.nextVersion).toBe("1.0.0");
+    expect(plan.packages?.every((pkg) => pkg.nextVersion === "1.0.0")).toBe(
       true,
     );
   });
@@ -374,7 +415,7 @@ describe("simple monorepo planning", () => {
     expect(plan.commits[0]?.subject).toBe("fix: second release commit");
   });
 
-  it("uses pre-1 major policy and allows explicit 1.0 opt-in", () => {
+  it("supports both pre-major policy aliases", () => {
     const cwd = makeTempDir();
     git(cwd, "init");
     git(cwd, "config", "user.name", "Test User");
@@ -406,12 +447,40 @@ describe("simple monorepo planning", () => {
       "versionary.jsonc",
       JSON.stringify({
         version: 1,
+        "bump-minor-pre-major": false,
+      }),
+    );
+    expect(createReleasePlan(cwd).nextVersion).toBe("1.0.0");
+
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "bump-minor-pre-major": true,
+      }),
+    );
+    expect(createReleasePlan(cwd).nextVersion).toBe("0.5.0");
+
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
         "allow-stable-major": true,
       }),
     );
-    const optedInPlan = createReleasePlan(cwd);
-    expect(optedInPlan.releaseType).toBe("major");
-    expect(optedInPlan.nextVersion).toBe("1.0.0");
+    expect(createReleasePlan(cwd).nextVersion).toBe("1.0.0");
+
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "allow-stable-major": false,
+      }),
+    );
+    expect(createReleasePlan(cwd).nextVersion).toBe("0.5.0");
   });
 
   it("respects package exclude-paths when collecting commits", () => {

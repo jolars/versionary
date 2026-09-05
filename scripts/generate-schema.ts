@@ -50,6 +50,14 @@ const artifactRuleItems = {
   ],
 } as const;
 
+const preMajorAliasConstraint = {
+  // Zod validates this through `.superRefine()`, which does not survive JSON
+  // Schema generation. Preserve the same ambiguity check for editors.
+  not: {
+    required: ["bump-minor-pre-major", "allow-stable-major"],
+  },
+} as const;
+
 /**
  * Build the JSON Schema for `versionary.jsonc`/`versionary.json` from the
  * authoritative Zod schema, patching in the constraints Zod cannot express.
@@ -60,9 +68,11 @@ export function buildConfigSchema(): Record<string, unknown> {
     target: "draft-2020-12",
   }) as Record<string, unknown> & {
     $schema?: string;
+    allOf?: unknown[];
     properties: {
       packages: {
         additionalProperties: {
+          allOf?: unknown[];
           properties: { "extra-files": { items: unknown } };
         };
       };
@@ -72,6 +82,12 @@ export function buildConfigSchema(): Record<string, unknown> {
   generated.properties.packages.additionalProperties.properties[
     "extra-files"
   ].items = artifactRuleItems;
+  generated.allOf = [...(generated.allOf ?? []), preMajorAliasConstraint];
+  const packageProperties = generated.properties.packages.additionalProperties;
+  packageProperties.allOf = [
+    ...(packageProperties.allOf ?? []),
+    preMajorAliasConstraint,
+  ];
 
   const { $schema, ...rest } = generated;
   return {

@@ -114,6 +114,9 @@
             "type": "string",
             "enum": ["markdown-changelog", "r-news"]
           },
+          "bump-minor-pre-major": {
+            "type": "boolean"
+          },
           "allow-stable-major": {
             "type": "boolean"
           },
@@ -181,10 +184,24 @@
             }
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "not": {
+              "required": ["bump-minor-pre-major", "allow-stable-major"]
+            }
+          }
+        ]
       }
     }
   },
   "required": ["version"],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "not": {
+        "required": ["bump-minor-pre-major", "allow-stable-major"]
+      }
+    }
+  ]
 }

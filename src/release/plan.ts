@@ -59,6 +59,25 @@ function getMode(
   return configMode ?? "independent";
 }
 
+function resolveBumpMinorPreMajor(
+  config: VersionaryConfig,
+  packageConfig?: VersionaryPackage,
+): boolean {
+  if (packageConfig?.["bump-minor-pre-major"] !== undefined) {
+    return packageConfig["bump-minor-pre-major"];
+  }
+  if (packageConfig?.["allow-stable-major"] !== undefined) {
+    return !packageConfig["allow-stable-major"];
+  }
+  if (config["bump-minor-pre-major"] !== undefined) {
+    return config["bump-minor-pre-major"];
+  }
+  if (config["allow-stable-major"] !== undefined) {
+    return !config["allow-stable-major"];
+  }
+  return true;
+}
+
 export function getChangelogDefaults(config: {
   "release-type"?: VersionaryConfig["release-type"];
   "changelog-file"?: VersionaryConfig["changelog-file"];
@@ -121,10 +140,12 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
   const releaseTargetByPath = new Map(
     readReleaseTargets(cwd).map((target) => [target.path, target]),
   );
-  const allowStableMajor = loaded.config["allow-stable-major"] ?? false;
-  const allowStableMajorForPath = (packagePath: string): boolean =>
-    loaded.config.packages?.[packagePath]?.["allow-stable-major"] ??
-    allowStableMajor;
+  const bumpMinorPreMajor = resolveBumpMinorPreMajor(loaded.config);
+  const bumpMinorPreMajorForPath = (packagePath: string): boolean =>
+    resolveBumpMinorPreMajor(
+      loaded.config,
+      loaded.config.packages?.[packagePath],
+    );
   const monorepoMode = getMode(loaded.config["monorepo-mode"]);
 
   const buildPackagePlan = (pkg: {
@@ -195,7 +216,7 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
       releaseType = analyzedType;
       nextVersion = releaseType
         ? bumpVersion(packageCurrentVersion, releaseType, {
-            allowStableMajor: allowStableMajorForPath(pkg.path),
+            bumpMinorPreMajor: bumpMinorPreMajorForPath(pkg.path),
           })
         : null;
       bumpReason = nextVersion ? "direct" : undefined;
@@ -289,7 +310,7 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
       packageCurrentVersionByPath[target.path] ?? target.currentVersion;
     target.releaseType = "patch";
     target.nextVersion = bumpVersion(current, "patch", {
-      allowStableMajor: allowStableMajorForPath(target.path),
+      bumpMinorPreMajor: bumpMinorPreMajorForPath(target.path),
     });
     target.bumpReason = reason;
     const strategyContext = strategyContextByPath.get(target.path);
@@ -329,7 +350,7 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
         packageCurrentVersionByPath[sourcePath] ??
           strategyContext.currentVersion,
         "patch",
-        { allowStableMajor: allowStableMajorForPath(sourcePath) },
+        { bumpMinorPreMajor: bumpMinorPreMajorForPath(sourcePath) },
       );
     return strategyGroup.strategy.propagateDependentPatchImpacts(
       cwd,
@@ -546,7 +567,7 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
       packageCurrentVersionByPath[pkgPlan.path] ?? pkgPlan.currentVersion;
     const nextVersion = combinedReleaseType
       ? bumpVersion(baseVersion, combinedReleaseType, {
-          allowStableMajor: allowStableMajorForPath(pkgPlan.path),
+          bumpMinorPreMajor: bumpMinorPreMajorForPath(pkgPlan.path),
         })
       : null;
     return {
@@ -600,7 +621,9 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
     const fixedNextVersion = rootOverridden
       ? rootPackagePlan.nextVersion
       : analyzedFixedType
-        ? bumpVersion(fixedBaseVersion, analyzedFixedType, { allowStableMajor })
+        ? bumpVersion(fixedBaseVersion, analyzedFixedType, {
+            bumpMinorPreMajor,
+          })
         : null;
     // Fixed mode can promote unchanged dependencies into the release, so the
     // final shared version set must drive dependency attribution.
@@ -642,7 +665,7 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
     ? rootPackagePlan.nextVersion
     : analyzedOverallType
       ? bumpVersion(overallBaseVersion, analyzedOverallType, {
-          allowStableMajor,
+          bumpMinorPreMajor,
         })
       : null;
 
