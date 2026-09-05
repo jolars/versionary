@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.3.0](https://github.com/jolars/versionary/compare/v1.2.0...v1.3.0) (2026-09-05)
+
+### Features
+- wire pre-major bump policy ([`0ff9871`](https://github.com/jolars/versionary/commit/0ff98713649d01d107f575566ba4bcdde9a972df))
+
 ## [1.2.0](https://github.com/jolars/versionary/compare/v1.1.0...v1.2.0) (2026-09-01)
 
 ### Features
