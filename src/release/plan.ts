@@ -59,23 +59,14 @@ function getMode(
   return configMode ?? "independent";
 }
 
-function resolveBumpMinorPreMajor(
+function resolveAllowStableMajor(
   config: VersionaryConfig,
   packageConfig?: VersionaryPackage,
 ): boolean {
-  if (packageConfig?.["bump-minor-pre-major"] !== undefined) {
-    return packageConfig["bump-minor-pre-major"];
-  }
   if (packageConfig?.["allow-stable-major"] !== undefined) {
-    return !packageConfig["allow-stable-major"];
+    return packageConfig["allow-stable-major"];
   }
-  if (config["bump-minor-pre-major"] !== undefined) {
-    return config["bump-minor-pre-major"];
-  }
-  if (config["allow-stable-major"] !== undefined) {
-    return !config["allow-stable-major"];
-  }
-  return true;
+  return config["allow-stable-major"] ?? false;
 }
 
 export function getChangelogDefaults(config: {
@@ -140,9 +131,9 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
   const releaseTargetByPath = new Map(
     readReleaseTargets(cwd).map((target) => [target.path, target]),
   );
-  const bumpMinorPreMajor = resolveBumpMinorPreMajor(loaded.config);
-  const bumpMinorPreMajorForPath = (packagePath: string): boolean =>
-    resolveBumpMinorPreMajor(
+  const allowStableMajor = resolveAllowStableMajor(loaded.config);
+  const allowStableMajorForPath = (packagePath: string): boolean =>
+    resolveAllowStableMajor(
       loaded.config,
       loaded.config.packages?.[packagePath],
     );
@@ -216,7 +207,7 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
       releaseType = analyzedType;
       nextVersion = releaseType
         ? bumpVersion(packageCurrentVersion, releaseType, {
-            bumpMinorPreMajor: bumpMinorPreMajorForPath(pkg.path),
+            allowStableMajor: allowStableMajorForPath(pkg.path),
           })
         : null;
       bumpReason = nextVersion ? "direct" : undefined;
@@ -310,7 +301,7 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
       packageCurrentVersionByPath[target.path] ?? target.currentVersion;
     target.releaseType = "patch";
     target.nextVersion = bumpVersion(current, "patch", {
-      bumpMinorPreMajor: bumpMinorPreMajorForPath(target.path),
+      allowStableMajor: allowStableMajorForPath(target.path),
     });
     target.bumpReason = reason;
     const strategyContext = strategyContextByPath.get(target.path);
@@ -350,7 +341,7 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
         packageCurrentVersionByPath[sourcePath] ??
           strategyContext.currentVersion,
         "patch",
-        { bumpMinorPreMajor: bumpMinorPreMajorForPath(sourcePath) },
+        { allowStableMajor: allowStableMajorForPath(sourcePath) },
       );
     return strategyGroup.strategy.propagateDependentPatchImpacts(
       cwd,
@@ -567,7 +558,7 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
       packageCurrentVersionByPath[pkgPlan.path] ?? pkgPlan.currentVersion;
     const nextVersion = combinedReleaseType
       ? bumpVersion(baseVersion, combinedReleaseType, {
-          bumpMinorPreMajor: bumpMinorPreMajorForPath(pkgPlan.path),
+          allowStableMajor: allowStableMajorForPath(pkgPlan.path),
         })
       : null;
     return {
@@ -622,7 +613,7 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
       ? rootPackagePlan.nextVersion
       : analyzedFixedType
         ? bumpVersion(fixedBaseVersion, analyzedFixedType, {
-            bumpMinorPreMajor,
+            allowStableMajor,
           })
         : null;
     // Fixed mode can promote unchanged dependencies into the release, so the
@@ -665,7 +656,7 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
     ? rootPackagePlan.nextVersion
     : analyzedOverallType
       ? bumpVersion(overallBaseVersion, analyzedOverallType, {
-          bumpMinorPreMajor,
+          allowStableMajor,
         })
       : null;
 

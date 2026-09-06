@@ -49,6 +49,8 @@
       "enum": ["independent", "fixed"]
     },
     "bump-minor-pre-major": {
+      "deprecated": true,
+      "description": "Deprecated. Use \"allow-stable-major\" with the inverse value instead.",
       "type": "boolean"
     },
     "allow-stable-major": {
@@ -115,6 +117,8 @@
             "enum": ["markdown-changelog", "r-news"]
           },
           "bump-minor-pre-major": {
+            "deprecated": true,
+            "description": "Deprecated. Use \"allow-stable-major\" with the inverse value instead.",
             "type": "boolean"
           },
           "allow-stable-major": {

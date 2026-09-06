@@ -10,12 +10,14 @@ import type {
   LoadedConfig,
   VersionaryConfig,
 } from "../types/config.js";
-import { configSchema } from "./schema.js";
+import { type ConfigSchema, configSchema } from "./schema.js";
 
 const SUPPORTED_FILES: Array<{ file: string; format: ConfigFileFormat }> = [
   { file: "versionary.jsonc", format: "jsonc" },
   { file: "versionary.json", format: "json" },
 ];
+
+const warnedDeprecatedConfigPaths = new Set<string>();
 
 function parseConfig(raw: string, format: ConfigFileFormat): unknown {
   if (format === "json" || format === "jsonc") {
@@ -29,6 +31,60 @@ function parseConfig(raw: string, format: ConfigFileFormat): unknown {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function normalizeConfig(config: ConfigSchema): {
+  config: VersionaryConfig;
+  usedDeprecatedPreMajorKey: boolean;
+} {
+  const {
+    "bump-minor-pre-major": rootBumpMinorPreMajor,
+    packages,
+    ...rootConfig
+  } = config;
+  let usedDeprecatedPreMajorKey = rootBumpMinorPreMajor !== undefined;
+  const normalizedPackages = packages
+    ? Object.fromEntries(
+        Object.entries(packages).map(([packagePath, packageConfig]) => {
+          const {
+            "bump-minor-pre-major": packageBumpMinorPreMajor,
+            ...canonicalPackageConfig
+          } = packageConfig;
+          usedDeprecatedPreMajorKey ||= packageBumpMinorPreMajor !== undefined;
+          return [
+            packagePath,
+            {
+              ...canonicalPackageConfig,
+              ...(packageBumpMinorPreMajor === undefined
+                ? {}
+                : { "allow-stable-major": !packageBumpMinorPreMajor }),
+            },
+          ];
+        }),
+      )
+    : undefined;
+
+  return {
+    config: {
+      ...rootConfig,
+      ...(rootBumpMinorPreMajor === undefined
+        ? {}
+        : { "allow-stable-major": !rootBumpMinorPreMajor }),
+      ...(normalizedPackages ? { packages: normalizedPackages } : {}),
+    },
+    usedDeprecatedPreMajorKey,
+  };
+}
+
+function warnForDeprecatedConfig(path: string): void {
+  // Release commands can load the same configuration in several stages.
+  if (warnedDeprecatedConfigPaths.has(path)) {
+    return;
+  }
+  warnedDeprecatedConfigPaths.add(path);
+  console.warn(
+    'Warning: "bump-minor-pre-major" is deprecated; use "allow-stable-major" with the inverse value instead.',
+  );
 }
 
 function validateReleaseTypes(config: VersionaryConfig): void {
@@ -96,12 +152,16 @@ export function loadConfig(cwd = process.cwd()): LoadedConfig {
       'The "plugins" config key is no longer supported. Versionary uses built-in integrations only.',
     );
   }
-  const validated = configSchema.parse(parsed) as VersionaryConfig;
-  validateReleaseTypes(validated);
+  const validated = configSchema.parse(parsed);
+  const normalized = normalizeConfig(validated);
+  if (normalized.usedDeprecatedPreMajorKey) {
+    warnForDeprecatedConfig(found.path);
+  }
+  validateReleaseTypes(normalized.config);
 
   return {
     path: found.path,
     format: found.format,
-    config: validated,
+    config: normalized.config,
   };
 }

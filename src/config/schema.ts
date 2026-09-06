@@ -59,6 +59,12 @@ const artifactRuleSchema = z
     }
   });
 
+const deprecatedBumpMinorPreMajorSchema = z.boolean().optional().meta({
+  deprecated: true,
+  description:
+    'Deprecated. Use "allow-stable-major" with the inverse value instead.',
+});
+
 const packageSchema = z
   .object({
     "release-type": z
@@ -67,7 +73,7 @@ const packageSchema = z
     "package-name": z.string().optional(),
     "changelog-file": z.string().optional(),
     "changelog-format": z.enum(["markdown-changelog", "r-news"]).optional(),
-    "bump-minor-pre-major": z.boolean().optional(),
+    "bump-minor-pre-major": deprecatedBumpMinorPreMajorSchema,
     "allow-stable-major": z.boolean().optional(),
     "exclude-paths": z.array(z.string()).optional(),
     "extra-files": z.array(artifactRuleSchema).optional(),
@@ -105,7 +111,7 @@ export const configSchema = z
     "baseline-file": z.string().optional(),
     "bootstrap-sha": z.string().optional(),
     "monorepo-mode": z.enum(["independent", "fixed"]).optional(),
-    "bump-minor-pre-major": z.boolean().optional(),
+    "bump-minor-pre-major": deprecatedBumpMinorPreMajorSchema,
     "allow-stable-major": z.boolean().optional(),
     "include-commit-authors": z.boolean().optional(),
     "exclude-paths": z.array(z.string()).optional(),

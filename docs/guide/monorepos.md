@@ -191,11 +191,11 @@ subpackage's directory (see `"."` excluding `editors` above).
 
 ## Per-package version policy
 
-`bump-minor-pre-major` or its inverse alias, `allow-stable-major`, can be set
-per package to override the top-level [pre-1.0
-policy](./versioning#pre-1-0-policy) for that package's own bump. A local
-setting overrides the complete inherited policy, even when it uses the other
-alias. Configure only one alias in each object.
+`allow-stable-major` can be set per package to override the top-level
+[pre-1.0 policy](./versioning#pre-1-0-policy) for that package's own bump. A
+local setting overrides the inherited policy. The deprecated
+`bump-minor-pre-major` key remains available as an input alias for
+compatibility.
 
 In `fixed` mode, the single shared version is governed only by the top-level
 pre-1.0 policy; package-level settings do not change the shared version.

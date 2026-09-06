@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { findConfigFile, loadConfig } from "../src/config/load-config.js";
 
 const tempDirs: string[] = [];
@@ -13,6 +13,7 @@ function makeTempDir(): string {
 }
 
 afterEach(() => {
+  vi.restoreAllMocks();
   while (tempDirs.length > 0) {
     const dir = tempDirs.pop();
     if (dir) {
@@ -64,7 +65,7 @@ describe("config loading", () => {
       JSON.stringify({
         version: 1,
         "bootstrap-sha": "abc123",
-        "bump-minor-pre-major": true,
+        "allow-stable-major": false,
         "include-commit-authors": true,
         "release-type": "node",
         "changelog-format": "markdown-changelog",
@@ -76,12 +77,48 @@ describe("config loading", () => {
 
     const loaded = loadConfig(dir);
     expect(loaded.config["bootstrap-sha"]).toBe("abc123");
-    expect(loaded.config["bump-minor-pre-major"]).toBe(true);
+    expect(loaded.config["allow-stable-major"]).toBe(false);
     expect(loaded.config["include-commit-authors"]).toBe(true);
     expect(loaded.config["release-type"]).toBe("node");
     expect(loaded.config["changelog-format"]).toBe("markdown-changelog");
     expect(loaded.config["release-draft"]).toBe(true);
     expect(loaded.config["release-reference-comments"]).toBe("strict");
+  });
+
+  it("normalizes and warns once for the deprecated pre-major key", () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        "bump-minor-pre-major": false,
+        packages: {
+          "packages/a": {
+            "bump-minor-pre-major": true,
+          },
+        },
+      }),
+      "utf8",
+    );
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    const loaded = loadConfig(dir);
+    loadConfig(dir);
+
+    expect(loaded.config).not.toHaveProperty("bump-minor-pre-major");
+    expect(loaded.config["allow-stable-major"]).toBe(true);
+    expect(loaded.config.packages?.["packages/a"]).not.toHaveProperty(
+      "bump-minor-pre-major",
+    );
+    expect(loaded.config.packages?.["packages/a"]?.["allow-stable-major"]).toBe(
+      false,
+    );
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /bump-minor-pre-major.*deprecated.*allow-stable-major/i,
+      ),
+    );
   });
 
   it.each([

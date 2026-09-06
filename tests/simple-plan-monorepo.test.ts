@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createReleasePlan } from "../src/release/plan.js";
 
 const tempDirs: string[] = [];
@@ -30,6 +30,7 @@ function write(cwd: string, relative: string, content: string): void {
 }
 
 afterEach(() => {
+  vi.restoreAllMocks();
   while (tempDirs.length > 0) {
     const dir = tempDirs.pop();
     if (dir) {
@@ -82,7 +83,7 @@ describe("simple monorepo planning", () => {
     expect(packageB?.nextVersion).toBe("1.0.1");
   });
 
-  it("lets a package pre-major policy override the root across aliases", () => {
+  it("lets a package pre-major policy override the root", () => {
     const cwd = makeTempDir();
     git(cwd, "init");
     git(cwd, "config", "user.name", "Test User");
@@ -98,7 +99,7 @@ describe("simple monorepo planning", () => {
         "allow-stable-major": true,
         packages: {
           "packages/a": {
-            "bump-minor-pre-major": true,
+            "allow-stable-major": false,
           },
           "packages/b": {},
         },
@@ -184,10 +185,10 @@ describe("simple monorepo planning", () => {
       JSON.stringify({
         version: 1,
         "monorepo-mode": "fixed",
-        "bump-minor-pre-major": false,
+        "allow-stable-major": true,
         packages: {
           "packages/a": {
-            "bump-minor-pre-major": true,
+            "allow-stable-major": false,
           },
           "packages/b": {},
         },
@@ -415,7 +416,7 @@ describe("simple monorepo planning", () => {
     expect(plan.commits[0]?.subject).toBe("fix: second release commit");
   });
 
-  it("supports both pre-major policy aliases", () => {
+  it("supports the pre-major policy and its deprecated alias", () => {
     const cwd = makeTempDir();
     git(cwd, "init");
     git(cwd, "config", "user.name", "Test User");
@@ -437,6 +438,7 @@ describe("simple monorepo planning", () => {
     write(cwd, "src/index.ts", "export const ok = false;\n");
     git(cwd, "add", "src/index.ts");
     git(cwd, "commit", "-m", "feat!: breaking change");
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
     const defaultPlan = createReleasePlan(cwd);
     expect(defaultPlan.releaseType).toBe("major");
@@ -461,6 +463,7 @@ describe("simple monorepo planning", () => {
       }),
     );
     expect(createReleasePlan(cwd).nextVersion).toBe("0.5.0");
+    expect(warn).toHaveBeenCalledTimes(1);
 
     write(
       cwd,

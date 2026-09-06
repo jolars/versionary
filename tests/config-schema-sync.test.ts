@@ -16,4 +16,25 @@ describe("schemas/config.json", () => {
     const onDisk = JSON.parse(readFileSync(schemaPath, "utf8"));
     expect(onDisk).toEqual(buildConfigSchema());
   });
+
+  it("marks bump-minor-pre-major as deprecated", () => {
+    const schema = buildConfigSchema() as {
+      properties: Record<
+        string,
+        {
+          deprecated?: boolean;
+          additionalProperties?: {
+            properties?: Record<string, { deprecated?: boolean }>;
+          };
+        }
+      >;
+    };
+
+    expect(schema.properties["bump-minor-pre-major"]?.deprecated).toBe(true);
+    expect(
+      schema.properties.packages?.additionalProperties?.properties?.[
+        "bump-minor-pre-major"
+      ]?.deprecated,
+    ).toBe(true);
+  });
 });

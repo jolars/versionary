@@ -16,6 +16,7 @@ export interface VersionaryPackage {
   "package-name"?: string;
   "changelog-file"?: string;
   "changelog-format"?: VersionaryChangelogFormat;
+  /** @deprecated Use `allow-stable-major` with the inverse value. */
   "bump-minor-pre-major"?: boolean;
   "allow-stable-major"?: boolean;
   "exclude-paths"?: string[];
@@ -36,6 +37,7 @@ export interface VersionaryConfig {
   "baseline-file"?: string;
   "bootstrap-sha"?: string;
   "monorepo-mode"?: "independent" | "fixed";
+  /** @deprecated Use `allow-stable-major` with the inverse value. */
   "bump-minor-pre-major"?: boolean;
   "allow-stable-major"?: boolean;
   "include-commit-authors"?: boolean;
