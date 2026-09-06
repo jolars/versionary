@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.3.1](https://github.com/jolars/versionary/compare/v1.3.0...v1.3.1) (2026-09-06)
+
+### Bug Fixes
+- **config:** deprecate pre-major alias ([`3b816c1`](https://github.com/jolars/versionary/commit/3b816c1db48350f96bfefe4a9c27cd519f0b7738))
+
 ## [1.3.0](https://github.com/jolars/versionary/compare/v1.2.0...v1.3.0) (2026-09-05)
 
 ### Features
