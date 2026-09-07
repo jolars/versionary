@@ -16,6 +16,7 @@ export interface VersionaryPackage {
   "package-name"?: string;
   "changelog-file"?: string;
   "changelog-format"?: VersionaryChangelogFormat;
+  "release-draft"?: boolean;
   /** @deprecated Use `allow-stable-major` with the inverse value. */
   "bump-minor-pre-major"?: boolean;
   "allow-stable-major"?: boolean;

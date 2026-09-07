@@ -96,9 +96,47 @@ A map keyed by package path (`"."` for the repository root). Used with
 | `exclude-paths`         | string[]                                  | Paths (relative to the package) to exclude; unioned with the top-level list. |
 | `follows`               | string[]                                  | Source packages this package follows; see [follows](/guide/monorepos#follows). |
 | `extra-files`           | artifact-rule[]                           | Additional files to update with the new version (see below). |
+| `release-draft`         | boolean                                   | Override whether this package's GitHub Release is created as a draft. |
 
 See the [monorepos guide](/guide/monorepos) for tag naming, `follows`, and
 filtering semantics.
+
+### `release-draft`
+
+Package-level `release-draft` values override the top-level setting. Packages
+that omit the key inherit the top-level value; if neither level sets it,
+Versionary creates a non-draft release. An explicitly configured root package
+at `"."` follows the same rule.
+
+This allows packages with different publication gates to share one monorepo
+configuration:
+
+```jsonc
+{
+  "version": 1,
+  "release-type": "simple",
+  "monorepo-mode": "independent",
+  "separate-release-prs": true,
+  "release-draft": false,
+  "packages": {
+    "packages/python": {
+      "release-type": "python"
+    },
+    "packages/r": {
+      "release-type": "r",
+      "release-draft": true
+    },
+    "packages/julia": {
+      "release-type": "julia",
+      "release-draft": true
+    }
+  }
+}
+```
+
+Here, the Python package inherits `false`, while the R and Julia packages
+create draft GitHub Releases. Draft selection does not change package grouping
+or release PR planning.
 
 ## `extra-files`
 

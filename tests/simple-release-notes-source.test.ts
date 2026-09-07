@@ -6,6 +6,7 @@ import {
   extractClosingReferencesFromNotes,
   resolveTargetChangelogFile,
   resolveTargetPackageName,
+  resolveTargetReleaseDraft,
 } from "../src/release/release.js";
 import type { VersionaryConfig } from "../src/types/config.js";
 
@@ -35,6 +36,38 @@ afterEach(() => {
 });
 
 describe("release notes changelog source", () => {
+  it("resolves mixed package draft settings with top-level inheritance", () => {
+    const config: VersionaryConfig = {
+      version: 1,
+      "release-draft": false,
+      packages: {
+        "packages/python": {},
+        "packages/r": { "release-draft": true },
+        "packages/julia": { "release-draft": true },
+      },
+    };
+
+    expect(resolveTargetReleaseDraft(config, "packages/python")).toBe(false);
+    expect(resolveTargetReleaseDraft(config, "packages/r")).toBe(true);
+    expect(resolveTargetReleaseDraft(config, "packages/julia")).toBe(true);
+  });
+
+  it("allows an explicit root package to override the top-level draft setting", () => {
+    const config: VersionaryConfig = {
+      version: 1,
+      "release-draft": true,
+      packages: {
+        ".": { "release-draft": false },
+      },
+    };
+
+    expect(resolveTargetReleaseDraft(config, ".")).toBe(false);
+  });
+
+  it("defaults release targets to non-draft metadata", () => {
+    expect(resolveTargetReleaseDraft({ version: 1 }, ".")).toBe(false);
+  });
+
   it("uses root changelog for root target", () => {
     const config: VersionaryConfig = {
       version: 1,

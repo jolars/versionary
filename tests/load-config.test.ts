@@ -163,6 +163,7 @@ describe("config loading", () => {
         version: 1,
         packages: {
           ".": {
+            "release-draft": false,
             "exclude-paths": ["crates", "editors"],
           },
           "editors/zed": {
@@ -170,6 +171,7 @@ describe("config loading", () => {
             "package-name": "panache-zed",
             "changelog-file": "CHANGELOG.md",
             "changelog-format": "markdown-changelog",
+            "release-draft": true,
             "extra-files": [
               {
                 type: "toml",
@@ -186,6 +188,7 @@ describe("config loading", () => {
     const loaded = loadConfig(dir);
     expect(Object.keys(loaded.config.packages ?? {})).toHaveLength(2);
     expect(loaded.config.packages?.["."]).toEqual({
+      "release-draft": false,
       "exclude-paths": ["crates", "editors"],
     });
     expect(loaded.config.packages?.["editors/zed"]).toEqual({
@@ -193,6 +196,7 @@ describe("config loading", () => {
       "package-name": "panache-zed",
       "changelog-file": "CHANGELOG.md",
       "changelog-format": "markdown-changelog",
+      "release-draft": true,
       "extra-files": [
         {
           type: "toml",

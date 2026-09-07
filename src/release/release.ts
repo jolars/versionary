@@ -48,6 +48,17 @@ export function resolveTargetPackageName(
   return resolved;
 }
 
+export function resolveTargetReleaseDraft(
+  config: VersionaryConfig,
+  targetPath: string,
+): boolean {
+  return (
+    config.packages?.[targetPath]?.["release-draft"] ??
+    config["release-draft"] ??
+    false
+  );
+}
+
 export function extractReleaseNotes(
   content: string,
   version: string,
@@ -350,7 +361,7 @@ export async function runReleaseDetailed(
         tag: target.tag,
         version: target.version,
         notes: releaseNotes,
-        draft: loaded.config["release-draft"] ?? false,
+        draft: resolveTargetReleaseDraft(loaded.config, target.path),
         makeLatest: target.path === "." ? "true" : "false",
       },
       {

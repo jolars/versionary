@@ -116,6 +116,9 @@
             "type": "string",
             "enum": ["markdown-changelog", "r-news"]
           },
+          "release-draft": {
+            "type": "boolean"
+          },
           "bump-minor-pre-major": {
             "deprecated": true,
             "description": "Deprecated. Use \"allow-stable-major\" with the inverse value instead.",

@@ -73,6 +73,7 @@ const packageSchema = z
     "package-name": z.string().optional(),
     "changelog-file": z.string().optional(),
     "changelog-format": z.enum(["markdown-changelog", "r-news"]).optional(),
+    "release-draft": z.boolean().optional(),
     "bump-minor-pre-major": deprecatedBumpMinorPreMajorSchema,
     "allow-stable-major": z.boolean().optional(),
     "exclude-paths": z.array(z.string()).optional(),
