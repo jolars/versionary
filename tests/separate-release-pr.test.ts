@@ -34,6 +34,15 @@ function write(cwd: string, relativePath: string, content: string): void {
   fs.writeFileSync(target, content, "utf8");
 }
 
+function writeExecutable(
+  cwd: string,
+  relativePath: string,
+  content: string,
+): void {
+  write(cwd, relativePath, content);
+  fs.chmodSync(path.join(cwd, relativePath), 0o755);
+}
+
 afterEach(() => {
   for (const dir of tempDirs.splice(0)) {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -111,6 +120,92 @@ describe("separate release PR preparation", () => {
       expect(changed.some((file) => file.startsWith(`${otherPath}/`))).toBe(
         false,
       );
+    }
+  });
+
+  it("commits each Python package lockfile to its separate release branch", () => {
+    const cwd = makeTempDir();
+    git(cwd, "init", "-b", "main");
+    git(cwd, "config", "user.name", "Test User");
+    git(cwd, "config", "user.email", "test@example.com");
+    write(
+      cwd,
+      "versionary.jsonc",
+      JSON.stringify({
+        version: 1,
+        "release-type": "simple",
+        "monorepo-mode": "independent",
+        "separate-release-prs": true,
+        packages: {
+          "packages/a": { "release-type": "python" },
+          "packages/b": { "release-type": "python" },
+        },
+      }),
+    );
+    writeExecutable(
+      cwd,
+      ".fake-bin/uv",
+      [
+        "#!/usr/bin/env bash",
+        "set -euo pipefail",
+        'if [ "$1" = "lock" ]; then',
+        '  printf "new-lock\\n" > "$PWD/uv.lock"',
+        "  exit 0",
+        "fi",
+        "exit 1",
+        "",
+      ].join("\n"),
+    );
+    for (const name of ["a", "b"]) {
+      write(
+        cwd,
+        `packages/${name}/pyproject.toml`,
+        ["[project]", `name = "python-${name}"`, 'version = "1.0.0"', ""].join(
+          "\n",
+        ),
+      );
+      write(cwd, `packages/${name}/uv.lock`, "old-lock\n");
+      write(cwd, `packages/${name}/CHANGELOG.md`, "# Changelog\n");
+      write(cwd, `packages/${name}/src/${name}.py`, `VALUE = "${name}"\n`);
+    }
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "chore: initial");
+    write(cwd, "packages/a/src/a.py", 'VALUE = "a2"\n');
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "feat: improve a");
+    write(cwd, "packages/b/src/b.py", 'VALUE = "b2"\n');
+    git(cwd, "add", ".");
+    git(cwd, "commit", "-m", "feat: improve b");
+
+    const previousPath = process.env.PATH ?? "";
+    process.env.PATH = `${path.join(cwd, ".fake-bin")}:${previousPath}`;
+    let prepared: ReturnType<typeof prepareSeparateReleasePrs>;
+    try {
+      prepared = prepareSeparateReleasePrs(cwd);
+    } finally {
+      process.env.PATH = previousPath;
+    }
+
+    expect(prepared.map((result) => result.packagePaths)).toEqual([
+      ["packages/a"],
+      ["packages/b"],
+    ]);
+    for (const result of prepared) {
+      const packagePath = result.packagePaths[0];
+      expect(packagePath).toBeDefined();
+      const changed = git(
+        cwd,
+        "diff-tree",
+        "--no-commit-id",
+        "--name-only",
+        "-r",
+        result.branch,
+      ).split("\n");
+      expect(changed).toContain(`${packagePath}/pyproject.toml`);
+      expect(changed).toContain(`${packagePath}/uv.lock`);
+      const otherPath =
+        packagePath === "packages/a" ? "packages/b" : "packages/a";
+      expect(changed).not.toContain(`${otherPath}/uv.lock`);
     }
   });
 

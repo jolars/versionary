@@ -227,7 +227,11 @@ const LOCKFILE_SPECS: readonly LockfileSpec[] = [
   },
 ];
 
-function refreshLockfile(cwd: string, spec: LockfileSpec): void {
+function refreshLockfile(
+  cwd: string,
+  spec: LockfileSpec,
+  lockfilePath: string,
+): void {
   try {
     execFileSync(spec.command, [...spec.args], {
       cwd,
@@ -236,8 +240,43 @@ function refreshLockfile(cwd: string, spec: LockfileSpec): void {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(
-      `Failed to refresh ${spec.lockfile} via "${spec.command} ${spec.args.join(" ")}". Ensure ${spec.command} is on PATH (${spec.installHint}) or remove ${spec.lockfile} from the working tree. Details: ${message}`,
+      `Failed to refresh ${lockfilePath} via "${spec.command} ${spec.args.join(" ")}". Ensure ${spec.command} is on PATH (${spec.installHint}) or remove ${lockfilePath} from the working tree. Details: ${message}`,
     );
+  }
+}
+
+function normalizeRelativePath(base: string, target: string): string {
+  return path.relative(base, target).replaceAll("\\", "/");
+}
+
+function findNearestLockfileDirectory(
+  cwd: string,
+  packageDirectory: string,
+  lockfile: string,
+): string | null {
+  const root = path.resolve(cwd);
+  let current = path.resolve(packageDirectory);
+  const relativePackageDirectory = path.relative(root, current);
+  if (
+    relativePackageDirectory === ".." ||
+    relativePackageDirectory.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relativePackageDirectory)
+  ) {
+    return null;
+  }
+
+  while (true) {
+    if (fs.existsSync(path.join(current, lockfile))) {
+      return current;
+    }
+    if (current === root) {
+      return null;
+    }
+    const parent = path.dirname(current);
+    if (parent === current) {
+      return null;
+    }
+    current = parent;
   }
 }
 
@@ -411,18 +450,44 @@ export const pythonVersionStrategy: VersionStrategy = {
   },
   finalizeVersionWrites(
     cwd: string,
-    _writes: StrategyVersionWriteContext[],
+    writes: StrategyVersionWriteContext[],
     _context: StrategyFinalizeContext,
   ): string[] {
-    const refreshed: string[] = [];
-    for (const spec of LOCKFILE_SPECS) {
-      const lockPath = path.join(cwd, spec.lockfile);
-      if (!fs.existsSync(lockPath)) {
-        continue;
+    const packageDirectories = [
+      ...new Set(
+        writes.map((write) =>
+          path.resolve(cwd, write.packagePath === "." ? "" : write.packagePath),
+        ),
+      ),
+    ].sort((a, b) => a.localeCompare(b));
+    const lockfiles = new Map<
+      string,
+      { directory: string; spec: LockfileSpec }
+    >();
+    for (const packageDirectory of packageDirectories) {
+      for (const spec of LOCKFILE_SPECS) {
+        const directory = findNearestLockfileDirectory(
+          cwd,
+          packageDirectory,
+          spec.lockfile,
+        );
+        if (!directory) {
+          continue;
+        }
+        const relativePath = normalizeRelativePath(
+          cwd,
+          path.join(directory, spec.lockfile),
+        );
+        lockfiles.set(relativePath, { directory, spec });
       }
-      refreshLockfile(cwd, spec);
-      refreshed.push(spec.lockfile);
     }
-    return refreshed.sort((a, b) => a.localeCompare(b));
+
+    const refreshed = [...lockfiles.entries()].sort(([left], [right]) =>
+      left.localeCompare(right),
+    );
+    for (const [relativePath, { directory, spec }] of refreshed) {
+      refreshLockfile(directory, spec, relativePath);
+    }
+    return refreshed.map(([relativePath]) => relativePath);
   },
 };
