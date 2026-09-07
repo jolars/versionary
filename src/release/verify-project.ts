@@ -26,35 +26,39 @@ export function verifyProject(cwd = process.cwd()): VerifyResult {
     category: "config",
   });
 
-  const strategy = resolveVersionStrategy(config.config);
-  const versionFile = strategy.getVersionFile(config.config);
-  const exists = fs.existsSync(path.join(cwd, versionFile));
-  checks.push({
-    name: `version-file:${versionFile}`,
-    ok: exists,
-    details: exists ? "Version file exists" : `Missing ${versionFile}`,
-    category: "version-files",
-    remediation: exists
-      ? undefined
-      : `Create ${versionFile} or set "version-file" to the correct path for your release strategy.`,
-  });
-  if (exists) {
-    const validationError = strategy.validateProject?.(cwd, config.config);
+  const packages = Object.entries(config.config.packages ?? {});
+  const shouldValidateRoot =
+    packages.length === 0 ||
+    packages.some(([packagePath]) => packagePath === ".");
+  if (shouldValidateRoot) {
+    const strategy = resolveVersionStrategy(config.config);
+    const versionFile = strategy.getVersionFile(config.config);
+    const exists = fs.existsSync(path.join(cwd, versionFile));
     checks.push({
-      name: `strategy-validate:${strategy.name}`,
-      ok: !validationError,
-      details: validationError ?? "Strategy-level validation passed",
+      name: `version-file:${versionFile}`,
+      ok: exists,
+      details: exists ? "Version file exists" : `Missing ${versionFile}`,
       category: "version-files",
-      remediation: validationError
-        ? `Fix strategy-specific version metadata in ${versionFile} for release-type "${strategy.name}".`
-        : undefined,
+      remediation: exists
+        ? undefined
+        : `Create ${versionFile} or set "version-file" to the correct path for your release strategy.`,
     });
+    if (exists) {
+      const validationError = strategy.validateProject?.(cwd, config.config);
+      checks.push({
+        name: `strategy-validate:${strategy.name}`,
+        ok: !validationError,
+        details: validationError ?? "Strategy-level validation passed",
+        category: "version-files",
+        remediation: validationError
+          ? `Fix strategy-specific version metadata in ${versionFile} for release-type "${strategy.name}".`
+          : undefined,
+      });
+    }
   }
 
-  if (config.config.packages) {
-    for (const [pkgPathRaw, packageConfig] of Object.entries(
-      config.config.packages,
-    )) {
+  if (packages.length > 0) {
+    for (const [pkgPathRaw, packageConfig] of packages) {
       const pkgPath = path.join(cwd, pkgPathRaw);
       const exists = fs.existsSync(pkgPath);
       checks.push({

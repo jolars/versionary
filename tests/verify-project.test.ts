@@ -22,6 +22,36 @@ afterEach(() => {
 });
 
 describe("verifyProject", () => {
+  it("skips root validation for package-only monorepos", () => {
+    const dir = makeTempDir();
+    fs.mkdirSync(path.join(dir, "packages/a"), { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, "packages/a/version.txt"),
+      "0.1.0\n",
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        "release-type": "node",
+        packages: {
+          "packages/a": { "release-type": "simple" },
+        },
+      }),
+      "utf8",
+    );
+
+    const result = verifyProject(dir);
+    expect(result.ok).toBe(true);
+    expect(result.checks).not.toContainEqual(
+      expect.objectContaining({ name: "version-file:package.json" }),
+    );
+    expect(result.checks).not.toContainEqual(
+      expect.objectContaining({ name: "strategy-validate:node" }),
+    );
+  });
+
   it("passes when package paths exist", () => {
     const dir = makeTempDir();
     fs.writeFileSync(path.join(dir, "version.txt"), "0.1.0\n", "utf8");
@@ -63,7 +93,7 @@ describe("verifyProject", () => {
     expect(failedPathCheck?.remediation).toContain("remove/rename");
   });
 
-  it("fails when version file is missing", () => {
+  it("validates the root version file for single-package repositories", () => {
     const dir = makeTempDir();
     fs.writeFileSync(
       path.join(dir, "versionary.json"),
@@ -82,6 +112,35 @@ describe("verifyProject", () => {
       (c) => c.name === "version-file:version.txt" && !c.ok,
     );
     expect(failedVersionCheck?.remediation).toContain("Create version.txt");
+  });
+
+  it('validates the root strategy when packages["."] is configured', () => {
+    const dir = makeTempDir();
+    fs.writeFileSync(path.join(dir, "DESCRIPTION"), "Package: root\n", "utf8");
+    fs.mkdirSync(path.join(dir, "packages/a"), { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, "packages/a/version.txt"),
+      "0.1.0\n",
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(dir, "versionary.json"),
+      JSON.stringify({
+        version: 1,
+        "release-type": "r",
+        packages: {
+          ".": {},
+          "packages/a": { "release-type": "simple" },
+        },
+      }),
+      "utf8",
+    );
+
+    const result = verifyProject(dir);
+    expect(result.ok).toBe(false);
+    expect(result.checks).toContainEqual(
+      expect.objectContaining({ name: "strategy-validate:r", ok: false }),
+    );
   });
 
   it("expects package.json for release-type node", () => {
