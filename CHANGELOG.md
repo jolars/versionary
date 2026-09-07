@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.4.0](https://github.com/jolars/versionary/compare/v1.3.0...v1.4.0) (2026-09-07)
+
+### Features
+- **config:** support per-package draft releases ([`694d86e`](https://github.com/jolars/versionary/commit/694d86e046da426dc69905806cd2ca27af9b3f58)), closes [#91](https://github.com/jolars/versionary/issues/91)
+
+### Bug Fixes
+- **verify:** allow package-only monorepos ([`beb4b83`](https://github.com/jolars/versionary/commit/beb4b8307b817bcc757469e29ae83c5e5213c0b4)), fixes [#90](https://github.com/jolars/versionary/issues/90)
+- **python:** refresh nested lockfiles ([`f0cd230`](https://github.com/jolars/versionary/commit/f0cd2303e3c5cc2ff51b91437d522a355e4ab346)), fixes [#89](https://github.com/jolars/versionary/issues/89)
+- **config:** deprecate pre-major alias ([`3b816c1`](https://github.com/jolars/versionary/commit/3b816c1db48350f96bfefe4a9c27cd519f0b7738))
+
 ## [1.3.0](https://github.com/jolars/versionary/compare/v1.2.0...v1.3.0) (2026-09-05)
 
 ### Features
