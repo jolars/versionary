@@ -223,7 +223,7 @@ function fetchRemoteReleaseBranch(cwd: string, branch: string): string {
   return remoteRef;
 }
 
-function buildReleaseTargets(
+export function buildReleaseTargets(
   cwd: string,
   plan: ReleasePlan,
   loadedConfig: ReturnType<typeof loadConfig>["config"],
@@ -381,7 +381,7 @@ export function renderPendingReleaseReviewRequestBody(
  */
 export function preparePendingReleasePr(
   cwd = process.cwd(),
-  options: { logger?: VersionaryPluginContext["logger"] } = {},
+  options: { logger?: VersionaryPluginContext["logger"]; branch?: string } = {},
 ): PendingReleasePrResult {
   const targets = readPendingReleaseTargets(cwd);
   if (!hasFullyUntaggedPendingRelease(cwd)) {
@@ -390,7 +390,8 @@ export function preparePendingReleasePr(
 
   ensureCleanWorktree(cwd, options.logger);
   const loaded = loadConfig(cwd);
-  const branch = loaded.config["release-branch"] ?? "versionary/release";
+  const branch =
+    options.branch ?? loaded.config["release-branch"] ?? "versionary/release";
   const title = formatReleaseCommitTitle(targets);
   const releaseBaselineSha = execFileSync("git", ["rev-parse", "HEAD"], {
     cwd,
@@ -535,7 +536,7 @@ export function preparePendingSeparateReleasePrs(
 
 export function prepareReleasePr(
   cwd = process.cwd(),
-  options: { logger?: VersionaryPluginContext["logger"] } = {},
+  options: { logger?: VersionaryPluginContext["logger"]; branch?: string } = {},
 ): {
   branch: string;
   title: string;
@@ -719,7 +720,7 @@ export function prepareReleasePr(
   }
   const releaseTargets = buildReleaseTargets(cwd, plan, loaded.config);
 
-  const branch = plan.releaseBranchPrefix;
+  const branch = options.branch ?? plan.releaseBranchPrefix;
   const title = formatReleaseCommitTitle(releaseTargets);
   const hasRemoteReleaseBranch = remoteReleaseBranchExists(cwd, branch);
   const remoteReleaseRef = hasRemoteReleaseBranch

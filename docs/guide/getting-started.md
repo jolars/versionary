@@ -113,8 +113,9 @@ How you cut a release depends on your [`review-mode`](./workflows):
   [GitHub Action](./github-actions)) on pushes to your default branch. It opens
   or updates a release PR containing the version bump and changelog. Merging
   that PR, then running `versionary run` again, publishes the release.
-- **Direct workflow:** set `"review-mode": "direct"` to skip the PR and prepare
-  the release branch directly.
+- **Direct workflow:** set `"review-mode": "direct"`. On a releasable push,
+  `versionary run` commits the version bump and changelog to the triggering
+  branch, pushes the commit, and publishes the release in the same run.
 
 In almost all cases you will drive this from CI rather than locally. Continue to
 [Release workflows](./workflows) to understand the `run` dispatch, and

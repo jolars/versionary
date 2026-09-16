@@ -6,6 +6,7 @@ import {
   prependChangelog,
   renderReleasePlanChangelog,
 } from "../release/changelog.js";
+import { runDirectRelease } from "../release/direct.js";
 import { createReleasePlan, type ReleasePlan } from "../release/plan.js";
 import {
   closeStaleReviewRequestIfExists,
@@ -303,6 +304,38 @@ async function main(): Promise<number> {
   const flags = parseFlags(args);
   const logger = flags.json ? undefined : console;
   if (!command || command === "run") {
+    if (loadConfig(process.cwd()).config["review-mode"] === "direct") {
+      const release = await runDirectRelease(process.cwd(), {
+        logger,
+        "dry-run": flags["dry-run"],
+      });
+      const message =
+        release.action === "release-skipped" ? release.reason : release.message;
+      if (flags.json) {
+        emitJson({
+          action: release.action,
+          message,
+          releaseCreated:
+            release.action === "release-published" &&
+            release.releases.length > 0,
+          tagNames:
+            release.action === "release-published"
+              ? release.releases.map((target) => target.tag)
+              : release.action === "release-dry-run"
+                ? release.targets.map((target) => target.tag)
+                : [],
+          ...("releaseTargets" in release
+            ? { releaseTargets: release.releaseTargets }
+            : {}),
+          ...(release.action === "release-dry-run"
+            ? { targets: release.targets }
+            : {}),
+        });
+      } else {
+        console.log(message);
+      }
+      return 0;
+    }
     const commitMessage = execFileSync("git", ["log", "-1", "--pretty=%B"], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],

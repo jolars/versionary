@@ -18,19 +18,20 @@ key, and a single `run` entrypoint that does the right thing based on context.
   opens or updates a release PR through the SCM provider. A maintainer reviews
   and merges; the merge produces a release commit, and the next `run` publishes
   the release.
-- **`direct`** — the **direct workflow**. Versionary prepares/updates the
-  release branch but skips creating a review request.
+- **`direct`** — the **direct workflow**. Versionary commits the version bump,
+  changelog, and release state to the triggering branch, pushes that commit,
+  and publishes the tags and releases in the same run.
 
 ## The `run` command
 
-`run` is the recommended CI entrypoint. It inspects the most recent commit and
-auto-dispatches:
+`run` is the recommended CI entrypoint. In `pr` mode, it inspects the most recent
+commit and auto-dispatches:
 
 ```
                 ┌─ last commit is a release commit ─→ publish the release
 versionary run ─┤
                 └─ otherwise ─→ plan; if there are releasable commits,
-                                prepare/update the release PR (or branch),
+                                prepare/update the release PR,
                                 else close any stale release PR and exit
 ```
 
@@ -71,9 +72,16 @@ commands (`verify`, `plan`, `changelog`, `pr`, `release`).
 In a separate-PR monorepo, steps 2–5 happen independently for each package or
 coupled cohort. Merging one package PR does not require merging the others.
 
-In `direct` mode, steps 2–4 collapse: the release branch is prepared without a
-review request, and publishing follows once the release commit is on the branch
-you run against.
+In `direct` mode, steps 2–5 happen in one invocation. Versionary writes the
+release commit to the triggering branch and publishes it immediately after the
+push succeeds. The token must be allowed to push to that branch. A rejected
+push stops publishing; Versionary never force-pushes the base branch. Run it
+after your required CI checks pass.
+
+Outside GitHub Actions, Versionary uses the checked-out branch.
+`VERSIONARY_BASE_BRANCH` can specify the target branch explicitly, including
+when running from a detached checkout. A direct-mode `--dry-run` reports the
+planned releases without creating a commit or changing any files.
 
 The GitHub Action skips an outdated ordinary push run after the branch advances,
 which prevents an older run from overwriting release planning based on a newer
@@ -100,6 +108,9 @@ The next `run` recreates the release PR with an empty release-marker commit on
 top of the corrected base. It does not plan a later version—even when the
 corrective commit would ordinarily cause a semantic-version bump. After that PR
 merges and CI succeeds, Versionary publishes the original pending tags.
+
+In direct mode, recovery writes the release-marker commit to the triggering
+branch and publishes the pending version in the same run, without a recovery PR.
 
 Separate package releases recover on their original cohort branches. A tag
 created for one independent cohort does not block recovery of another. A

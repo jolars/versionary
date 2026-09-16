@@ -21,7 +21,11 @@ If no command is given, `run` is used.
 
 ## `run`
 
-The recommended CI entrypoint. It reads the last commit and dispatches:
+The recommended CI entrypoint. In `review-mode: "direct"`, it prepares a release
+commit on the triggering branch, pushes it, and publishes the release in one
+invocation. A failed branch push stops publishing.
+
+In the default `pr` mode, it reads the last commit and dispatches:
 
 - if the last commit is a **release commit**, it publishes the release;
 - otherwise it computes a plan and, if there are releasable commits, prepares or

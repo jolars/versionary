@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
+import { mockGitHubEnv } from "./helpers/cli.js";
 
 const tempDirs: string[] = [];
 
@@ -63,7 +64,7 @@ describe("cli run --json", () => {
     write(
       cwd,
       "versionary.jsonc",
-      JSON.stringify({ version: 1, "review-mode": "direct" }),
+      JSON.stringify({ version: 1, "review-mode": "pr" }),
     );
     write(cwd, "version.txt", "1.2.0\n");
     write(cwd, "CHANGELOG.md", "# Changelog\n\n## 1.2.0\n\n- Added.\n");
@@ -99,10 +100,7 @@ describe("cli run --json", () => {
         cwd,
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
-        env: {
-          ...process.env,
-          GITHUB_REPOSITORY: "jolars/versionary",
-        },
+        env: mockGitHubEnv(),
       },
     ).trim();
     const dryRun = JSON.parse(dryRunOutput) as {
@@ -117,10 +115,7 @@ describe("cli run --json", () => {
       cwd,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
-      env: {
-        ...process.env,
-        GITHUB_REPOSITORY: "jolars/versionary",
-      },
+      env: mockGitHubEnv(),
     }).trim();
     const parsed = JSON.parse(output) as {
       action: string;
@@ -141,10 +136,7 @@ describe("cli run --json", () => {
       cwd,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
-      env: {
-        ...process.env,
-        GITHUB_REPOSITORY: "jolars/versionary",
-      },
+      env: mockGitHubEnv(),
     }).trim();
     const repeated = JSON.parse(repeatedOutput) as {
       action: string;
@@ -574,7 +566,7 @@ describe("cli run --json", () => {
     write(
       cwd,
       "versionary.jsonc",
-      JSON.stringify({ version: 1, "review-mode": "direct" }),
+      JSON.stringify({ version: 1, "review-mode": "pr" }),
     );
     write(cwd, "version.txt", "0.1.0\n");
     write(cwd, "README.md", "# temp\n");
@@ -591,10 +583,7 @@ describe("cli run --json", () => {
       cwd,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
-      env: {
-        ...process.env,
-        GITHUB_REPOSITORY: "jolars/versionary",
-      },
+      env: mockGitHubEnv(),
     }).trim();
     const firstParsed = JSON.parse(firstOutput) as {
       action: string;
@@ -608,10 +597,7 @@ describe("cli run --json", () => {
       cwd,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
-      env: {
-        ...process.env,
-        GITHUB_REPOSITORY: "jolars/versionary",
-      },
+      env: mockGitHubEnv(),
     }).trim();
     const secondParsed = JSON.parse(secondOutput) as {
       action: string;

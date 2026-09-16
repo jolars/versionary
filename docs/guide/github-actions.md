@@ -43,6 +43,11 @@ Because `run` auto-dispatches, this single job handles both halves of the
 release PR workflow: on a normal push it opens/updates the release PR, and on
 the release commit (after the PR merges) it publishes the release.
 
+With `review-mode: "direct"`, the same job commits the version bump and
+changelog to the triggering branch and publishes immediately. Place it after
+your build and test jobs using `needs`. Its token needs `contents: write` and
+permission to push to that branch under your repository's branch rules.
+
 ## Permissions
 
 Set `permissions` at the workflow or job level to the minimum the flow needs:
