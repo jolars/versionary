@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.1](https://github.com/jolars/versionary/compare/v1.4.0...v1.4.1) (2026-09-16)
+
+### Bug Fixes
+- skip forks without a release token ([`f05b150`](https://github.com/jolars/versionary/commit/f05b150298fe5ab6aa7c9cb0ecad10a8fbac62a4))
+- publish direct releases in one run ([`3922ca1`](https://github.com/jolars/versionary/commit/3922ca142b9bae3627c93a39b95feedeb775c2d9))
+
 ## [1.4.0](https://github.com/jolars/versionary/compare/v1.3.0...v1.4.0) (2026-09-07)
 
 ### Features
