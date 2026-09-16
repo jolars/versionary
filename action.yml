@@ -6,8 +6,9 @@ branding:
   color: gray-dark
 inputs:
   token:
-    description: GitHub token used by Versionary SCM integration
-    required: true
+    description: GitHub token used by Versionary SCM integration. Required except
+      when skipping a fork without a token.
+    required: false
   versionary-version:
     description: Versionary npm version or dist-tag
     required: false
@@ -18,8 +19,8 @@ inputs:
     default: .
 outputs:
   action:
-    description: Versionary action taken (noop, stale-run-skipped, pr-prepared,
-      release-published, release-skipped)
+    description: Versionary action taken (noop, fork-skipped, stale-run-skipped,
+      pr-prepared, release-published, release-skipped)
   message:
     description: Human-readable result message
   release_created:

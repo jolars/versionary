@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -28,6 +28,129 @@ afterEach(() => {
 });
 
 describe("GitHub Action entrypoint", () => {
+  function runWithEvent(event: string | null | undefined, token = "") {
+    const cwd = makeTempDir("versionary-action-event-");
+    const outputPath = path.join(cwd, "github-output.txt");
+    const eventPath = path.join(cwd, "event.json");
+    const binDir = path.join(cwd, "bin");
+    const invocationsPath = path.join(cwd, "invocations.txt");
+    fs.mkdirSync(binDir);
+    if (typeof event === "string") {
+      fs.writeFileSync(eventPath, event, "utf8");
+    }
+    for (const command of ["git", "npx"]) {
+      writeExecutable(
+        path.join(binDir, command),
+        `#!/usr/bin/env node
+const fs = require("node:fs");
+fs.appendFileSync(process.env.TEST_INVOCATIONS_PATH, ${JSON.stringify(command)} + "\\n");
+if (${JSON.stringify(command)} === "git") {
+  process.exit(process.argv[2] === "config" ? 0 : 1);
+}
+process.stdout.write(JSON.stringify({ action: "noop", releaseCreated: false }));
+`,
+      );
+    }
+    const testsDir = path.dirname(fileURLToPath(import.meta.url));
+    const result = spawnSync(
+      process.execPath,
+      [path.resolve(testsDir, "..", "action", "index.js")],
+      {
+        cwd,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          PATH: `${binDir}${path.delimiter}${process.env.PATH ?? ""}`,
+          GITHUB_EVENT_NAME: "push",
+          GITHUB_EVENT_PATH: event === undefined ? "" : eventPath,
+          GITHUB_OUTPUT: outputPath,
+          GITHUB_REPOSITORY: "contributor/project",
+          INPUT_TOKEN: token,
+          TEST_INVOCATIONS_PATH: invocationsPath,
+        },
+      },
+    );
+    const outputs = fs.existsSync(outputPath)
+      ? Object.fromEntries(
+          [
+            ...fs
+              .readFileSync(outputPath, "utf8")
+              .matchAll(/([^\n]+)<<([^\n]+)\n([^\n]*)\n\2\n/gu),
+          ].map(([, name, , value]) => [name, value]),
+        )
+      : {};
+    const invocations = fs.existsSync(invocationsPath)
+      ? fs.readFileSync(invocationsPath, "utf8").trim().split("\n")
+      : [];
+    return { ...result, outputs, invocations };
+  }
+
+  it.each(["", " \t\n"])(
+    "skips a fork with an empty token (%j) before invoking git or Versionary",
+    (token) => {
+      const result = runWithEvent(
+        JSON.stringify({ repository: { fork: true } }),
+        token,
+      );
+
+      expect(result.status).toBe(0);
+      expect(JSON.parse(result.stdout)).toEqual({
+        action: "fork-skipped",
+        message:
+          "Skipping release automation in a fork without a release token.",
+        releaseCreated: false,
+        tagNames: [],
+      });
+      expect(result.outputs).toEqual({
+        action: "fork-skipped",
+        message:
+          "Skipping release automation in a fork without a release token.",
+        release_created: "false",
+        tag_name: "",
+        tag_names: "[]",
+        release_targets: "[]",
+        review_url: "",
+        review_requests: "[]",
+        branch: "",
+        title: "",
+      });
+      expect(result.invocations).toEqual([]);
+    },
+  );
+
+  it.each([
+    ["an upstream repository", '{"repository":{"fork":false}}'],
+    [
+      "an upstream pull request from a fork",
+      '{"repository":{"fork":false},"pull_request":{"head":{"repo":{"fork":true}}}}',
+    ],
+    ["missing repository metadata", "{}"],
+    ["a non-boolean fork flag", '{"repository":{"fork":"true"}}'],
+    ["a null event", "null"],
+    ["malformed JSON", "{"],
+    ["an unset event path", undefined],
+    ["an unreadable event file", null],
+  ])("requires a token for %s", (_description, event) => {
+    const result = runWithEvent(event);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("Input required and not supplied: token.");
+    expect(result.outputs).toEqual({});
+    expect(result.invocations).toEqual([]);
+  });
+
+  it("runs Versionary for a fork with a supplied token", () => {
+    const result = runWithEvent(
+      JSON.stringify({ repository: { fork: true } }),
+      "test-token",
+    );
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({ action: "noop" });
+    expect(result.outputs.action).toBe("noop");
+    expect(result.invocations).toContain("npx");
+  });
+
   it("skips a stale push before invoking Versionary", () => {
     const cwd = makeTempDir("versionary-action-");
     const binDir = path.join(cwd, "bin");

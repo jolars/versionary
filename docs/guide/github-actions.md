@@ -1,6 +1,6 @@
 # GitHub Actions
 
-Versionary ships a composite GitHub Action that runs the [`run`](./workflows)
+Versionary ships a GitHub Action that runs the [`run`](./workflows)
 command and exposes machine-readable outputs. This page covers a complete
 workflow, the permissions and token you need, and how to wire downstream
 registry publishing.
@@ -27,6 +27,7 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
+          token: ${{ secrets.RELEASE_TOKEN || github.token }}
       - id: versionary
         uses: jolars/versionary@v1
         with:
@@ -37,7 +38,8 @@ Two details matter regardless of the rest of your setup:
 
 - **`fetch-depth: 0` and `fetch-tags: true`.** Versionary analyzes the full
   commit history and existing tags. A shallow checkout will give wrong results.
-- **A token with the right permissions** (see [below](#choosing-a-token)).
+- **A token with the right permissions** (see [below](#choosing-a-token)),
+  except when [skipping an unconfigured fork](#forked-repositories).
 
 Because `run` auto-dispatches, this single job handles both halves of the
 release PR workflow: on a normal push it opens/updates the release PR, and on
@@ -47,6 +49,23 @@ With `review-mode: "direct"`, the same job commits the version bump and
 changelog to the triggering branch and publishes immediately. Place it after
 your build and test jobs using `needs`. Its token needs `contents: write` and
 permission to push to that branch under your repository's branch rules.
+
+## Forked repositories
+
+The action skips release automation successfully when the repository running
+the workflow is a fork and its `token` input is empty. It reports
+`action: fork-skipped`, `release_created: "false"`, and a message explaining
+the skip. It does this before invoking Git or the Versionary CLI.
+
+Use the **checkout token** fallback shown in the quick start so checkout can
+succeed when the fork has no release secret. Keep the **Versionary token** set
+to the `RELEASE_TOKEN` secret alone: supplying a token, including the built-in
+`github.token`, enables normal release automation on the fork.
+
+An empty token still causes an error on upstream repositories. This automatic
+skip is specific to the GitHub Action. It cannot prevent failures in earlier
+steps that require secrets, such as generating a GitHub App token; use a
+job-level condition to skip those jobs in forks.
 
 ## Permissions
 
@@ -172,7 +191,7 @@ untouched.
 
 | Input               | Required | Default  | Description                                            |
 | ------------------- | -------- | -------- | ------------------------------------------------------ |
-| `token`             | yes      | —        | GitHub token for SCM integration and git push.         |
+| `token`             | conditional | —     | GitHub token for SCM integration and git push; omit to skip a fork. |
 | `versionary-version`| no       | pinned   | npm version or dist-tag of Versionary to run.          |
 | `working-directory` | no       | `.`      | Directory containing `versionary.jsonc`/`.json`.       |
 
@@ -180,7 +199,7 @@ untouched.
 
 | Output            | Description                                                   |
 | ----------------- | ------------------------------------------------------------- |
-| `action`          | `noop`, `pr-prepared`, `release-published`, `release-skipped`, … |
+| `action`          | `noop`, `fork-skipped`, `pr-prepared`, `release-published`, `release-skipped`, … |
 | `message`         | Human-readable result summary.                                |
 | `release_created` | `"true"` when at least one release was published.             |
 | `tag_name`        | First published tag (single-target flows).                    |
@@ -235,6 +254,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN || github.token }}
       - id: versionary
         uses: jolars/versionary@v1
         with:

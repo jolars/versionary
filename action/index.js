@@ -1,7 +1,7 @@
 // This file is generated from `src/action/index.ts`; do not edit it directly.
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { appendFileSync } from "node:fs";
+import { appendFileSync, readFileSync } from "node:fs";
 
 function getInput(name) {
   const canonical = `INPUT_${name.replace(/ /g, "_").toUpperCase()}`;
@@ -77,9 +77,43 @@ function setOutput(name, value) {
     "utf8",
   );
 }
+function isForkRepository() {
+  const eventPath = process.env.GITHUB_EVENT_PATH;
+  if (!eventPath) {
+    return false;
+  }
+  try {
+    const event = JSON.parse(readFileSync(eventPath, "utf8"));
+    return event?.repository?.fork === true;
+  } catch {
+    // Only a confirmed fork may bypass the token requirement.
+    return false;
+  }
+}
+function skipRun(action, message) {
+  const payload = { action, message, releaseCreated: false, tagNames: [] };
+  process.stdout.write(`${JSON.stringify(payload)}\n`);
+  setOutput("action", action);
+  setOutput("message", message);
+  setOutput("release_created", "false");
+  setOutput("tag_name", "");
+  setOutput("tag_names", "[]");
+  setOutput("release_targets", "[]");
+  setOutput("review_url", "");
+  setOutput("review_requests", "[]");
+  setOutput("branch", "");
+  setOutput("title", "");
+}
 function main() {
   const token = getInput("token");
   if (!token) {
+    if (isForkRepository()) {
+      skipRun(
+        "fork-skipped",
+        "Skipping release automation in a fork without a release token.",
+      );
+      return;
+    }
     throw new Error("Input required and not supplied: token.");
   }
   const versionaryVersion = getInput("versionary-version") || "0.7.0";
@@ -126,26 +160,11 @@ function main() {
       const releaseCanPublish =
         hasVersionaryReleaseMarker(cwd, sha) && isAncestor(cwd, sha, remoteSha);
       if (!releaseCanPublish) {
-        const staleMessage =
+        skipRun(
+          "stale-run-skipped",
           `Skipping stale push run for ${sha.slice(0, 7)}; ` +
-          `${ref} now points to ${remoteSha.slice(0, 7)}.`;
-        const stalePayload = {
-          action: "stale-run-skipped",
-          message: staleMessage,
-          releaseCreated: false,
-          tagNames: [],
-        };
-        process.stdout.write(`${JSON.stringify(stalePayload)}\n`);
-        setOutput("action", stalePayload.action);
-        setOutput("message", stalePayload.message);
-        setOutput("release_created", "false");
-        setOutput("tag_name", "");
-        setOutput("tag_names", "[]");
-        setOutput("release_targets", "[]");
-        setOutput("review_url", "");
-        setOutput("review_requests", "[]");
-        setOutput("branch", "");
-        setOutput("title", "");
+            `${ref} now points to ${remoteSha.slice(0, 7)}.`,
+        );
         return;
       }
     }
