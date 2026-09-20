@@ -11,15 +11,18 @@ import os from "node:os";
  * both config files at the null device gives every run the same baseline
  * regardless of who is running it.
  *
- * Only `init.defaultBranch` is injected back. Committer identity deliberately
- * is not: `ensureGitIdentity` fills the gap only when `user.name`/`user.email`
- * do not already resolve, and `tests/git-identity.test.ts` covers exactly that
- * absence. Env-injected config also outranks repository-local config, so
- * supplying an identity here would override the one fixtures set for
- * themselves.
+ * Committer identity is deliberately omitted: `ensureGitIdentity` fills the
+ * gap only when `user.name`/`user.email` do not already resolve, and
+ * `tests/git-identity.test.ts` covers exactly that absence. Env-injected
+ * config also outranks repository-local config, so supplying an identity
+ * here would override the one fixtures set for themselves.
  */
 const injectedConfig: Array<[string, string]> = [
   ["init.defaultBranch", "main"],
+  // Background maintenance can write packfiles after Git exits and race with
+  // removal of a fixture's repository.
+  ["maintenance.auto", "false"],
+  ["gc.auto", "0"],
 ];
 
 process.env.GIT_CONFIG_GLOBAL = os.devNull;
