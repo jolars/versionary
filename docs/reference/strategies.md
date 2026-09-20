@@ -61,7 +61,9 @@ The default when `release-type` is omitted.
 
 - **Version source:** `Cargo.toml` `[package].version`. `version-file` must
   point at a `Cargo.toml`.
-- **Package name:** `Cargo.toml` `[package].name`.
+- **Package name:** `[package].name` in the configured `Cargo.toml`. A virtual
+  workspace has no package name. Root release comments fall back to the
+  repository directory name; use `packages["."].package-name` to override it.
 - **Workspaces:** virtual/workspace manifests expand to their members.
   Crates using `version.workspace = true` resolve and update
   `[workspace.package].version` in the owning workspace manifest.

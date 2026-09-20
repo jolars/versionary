@@ -164,14 +164,61 @@ describe("release notes changelog source", () => {
     expect(resolveTargetPackageName(cwd, config, ".")).toBe("custom");
   });
 
-  it("returns undefined when the strategy cannot resolve a name", () => {
+  it("uses the repository directory name for an unnamed root target", () => {
     const cwd = makeTempDir();
     write(cwd, "version.txt", "1.0.0\n");
     const config: VersionaryConfig = {
       version: 1,
     };
 
-    expect(resolveTargetPackageName(cwd, config, ".")).toBeUndefined();
+    expect(resolveTargetPackageName(cwd, config, ".")).toBe(path.basename(cwd));
+  });
+
+  it("returns undefined for an unnamed non-root target", () => {
+    const cwd = makeTempDir();
+    const config: VersionaryConfig = {
+      version: 1,
+      packages: { "packages/unnamed": {} },
+    };
+
+    expect(
+      resolveTargetPackageName(cwd, config, "packages/unnamed"),
+    ).toBeUndefined();
+  });
+
+  it("names a Rust workspace release after the repository instead of its first member", () => {
+    const cwd = path.join(makeTempDir(), "basin");
+    write(
+      cwd,
+      "Cargo.toml",
+      '[workspace]\nmembers = ["crates/basin", "crates/basin-wasm"]\n',
+    );
+    write(
+      cwd,
+      "crates/basin/Cargo.toml",
+      '[package]\nname = "basin"\nversion = "1.13.1"\n',
+    );
+    write(
+      cwd,
+      "crates/basin-wasm/Cargo.toml",
+      '[package]\nname = "basin-wasm"\nversion = "1.13.1"\npublish = false\n',
+    );
+    const config: VersionaryConfig = {
+      version: 1,
+      "release-type": "rust",
+    };
+
+    expect(resolveTargetPackageName(cwd, config, ".")).toBe("basin");
+    expect(
+      resolveTargetPackageName(
+        cwd,
+        { ...config, packages: { ".": { "package-name": "custom" } } },
+        ".",
+      ),
+    ).toBe("custom");
+    expect(resolveTargetPackageName(cwd, config, "crates/basin-wasm")).toBe(
+      "basin-wasm",
+    );
   });
 
   it("extracts closing issue and pull request references from release notes", () => {

@@ -1088,26 +1088,16 @@ export const rustVersionStrategy: VersionStrategy = {
   },
   readPackageName(cwd: string, config: VersionaryConfig): string | null {
     const versionFile = this.getVersionFile(config);
-    const manifests = collectRustTargetManifests(
-      cwd,
-      versionFile,
-      !config.packages,
-    );
-    const selectedManifest = manifests[0];
-    if (!selectedManifest) {
-      throw new Error(
-        `Configured rust target "${versionFile}" did not resolve to a Rust crate manifest.`,
-      );
-    }
-    const versionPath = path.join(cwd, selectedManifest);
+    const versionPath = path.join(cwd, versionFile);
     if (!fs.existsSync(versionPath)) {
-      throw new Error(`Versionary requires ${selectedManifest} to exist.`);
+      throw new Error(`Versionary requires ${versionFile} to exist.`);
     }
     const cargoTomlRaw = fs.readFileSync(versionPath, "utf8");
-    if (!isCrateManifest(selectedManifest, cargoTomlRaw)) {
+    // A virtual workspace has no package name of its own to return.
+    if (!isCrateManifest(versionFile, cargoTomlRaw)) {
       return null;
     }
-    return readCargoPackageName(cargoTomlRaw, selectedManifest);
+    return readCargoPackageName(cargoTomlRaw, versionFile);
   },
   isPublishable(
     cwd: string,

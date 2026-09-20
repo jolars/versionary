@@ -484,7 +484,7 @@ describe("rustVersionStrategy", () => {
 
     expect(rustVersionStrategy.readVersion(cwd, config)).toBe("0.4.0");
     expect(rustVersionStrategy.validateProject(cwd, config)).toBeNull();
-    expect(rustVersionStrategy.readPackageName?.(cwd, config)).toBe("core-lib");
+    expect(rustVersionStrategy.readPackageName?.(cwd, config)).toBeNull();
 
     const updatedFiles = rustVersionStrategy.writeVersion(cwd, config, "0.5.0");
     expect(updatedFiles).toEqual(["Cargo.toml"]);
@@ -692,6 +692,52 @@ describe("rustVersionStrategy", () => {
     );
 
     expect(impacted).toEqual(["crates/util/Cargo.toml"]);
+  });
+
+  it("does not infer a virtual workspace name from a member crate", () => {
+    const cwd = useFixture("workspace-panache-like");
+
+    expect(
+      rustVersionStrategy.readPackageName?.(cwd, {
+        version: 1,
+        "release-type": "rust",
+      }),
+    ).toBeNull();
+  });
+
+  it("reads the configured crate name even when a workspace member sorts first", () => {
+    const cwd = makeTempDir("workspace-root-name");
+    write(
+      cwd,
+      "Cargo.toml",
+      [
+        "[package]",
+        'name = "root-crate"',
+        'version = "1.0.0"',
+        "[workspace]",
+        'members = ["a-member"]',
+        "",
+      ].join("\n"),
+    );
+    write(
+      cwd,
+      "a-member/Cargo.toml",
+      '[package]\nname = "member-crate"\nversion = "1.0.0"\n',
+    );
+
+    expect(
+      rustVersionStrategy.readPackageName?.(cwd, {
+        version: 1,
+        "release-type": "rust",
+      }),
+    ).toBe("root-crate");
+    expect(
+      rustVersionStrategy.readPackageName?.(cwd, {
+        version: 1,
+        "release-type": "rust",
+        "version-file": "a-member/Cargo.toml",
+      }),
+    ).toBe("member-crate");
   });
 
   it("surfaces strategy package-name and hook capabilities", () => {

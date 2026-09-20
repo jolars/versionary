@@ -15,7 +15,10 @@ export function resolveReleaseName(
     return configuredName;
   }
 
-  return strategy.readPackageName?.(cwd, strategyConfig) ?? packagePath;
+  return (
+    strategy.readPackageName?.(cwd, strategyConfig) ??
+    (packagePath === "." ? path.basename(cwd) : packagePath)
+  );
 }
 
 function withVersionFile(
