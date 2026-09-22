@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.4.2](https://github.com/jolars/versionary/compare/v1.4.1...v1.4.2) (2026-09-22)
+
+### Bug Fixes
+- resolve Rust workspace release names correctly ([`98f3329`](https://github.com/jolars/versionary/commit/98f332965f38de37ea29b2db66b76661fa90b513))
+
 ## [1.4.1](https://github.com/jolars/versionary/compare/v1.4.0...v1.4.1) (2026-09-16)
 
 ### Bug Fixes
