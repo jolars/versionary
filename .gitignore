@@ -151,3 +151,4 @@ devenv.local.yaml
 
 # logo preview render (see Taskfile.yml: `task logo:preview`)
 assets/logo/preview.png
+/.task/checksum
