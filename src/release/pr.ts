@@ -5,6 +5,7 @@ import path from "node:path";
 import { loadConfig } from "../config/load-config.js";
 import type { ParsedCommit } from "../git/commits.js";
 import { ensureGitIdentity } from "../git/identity.js";
+import { redactCredentials } from "../git/redact.js";
 import { getScmClient } from "../scm/client.js";
 import {
   resolvePackageStrategyContext,
@@ -1528,10 +1529,17 @@ export async function closeStaleReviewRequestIfExists(
 }
 
 export function pushReleaseBranch(cwd: string, branch: string): void {
-  execFileSync("git", ["push", "--force-with-lease", "origin", branch], {
-    cwd,
-    stdio: ["ignore", "pipe", "ignore"],
-  });
+  try {
+    execFileSync("git", ["push", "--force-with-lease", "origin", branch], {
+      cwd,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    // Captured stderr is included in the message. Do not retain the original
+    // error as a cause: its output buffers may contain credentials.
+    throw new Error(redactCredentials(message));
+  }
 }
 
 export function isReleaseCommitMessage(commitMessage: string): boolean {
