@@ -28,6 +28,9 @@
     "release-draft": {
       "type": "boolean"
     },
+    "release-latest": {
+      "type": "boolean"
+    },
     "release-reference-comments": {
       "type": "string",
       "enum": ["off", "best-effort", "strict"]
@@ -117,6 +120,9 @@
             "enum": ["markdown-changelog", "r-news"]
           },
           "release-draft": {
+            "type": "boolean"
+          },
+          "release-latest": {
             "type": "boolean"
           },
           "bump-minor-pre-major": {

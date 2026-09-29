@@ -17,6 +17,7 @@ export interface VersionaryPackage {
   "changelog-file"?: string;
   "changelog-format"?: VersionaryChangelogFormat;
   "release-draft"?: boolean;
+  "release-latest"?: boolean;
   /** @deprecated Use `allow-stable-major` with the inverse value. */
   "bump-minor-pre-major"?: boolean;
   "allow-stable-major"?: boolean;
@@ -32,6 +33,7 @@ export interface VersionaryConfig {
   "changelog-file"?: string;
   "changelog-format"?: VersionaryChangelogFormat;
   "release-draft"?: boolean;
+  "release-latest"?: boolean;
   "release-reference-comments"?: ReleaseReferenceCommentsMode;
   "release-branch"?: string;
   "separate-release-prs"?: boolean;

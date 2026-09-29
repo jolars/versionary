@@ -35,6 +35,7 @@ is the single source of truth for the config shape.
 | `baseline-file`              | string                | `".versionary-manifest.json"` | File tracking the baseline SHA for deterministic commit ranges. |
 | `bootstrap-sha`              | string                | —                        | First-run baseline commit when adopting Versionary on existing history. |
 | `release-draft`              | boolean               | `false`                  | Publish GitHub Releases as drafts. |
+| `release-latest`             | boolean               | `true` for root; `false` otherwise | Request GitHub Latest promotion for new releases. See [inheritance](#release-latest). |
 | `release-reference-comments` | `"off"` \| `"best-effort"` \| `"strict"` | `"off"` | Whether to comment on linked issues/PRs when released. See below. |
 | `monorepo-mode`              | `"independent"` \| `"fixed"` | —                 | Enables [monorepo](/guide/monorepos) planning. |
 | `packages`                   | object                | —                        | Per-package configuration (see [packages](#packages)). |
@@ -97,6 +98,7 @@ A map keyed by package path (`"."` for the repository root). Used with
 | `follows`               | string[]                                  | Source packages this package follows; see [follows](/guide/monorepos#follows). |
 | `extra-files`           | artifact-rule[]                           | Additional files to update with the new version (see below). |
 | `release-draft`         | boolean                                   | Override whether this package's GitHub Release is created as a draft. |
+| `release-latest`        | boolean                                   | Override whether this package's new GitHub Release requests Latest promotion. |
 
 See the [monorepos guide](/guide/monorepos) for tag naming, `follows`, and
 filtering semantics.
@@ -137,6 +139,46 @@ configuration:
 Here, the Python package inherits `false`, while the R and Julia packages
 create draft GitHub Releases. Draft selection does not change package grouping
 or release PR planning.
+
+### `release-latest`
+
+Controls whether a new GitHub Release requests **Latest** promotion. The setting
+applies in both PR and direct release workflows. Versionary resolves it for each
+release target in this order:
+
+1. The package's `release-latest`, including an explicit root package at `"."`.
+2. The top-level `release-latest`.
+3. `true` for the root package and `false` for other packages.
+
+An explicit `false` overrides an inherited `true`. For example, this configuration
+promotes only the root package's releases:
+
+```jsonc
+{
+  "version": 1,
+  "release-type": "node",
+  "monorepo-mode": "independent",
+  "release-latest": false,
+  "packages": {
+    ".": { "release-latest": true },
+    "packages/helper": {}
+  }
+}
+```
+
+GitHub has one Latest release per repository. Setting the top-level value to
+`true` makes every inheriting package request promotion, so use package overrides
+when only one package should hold that designation. GitHub does not allow drafts
+or prereleases to become Latest.
+
+For a [maintenance branch](/guide/workflows#maintenance-releases), set
+`release-latest: false` to keep its releases from replacing the current line's
+Latest release. This setting does not change version calculation or mark a release
+as a prerelease. Registry publishing and website deployment use their own policies.
+
+Retries apply the configured policy when creating missing release metadata.
+Existing GitHub Releases are reused without changing their metadata, so changing
+this setting does not retroactively promote or demote an existing release.
 
 ## `extra-files`
 

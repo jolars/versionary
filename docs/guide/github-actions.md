@@ -50,6 +50,10 @@ changelog to the triggering branch and publishes immediately. Place it after
 your build and test jobs using `needs`. Its token needs `contents: write` and
 permission to push to that branch under your repository's branch rules.
 
+For parallel release lines such as `main` and `1.x`, use the
+[maintenance workflow recipe](./workflows#maintenance-releases). It gives each
+line its own release PR branch and explicitly selects the base branch.
+
 ## Forked repositories
 
 The action skips release automation successfully when the repository running

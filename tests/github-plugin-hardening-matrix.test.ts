@@ -497,36 +497,39 @@ describe("github plugin hardening matrix", () => {
     });
   });
 
-  it("passes make_latest when requested", async () => {
-    process.env.GITHUB_REPOSITORY = "owner/repo";
-    process.env.GITHUB_TOKEN = "token";
-    mockApi.repos.getReleaseByTag.mockRejectedValueOnce({
-      status: 404,
-      message: "not found",
-    });
-    const plugin = createGitHubPlugin();
+  it.each(["true", "false"] as const)(
+    "passes make_latest %s when requested",
+    async (makeLatest) => {
+      process.env.GITHUB_REPOSITORY = "owner/repo";
+      process.env.GITHUB_TOKEN = "token";
+      mockApi.repos.getReleaseByTag.mockRejectedValueOnce({
+        status: 404,
+        message: "not found",
+      });
+      const plugin = createGitHubPlugin();
 
-    const result = await plugin.createReleaseMetadata?.(
-      {
-        ...releaseInput,
-        makeLatest: "true",
-      },
-      {
-        cwd: process.cwd(),
-      },
-    );
+      const result = await plugin.createReleaseMetadata?.(
+        {
+          ...releaseInput,
+          makeLatest,
+        },
+        {
+          cwd: process.cwd(),
+        },
+      );
 
-    expect(mockApi.repos.createRelease).toHaveBeenCalledTimes(1);
-    expect(mockApi.repos.createRelease).toHaveBeenCalledWith(
-      expect.objectContaining({
-        make_latest: "true",
-      }),
-    );
-    expect(result).toEqual({
-      status: "created",
-      url: "https://github.com/owner/repo/releases/tag/v1.2.3",
-    });
-  });
+      expect(mockApi.repos.createRelease).toHaveBeenCalledTimes(1);
+      expect(mockApi.repos.createRelease).toHaveBeenCalledWith(
+        expect.objectContaining({
+          make_latest: makeLatest,
+        }),
+      );
+      expect(result).toEqual({
+        status: "created",
+        url: "https://github.com/owner/repo/releases/tag/v1.2.3",
+      });
+    },
+  );
 
   it.each([403, 422])(
     "fails release lookup for non-404 status %s",

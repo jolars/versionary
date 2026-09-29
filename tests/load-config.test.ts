@@ -58,6 +58,47 @@ describe("config loading", () => {
     expect(loaded.config["release-branch"]).toBe("release/please");
   });
 
+  it.each([undefined, false, true])(
+    "preserves release-latest %s at every configuration level",
+    (latest) => {
+      const dir = makeTempDir();
+      const config = {
+        version: 1,
+        "release-latest": latest,
+        packages: {
+          ".": { "release-latest": latest },
+          "packages/a": { "release-latest": latest },
+        },
+      };
+      fs.writeFileSync(
+        path.join(dir, "versionary.jsonc"),
+        JSON.stringify(config),
+      );
+
+      expect(loadConfig(dir).config).toEqual(
+        JSON.parse(JSON.stringify(config)),
+      );
+    },
+  );
+
+  it.each(["false", 0, null])(
+    "rejects non-boolean release-latest %s at every configuration level",
+    (latest) => {
+      const dir = makeTempDir();
+      for (const settings of [
+        { "release-latest": latest },
+        { packages: { ".": { "release-latest": latest } } },
+        { packages: { "packages/a": { "release-latest": latest } } },
+      ]) {
+        fs.writeFileSync(
+          path.join(dir, "versionary.jsonc"),
+          JSON.stringify({ version: 1, ...settings }),
+        );
+        expect(() => loadConfig(dir)).toThrow(/release-latest/u);
+      }
+    },
+  );
+
   it("loads manifest-style top-level knobs", () => {
     const dir = makeTempDir();
     fs.writeFileSync(

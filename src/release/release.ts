@@ -59,6 +59,17 @@ export function resolveTargetReleaseDraft(
   );
 }
 
+export function resolveTargetReleaseLatest(
+  config: VersionaryConfig,
+  targetPath: string,
+): boolean {
+  return (
+    config.packages?.[targetPath]?.["release-latest"] ??
+    config["release-latest"] ??
+    targetPath === "."
+  );
+}
+
 export function extractReleaseNotes(
   content: string,
   version: string,
@@ -362,7 +373,9 @@ export async function runReleaseDetailed(
         version: target.version,
         notes: releaseNotes,
         draft: resolveTargetReleaseDraft(loaded.config, target.path),
-        makeLatest: target.path === "." ? "true" : "false",
+        makeLatest: resolveTargetReleaseLatest(loaded.config, target.path)
+          ? "true"
+          : "false",
       },
       {
         createReleaseMetadata: (input) =>

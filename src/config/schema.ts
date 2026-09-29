@@ -74,6 +74,7 @@ const packageSchema = z
     "changelog-file": z.string().optional(),
     "changelog-format": z.enum(["markdown-changelog", "r-news"]).optional(),
     "release-draft": z.boolean().optional(),
+    "release-latest": z.boolean().optional(),
     "bump-minor-pre-major": deprecatedBumpMinorPreMajorSchema,
     "allow-stable-major": z.boolean().optional(),
     "exclude-paths": z.array(z.string()).optional(),
@@ -104,6 +105,7 @@ export const configSchema = z
     "changelog-file": z.string().optional(),
     "changelog-format": z.enum(["markdown-changelog", "r-news"]).optional(),
     "release-draft": z.boolean().optional(),
+    "release-latest": z.boolean().optional(),
     "release-reference-comments": z
       .enum(["off", "best-effort", "strict"])
       .optional(),
