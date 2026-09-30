@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.6.0](https://github.com/jolars/versionary/compare/v1.5.0...v1.6.0) (2026-09-30)
+
+### Features
+
+- **changelog:** add blankline after headings ([`623af22`](https://github.com/jolars/versionary/commit/623af22272735bb67b23565e9c8fd2260c9d00e7))
+
+### Bug Fixes
+
+- preserve release branch push diagnostics ([`518ba67`](https://github.com/jolars/versionary/commit/518ba6726a6f993177c44c2189a819e6f55711e9)), fixes [#101](https://github.com/jolars/versionary/issues/101)
+
 ## [1.5.0](https://github.com/jolars/versionary/compare/v1.4.1...v1.5.0) (2026-09-29)
 
 ### Features
