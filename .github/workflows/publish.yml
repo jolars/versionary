@@ -33,6 +33,9 @@ jobs:
       - name: Publish to npm
         run: pnpm --filter versionary publish --no-git-checks --access public
 
+      - name: Wait for npm package availability
+        run: pnpm exec tsx scripts/wait-for-npm.ts
+
   update-action-major-tag:
     name: Update action major tag
     if: github.event_name == 'release'
