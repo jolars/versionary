@@ -37,6 +37,13 @@ function makePlan(): ReleasePlan {
 }
 
 describe("simple changelog rendering", () => {
+  it("separates generated headings from their lists", () => {
+    const changelog = renderReleasePlanChangelog(makePlan());
+
+    expect(changelog).toMatch(/^## .+\n\n### Features\n\n- /mu);
+    expect(changelog).toMatch(/\n### Bug Fixes\n\n- /u);
+  });
+
   it("includes releasable commits and excludes ci/chore", () => {
     const prevServer = process.env.GITHUB_SERVER_URL;
     const prevRepo = process.env.GITHUB_REPOSITORY;

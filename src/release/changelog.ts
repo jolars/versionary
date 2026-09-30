@@ -234,23 +234,29 @@ export function renderReleaseNotesSection(
     sections.push(trimmedHighlights, "");
   }
   if (grouped.breaking.length > 0) {
-    sections.push("### Breaking changes", ...grouped.breaking, "");
+    sections.push("### Breaking changes", "", ...grouped.breaking, "");
   }
   if (grouped.features.length > 0) {
-    sections.push("### Features", ...grouped.features, "");
+    sections.push("### Features", "", ...grouped.features, "");
   }
   if (grouped.fixes.length > 0) {
-    sections.push("### Bug Fixes", ...grouped.fixes, "");
+    sections.push("### Bug Fixes", "", ...grouped.fixes, "");
   }
   if (grouped.performance.length > 0) {
-    sections.push("### Performance Improvements", ...grouped.performance, "");
+    sections.push(
+      "### Performance Improvements",
+      "",
+      ...grouped.performance,
+      "",
+    );
   }
   if (grouped.reverts.length > 0) {
-    sections.push("### Reverts", ...grouped.reverts, "");
+    sections.push("### Reverts", "", ...grouped.reverts, "");
   }
   if (input.dependencies && input.dependencies.length > 0) {
     sections.push(
       "### Dependencies",
+      "",
       ...input.dependencies.map(
         (dependency) =>
           `- updated ${dependency.name} to v${dependency.version}`,
@@ -265,7 +271,7 @@ export function renderReleaseNotesSection(
       input.dependencies?.length ?? 0,
     )
   ) {
-    sections.push("### Other changes", ...grouped.other, "");
+    sections.push("### Other changes", "", ...grouped.other, "");
   }
   const body = [header, "", ...sections].join("\n").trimEnd();
   if (options.includeFooter) {

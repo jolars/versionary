@@ -61,6 +61,17 @@ describe("safe dirty file splitting", () => {
 });
 
 describe("review request body rendering", () => {
+  it("separates generated headings from their lists", () => {
+    const body = renderSimpleReviewRequestBody("1.2.3", "1.2.2", [
+      {
+        ...parseConventionalCommitMessage("feat: add feature"),
+        hash: "aaaaaaa",
+      },
+    ]);
+
+    expect(body).toMatch(/^## .+\n\n### Features\n\n- /mu);
+  });
+
   it("groups releasable commits and omits ci/chore", () => {
     const prevServer = process.env.GITHUB_SERVER_URL;
     const prevRepo = process.env.GITHUB_REPOSITORY;
