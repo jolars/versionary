@@ -474,6 +474,27 @@ describe("pythonVersionStrategy readPackageName", () => {
     );
   });
 
+  it("reads the configured manifest instead of the root pyproject.toml", () => {
+    const cwd = makeTempDir("name-subpackage");
+    writeFile(
+      cwd,
+      "pyproject.toml",
+      '[project]\nname = "root-project"\nversion = "1.0.0"\n',
+    );
+    writeFile(
+      cwd,
+      "packages/client/pyproject.toml",
+      '[project]\nname = "python-client"\nversion = "1.0.0"\n',
+    );
+
+    expect(
+      pythonVersionStrategy.readPackageName?.(cwd, {
+        ...baseConfig,
+        "version-file": "packages/client/pyproject.toml",
+      }),
+    ).toBe("python-client");
+  });
+
   it("returns null when pyproject.toml is missing (e.g. source-file mode without manifest)", () => {
     const cwd = makeTempDir("name-no-pyproject");
     writeFile(cwd, "src/demo/__init__.py", '__version__ = "1.0.0"\n');

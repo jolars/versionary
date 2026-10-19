@@ -282,13 +282,14 @@ function findNearestLockfileDirectory(
 
 function readPyProjectFromCwd(
   cwd: string,
+  versionFile: string,
 ): { parsed: ParsedPyProject; rawPath: string } | null {
-  const target = path.join(cwd, "pyproject.toml");
+  const target = path.join(cwd, versionFile);
   if (!fs.existsSync(target)) {
     return null;
   }
   const content = fs.readFileSync(target, "utf8");
-  return { parsed: parsePyProject(content, "pyproject.toml"), rawPath: target };
+  return { parsed: parsePyProject(content, versionFile), rawPath: target };
 }
 
 function packageNameFromParsed(parsed: ParsedPyProject): string | null {
@@ -433,20 +434,16 @@ export const pythonVersionStrategy: VersionStrategy = {
     }
     return written;
   },
-  readPackageName(cwd: string, _config: VersionaryConfig): string | null {
-    const found = readPyProjectFromCwd(cwd);
+  readPackageName(cwd: string, config: VersionaryConfig): string | null {
+    const versionFile = this.getVersionFile(config);
+    const found = readPyProjectFromCwd(
+      cwd,
+      isSourceFileMode(versionFile) ? "pyproject.toml" : versionFile,
+    );
     if (!found) {
       return null;
     }
-    const projectName = found.parsed.project?.name;
-    if (typeof projectName === "string" && projectName.trim().length > 0) {
-      return projectName.trim();
-    }
-    const poetryName = found.parsed.toolPoetry?.name;
-    if (typeof poetryName === "string" && poetryName.trim().length > 0) {
-      return poetryName.trim();
-    }
-    return null;
+    return packageNameFromParsed(found.parsed);
   },
   finalizeVersionWrites(
     cwd: string,

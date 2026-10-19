@@ -294,7 +294,7 @@ export function buildReleaseTargets(
 }
 
 interface PackageReleaseMetadata {
-  releaseName: string;
+  packageName: string;
   tagPrefix: string;
 }
 
@@ -322,7 +322,9 @@ function buildPackageReleaseMetadata(
       packageContext.config,
     );
     metadataByPath[pkg.path] = {
-      releaseName,
+      packageName:
+        packageContext.strategy.readPackageName?.(cwd, packageContext.config) ??
+        releaseName,
       tagPrefix: normalizeReleaseNameForTag(releaseName),
     };
   }
@@ -696,7 +698,7 @@ export function prepareReleasePr(
     const packageSection =
       packageChangelogFormat === "r-news"
         ? renderRNewsReleaseNotes({
-            packageName: packageMetadata.releaseName,
+            packageName: packageMetadata.packageName,
             nextVersion: packagePlan.nextVersion,
             commits: packagePlan.commits,
             cwd,
@@ -971,7 +973,7 @@ function materializeCandidateChanges(
     const section =
       packageChangelogFormat === "r-news"
         ? renderRNewsReleaseNotes({
-            packageName: metadata.releaseName,
+            packageName: metadata.packageName,
             nextVersion: packagePlan.nextVersion,
             commits: packagePlan.commits,
             cwd,
