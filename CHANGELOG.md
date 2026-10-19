@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/jolars/versionary/compare/v1.6.0...v1.6.1) (2026-10-19)
+
+### Bug Fixes
+
+- use package names in NEWS headings ([`c530021`](https://github.com/jolars/versionary/commit/c530021033ab4612773b73bc44badab16ae53c26)), fixes [#105](https://github.com/jolars/versionary/issues/105)
+- wait for npm before advancing action tags ([`0fc8690`](https://github.com/jolars/versionary/commit/0fc86903b654a1257e2935108e2ed7e3d1c1de1f))
+
 ## [1.6.0](https://github.com/jolars/versionary/compare/v1.5.0...v1.6.0) (2026-09-30)
 
 ### Features
