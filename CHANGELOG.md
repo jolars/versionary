@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.6.2](https://github.com/jolars/versionary/compare/v1.6.1...v1.6.2) (2026-10-22)
+
+### Bug Fixes
+
+- **deps:** update Vue to fix SSR XSS ([`896d15d`](https://github.com/jolars/versionary/commit/896d15d0d80b3e8b4ea2b4689dafaa2521993ac8))
+
 ## [1.6.1](https://github.com/jolars/versionary/compare/v1.6.0...v1.6.1) (2026-10-19)
 
 ### Bug Fixes
