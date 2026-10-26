@@ -1,5 +1,7 @@
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { parse as parseToml } from "smol-toml";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   applyRustWorkspaceDependencyUpdates,
@@ -46,6 +48,15 @@ function useFixture(relative: string): string {
   return cwd;
 }
 
+function cargoOnPath(): boolean {
+  try {
+    execFileSync("cargo", ["--version"], { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 afterEach(() => {
   while (tempDirs.length > 0) {
     const dir = tempDirs.pop();
@@ -56,6 +67,116 @@ afterEach(() => {
 });
 
 describe("rustVersionStrategy", () => {
+  it.runIf(cargoOnPath())(
+    "preserves external dependency versions in root and nested lockfiles",
+    () => {
+      const cwd = makeTempDir("locked-dependencies");
+      const registry = makeTempDir("local-registry");
+      // Lockfile resolution needs only registry metadata, so no crate archives are necessary.
+      const writeRegistryVersions = (versions: string[]) =>
+        write(
+          registry,
+          "index/ex/te/external-dep",
+          `${versions
+            .map((version) =>
+              JSON.stringify({
+                name: "external-dep",
+                vers: version,
+                deps: [],
+                cksum: "0".repeat(64),
+                features: {},
+                yanked: false,
+              }),
+            )
+            .join("\n")}\n`,
+        );
+      writeRegistryVersions(["1.0.0"]);
+      write(
+        cwd,
+        ".cargo/config.toml",
+        [
+          "[source.crates-io]",
+          'replace-with = "test-registry"',
+          "[source.test-registry]",
+          `local-registry = ${JSON.stringify(registry)}`,
+          "",
+        ].join("\n"),
+      );
+      write(
+        cwd,
+        "Cargo.toml",
+        [
+          "[package]",
+          'name = "demo"',
+          'version = "0.1.0"',
+          'edition = "2021"',
+          "[dependencies]",
+          'external-dep = "1"',
+          "",
+        ].join("\n"),
+      );
+      write(cwd, "src/lib.rs", "");
+      write(
+        cwd,
+        "examples/consumer/Cargo.toml",
+        [
+          "[workspace]",
+          "[package]",
+          'name = "consumer"',
+          'version = "0.1.0"',
+          'edition = "2021"',
+          "[dependencies]",
+          'demo = { path = "../..", version = "0.1.0" }',
+          "",
+        ].join("\n"),
+      );
+      write(cwd, "examples/consumer/src/lib.rs", "");
+      for (const dir of [".", "examples/consumer"]) {
+        execFileSync("cargo", ["generate-lockfile"], {
+          cwd: path.join(cwd, dir),
+          stdio: "pipe",
+        });
+      }
+
+      writeRegistryVersions(["1.0.0", "1.1.0"]);
+      rustVersionStrategy.writeVersion(
+        cwd,
+        { version: 1, "release-type": "rust" },
+        "0.2.0",
+      );
+      const updatedFiles = rustVersionStrategy.finalizeVersionWrites?.(
+        cwd,
+        [{ packagePath: ".", versionFile: "Cargo.toml", version: "0.2.0" }],
+        { releaseCommitSha: "abc", releaseDate: "2026-10-26" },
+      );
+
+      expect(updatedFiles).toEqual(
+        expect.arrayContaining([
+          "Cargo.lock",
+          "examples/consumer/Cargo.lock",
+          "examples/consumer/Cargo.toml",
+        ]),
+      );
+      expect(read(cwd, "examples/consumer/Cargo.toml")).toContain(
+        'demo = { path = "../..", version = "0.2.0" }',
+      );
+      for (const lockfile of ["Cargo.lock", "examples/consumer/Cargo.lock"]) {
+        const packages = parseToml(read(cwd, lockfile)).package as {
+          name: string;
+          version: string;
+        }[];
+        expect(packages.find((pkg) => pkg.name === "demo")?.version).toBe(
+          "0.2.0",
+        );
+        expect(
+          packages
+            .filter((pkg) => pkg.name === "external-dep")
+            .map((pkg) => pkg.version),
+        ).toEqual(["1.0.0"]);
+      }
+    },
+  );
+
   it("reads [package].version from Cargo.toml", () => {
     const cwd = useFixture("root-crate");
 

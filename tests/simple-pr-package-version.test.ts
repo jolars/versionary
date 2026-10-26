@@ -737,7 +737,7 @@ describe("release PR package version update", () => {
       [
         "#!/usr/bin/env bash",
         "set -euo pipefail",
-        'if [ "$1" = "generate-lockfile" ]; then',
+        'if [ "$1" = "update" ] && [ "$2" = "--workspace" ]; then',
         '  printf "new-lock\\n" > "$PWD/Cargo.lock"',
         "  exit 0",
         "fi",
@@ -804,7 +804,7 @@ describe("release PR package version update", () => {
     process.env.PATH = `${fakeBin}:${prevPath}`;
     try {
       expect(() => prepareReleasePr(cwd)).toThrow(
-        /Failed to refresh .*Cargo\.lock/i,
+        /Failed to refresh .*Cargo\.lock via "cargo update --workspace"/i,
       );
     } finally {
       process.env.PATH = prevPath;
@@ -874,7 +874,7 @@ describe("release PR package version update", () => {
       [
         "#!/usr/bin/env bash",
         "set -euo pipefail",
-        'if [ "$1" = "generate-lockfile" ]; then',
+        'if [ "$1" = "update" ] && [ "$2" = "--workspace" ]; then',
         '  printf "new-lock\\n" > "$PWD/Cargo.lock"',
         "  exit 0",
         "fi",

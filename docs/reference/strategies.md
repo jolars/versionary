@@ -71,8 +71,10 @@ The default when `release-type` is omitted.
   crate, its version requirement is rewritten across `[dependencies]`,
   `[dev-dependencies]`, `[build-dependencies]`, and their `[target.*]` variants.
   Operators (`^`, `~`, `>=`, …) and table vs. string forms are preserved.
-- **Lockfiles:** `Cargo.lock` files are refreshed via `cargo generate-lockfile`.
-  `cargo` must be on `PATH` during PR preparation when a `Cargo.lock` exists.
+- **Lockfiles:** `Cargo.lock` files are refreshed via `cargo update --workspace`.
+  Existing external dependency versions are preserved unless changed
+  requirements need a new resolution. `cargo` must be on `PATH` during PR
+  preparation when a `Cargo.lock` exists.
 - **Publishability:** crates with `publish = false`, an empty registry list, or
   either inherited via `publish.workspace = true`, are exempt from
   [published dependency freshness](../guide/monorepos#stale-dependencies).
