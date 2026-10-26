@@ -175,6 +175,8 @@ describe("rustVersionStrategy", () => {
         ).toEqual(["1.0.0"]);
       }
     },
+    // Multiple Cargo subprocesses can exceed the default timeout on CI runners.
+    30_000,
   );
 
   it("reads [package].version from Cargo.toml", () => {
