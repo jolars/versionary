@@ -385,40 +385,50 @@ describe("commit exclusions and corrections", () => {
     expect(fs.existsSync(path.join(cwd, "versionary.jsonc"))).toBe(false);
   });
 
-  it("rejects invalid commands without editing configuration", () => {
-    const cwd = initRepo();
-    const released = git(cwd, "rev-parse", "HEAD");
-    const fix = commit(cwd, "fix: unreleased regression");
-    const unreachable = git(
-      cwd,
-      "commit-tree",
-      "HEAD^{tree}",
-      "-p",
-      "HEAD",
-      "-m",
-      "fix: on another branch",
-    );
-    const original = fs.readFileSync(
-      path.join(cwd, "versionary.jsonc"),
-      "utf8",
-    );
-    for (const args of [
+  it.each(
+    [
       ["exclude"],
-      ["exclude", released],
+      ["exclude", "$released"],
       ["exclude", "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"],
-      ["exclude", unreachable],
+      ["exclude", "$unreachable"],
       ["exclude", "HEAD"],
-      ["exclude", fix, "--reason", "   "],
-      ["exclude", fix, "--unknown"],
-      ["correct", fix],
-      ["correct", fix, "--message", "not conventional"],
-    ]) {
-      expect(() => runCli(cwd, ...args)).toThrow();
+      ["exclude", "$fix", "--reason", "   "],
+      ["exclude", "$fix", "--unknown"],
+      ["correct", "$fix"],
+      ["correct", "$fix", "--message", "not conventional"],
+    ].map((args) => ({ args })),
+  )(
+    "rejects invalid command $args without editing configuration",
+    ({ args }) => {
+      const cwd = initRepo();
+      const released = git(cwd, "rev-parse", "HEAD");
+      const fix = commit(cwd, "fix: unreleased regression");
+      const unreachable = git(
+        cwd,
+        "commit-tree",
+        "HEAD^{tree}",
+        "-p",
+        "HEAD",
+        "-m",
+        "fix: on another branch",
+      );
+      const original = fs.readFileSync(
+        path.join(cwd, "versionary.jsonc"),
+        "utf8",
+      );
+      const commits: Record<string, string> = {
+        $released: released,
+        $fix: fix,
+        $unreachable: unreachable,
+      };
+      expect(() =>
+        runCli(cwd, ...args.map((arg) => commits[arg] ?? arg)),
+      ).toThrow();
       expect(fs.readFileSync(path.join(cwd, "versionary.jsonc"), "utf8")).toBe(
         original,
       );
-    }
-  });
+    },
+  );
 
   it.each([
     {},
