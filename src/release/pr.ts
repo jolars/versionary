@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { pruneCommitOverrides } from "../config/commit-overrides.js";
 import { loadConfig } from "../config/load-config.js";
 import type { ParsedCommit } from "../git/commits.js";
 import { ensureGitIdentity } from "../git/identity.js";
@@ -734,11 +735,13 @@ export function prepareReleasePr(
     cwd,
     stdio: ["ignore", "pipe", "ignore"],
   });
+  const updatedConfigFiles = pruneCommitOverrides(cwd, plan);
   const filesToAdd = [
     ...new Set([
       ...updatedVersionFiles,
       ...updatedArtifactFiles,
       ...updatedChangelogFiles,
+      ...updatedConfigFiles,
     ]),
   ];
   execFileSync("git", ["add", ...filesToAdd], {
@@ -847,6 +850,7 @@ function materializeCandidateChanges(
     baselineSha: string;
     branch?: string;
     writePackageState?: boolean;
+    pruneOverrides?: boolean;
   },
 ): MaterializedCandidate {
   const loaded = loadConfig(cwd);
@@ -998,6 +1002,9 @@ function materializeCandidateChanges(
   }
 
   const targets = buildReleaseTargets(cwd, plan, loaded.config);
+  const updatedConfigFiles = options.pruneOverrides
+    ? pruneCommitOverrides(cwd, plan)
+    : [];
   const stateFiles =
     options.writePackageState && options.branch
       ? writePackageReleaseState(
@@ -1013,6 +1020,7 @@ function materializeCandidateChanges(
         ...updatedVersionFiles,
         ...updatedArtifactFiles,
         ...updatedChangelogFiles,
+        ...updatedConfigFiles,
         ...stateFiles,
       ]),
     ].sort((a, b) => a.localeCompare(b)),
@@ -1082,6 +1090,8 @@ export function prepareSeparateReleasePrs(
   if (initialCohorts.length === 0) {
     return [];
   }
+  // One candidate owns shared config cleanup so cleanup alone cannot couple PRs.
+  const cleanupOwner = initialCohorts[0]?.[0];
   buildReleaseTargets(cwd, plan, loaded.config);
   ensureCleanWorktree(cwd, options.logger);
   const baselineSha = execFileSync("git", ["rev-parse", "HEAD"], {
@@ -1104,7 +1114,7 @@ export function prepareSeparateReleasePrs(
       return materializeCandidateChanges(
         worktree,
         scopeReleasePlan(plan, packagePaths),
-        { baselineSha },
+        { baselineSha, pruneOverrides: packagePaths.includes(cleanupOwner) },
       ).files;
     });
     const prepared: PreparedSeparateReleasePr[] = [];
@@ -1134,6 +1144,7 @@ export function prepareSeparateReleasePrs(
         baselineSha,
         branch,
         writePackageState: true,
+        pruneOverrides: packagePaths.includes(cleanupOwner),
       });
       const title = formatReleaseCommitTitle(materialized.targets);
       if (!options["dry-run"]) {

@@ -78,6 +78,35 @@ Two things worth highlighting:
   `docs:` commit with a `BREAKING CHANGE:` footer triggers a major bump.
 - **Unrecognized types are ignored** unless they carry a breaking marker.
 
+## Correcting commits before release
+
+If a merged commit has the wrong type, record a replacement message:
+
+```bash
+versionary correct a1b2c3d --message "perf: cache commit lookups"
+```
+
+Versionary uses the corrected message for both the version bump and changelog.
+For example, changing `feat` to `perf` changes that commit's contribution from
+minor to patch. Other commits still contribute their normal bumps.
+
+To exclude a commit entirely from release analysis and notes:
+
+```bash
+versionary exclude e4f5a6b --reason "Fixes an unreleased regression"
+```
+
+This is useful when a `fix` corrects a bug introduced after the previous
+release. If a preceding `feat` introduced the affected feature, that feature
+still drives the release, without a redundant bug-fix entry. Excluding the only
+releasable commit can leave no release to prepare. Exclusion changes release
+metadata; the code still ships.
+
+Both commands update your configuration. Commit that change, then run
+`versionary plan` or `versionary changelog` to inspect the result. See
+[commit overrides](/reference/configuration#commit-overrides) for the config
+format and monorepo behavior.
+
 ## Scopes and references in the changelog
 
 When a commit has a scope, it is emphasized in the changelog entry as

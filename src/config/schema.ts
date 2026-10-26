@@ -1,5 +1,25 @@
 import { z } from "zod";
 
+const commitOverrideSchema = z.union([
+  z
+    .object({
+      skip: z.literal(true),
+      reason: z.string().trim().min(1).optional(),
+    })
+    .strict(),
+  z
+    .object({
+      message: z
+        .string()
+        .min(1)
+        .describe(
+          "Complete replacement Conventional Commit message, including any body and footers.",
+        ),
+      reason: z.string().trim().min(1).optional(),
+    })
+    .strict(),
+]);
+
 const artifactRuleSchema = z
   .object({
     type: z.enum(["json", "toml", "yaml", "nix", "regex"]),
@@ -120,6 +140,17 @@ export const configSchema = z
     "exclude-paths": z.array(z.string()).optional(),
     "release-type": z
       .union([z.string().min(1), z.array(z.string().min(1)).min(1)])
+      .optional(),
+    "commit-overrides": z
+      .record(
+        z
+          .string()
+          .regex(
+            /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u,
+            "Expected a full, lowercase commit SHA.",
+          ),
+        commitOverrideSchema,
+      )
       .optional(),
     packages: z.record(z.string().min(1), packageSchema).optional(),
   })

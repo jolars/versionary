@@ -2,6 +2,11 @@ export type ConfigFileFormat = "jsonc" | "json" | "toml" | "js";
 export type VersionaryChangelogFormat = "markdown-changelog" | "r-news";
 export type ReleaseReferenceCommentsMode = "off" | "best-effort" | "strict";
 
+export type VersionaryCommitOverride = (
+  | { skip: true; message?: never }
+  | { message: string; skip?: never }
+) & { reason?: string };
+
 export interface VersionaryArtifactRule {
   type: "json" | "toml" | "yaml" | "nix" | "regex";
   path: string;
@@ -45,6 +50,7 @@ export interface VersionaryConfig {
   "allow-stable-major"?: boolean;
   "include-commit-authors"?: boolean;
   "exclude-paths"?: string[];
+  "commit-overrides"?: Record<string, VersionaryCommitOverride>;
   "release-type"?: string | string[];
   packages?: Record<string, VersionaryPackage>;
 }

@@ -41,7 +41,55 @@ is the single source of truth for the config shape.
 | `packages`                   | object                | —                        | Per-package configuration (see [packages](#packages)). |
 | `allow-stable-major`         | boolean               | `false`                  | Allow a breaking `0.y.z` release to become `1.0.0`. See [pre-1.0 policy](/guide/versioning#pre-1-0-policy). |
 | `exclude-paths`              | string[]              | —                        | Glob/path prefixes whose changes don't, on their own, count toward a bump. Applies repo-wide and to every package. |
+| `commit-overrides`           | object                | —                        | Exclusions or replacement messages keyed by full commit SHA. See [commit overrides](#commit-overrides). |
 | `include-commit-authors`     | boolean               | —                        | Accepted by the schema; not yet wired into changelog rendering. |
+
+### `commit-overrides`
+
+Correct release metadata for commits that have already landed without rewriting
+Git history. Each key is a full, lowercase commit SHA. Each value contains
+either `skip: true` or a `message`, plus an optional `reason`:
+
+```jsonc
+{
+  "version": 1,
+  "commit-overrides": {
+    "0123456789abcdef0123456789abcdef01234567": {
+      "skip": true,
+      "reason": "Fixes a regression introduced after the previous release"
+    },
+    "89abcdef0123456789abcdef0123456789abcdef": {
+      "message": "perf: cache commit lookups",
+      "reason": "The original commit was incorrectly labeled feat"
+    }
+  }
+}
+```
+
+`skip: true` excludes the commit from both version calculation and generated
+release notes, including any `Release-As` footer. Its code still ships.
+`message` replaces the complete message used for release analysis and notes,
+including the body and footers. Include any breaking markers or issue references
+that should remain. The replacement must be a valid Conventional Commit.
+Versionary preserves the original SHA and uses the original changed files to
+attribute the commit to packages. Existing suppression of revert pairs still
+uses the original commit relationships.
+
+Overrides apply only within each package's unreleased commit window. They do
+not change earlier releases. Configured SHAs must resolve to commits in the
+current branch's history. `versionary plan` includes a `commitOverrides` array
+with the original messages, overrides, reasons, and package paths where they
+still apply. An empty `packages` array means the override has been consumed.
+
+The [`exclude` and `correct` commands](./cli#exclude-and-correct) accept short
+SHAs and write these entries while preserving JSONC comments. Commit the
+configuration change so local planning and CI use the same metadata. To undo an
+override before release, remove its entry.
+
+Versionary removes consumed entries during a later release's preparation. In a
+monorepo, it retains an entry while any configured package still has the commit
+in its release window. Cleanup does not require unrelated package release PRs
+to merge together.
 
 ### Deprecated: `bump-minor-pre-major`
 

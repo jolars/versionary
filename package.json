@@ -38,6 +38,8 @@
     "verify": "tsx src/cli/index.ts verify",
     "run": "tsx src/cli/index.ts run",
     "plan": "tsx src/cli/index.ts plan",
+    "exclude": "tsx src/cli/index.ts exclude",
+    "correct": "tsx src/cli/index.ts correct",
     "changelog": "tsx src/cli/index.ts changelog",
     "pr": "tsx src/cli/index.ts pr",
     "release": "tsx src/cli/index.ts release",

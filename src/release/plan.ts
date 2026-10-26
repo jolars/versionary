@@ -2,6 +2,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { loadConfig } from "../config/load-config.js";
 import {
+  applyCommitOverrides,
+  type CommitOverrideReport,
+  resolveCommitOverrides,
+} from "../git/commit-overrides.js";
+import {
   analyzeParsedCommits,
   applyRevertSuppression,
   getParsedCommitsForPath,
@@ -16,6 +21,7 @@ import type {
 } from "../strategy/types.js";
 import type {
   VersionaryChangelogFormat,
+  VersionaryCommitOverride,
   VersionaryConfig,
   VersionaryPackage,
 } from "../types/config.js";
@@ -42,6 +48,7 @@ export interface ReleasePlan {
   releaseBranchPrefix: string;
   baselineSha: string | null;
   commits: ParsedCommit[];
+  commitOverrides?: CommitOverrideReport[];
   packages?: Array<{
     path: string;
     releaseType: ReleaseType;
@@ -107,8 +114,19 @@ function getNormalizedPackages(
   return [{ path: ".", config: {}, implicitRoot: true }, ...configured];
 }
 
-export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
+export function createReleasePlan(
+  cwd = process.cwd(),
+  options: { commitOverrides?: Record<string, VersionaryCommitOverride> } = {},
+): ReleasePlan {
   const loaded = loadConfig(cwd);
+  const overrides = resolveCommitOverrides(
+    cwd,
+    options.commitOverrides ?? loaded.config["commit-overrides"] ?? {},
+  );
+  const originalCommits = new Map<string, ParsedCommit>();
+  // Keep the original revert relationships even when either commit is excluded.
+  const effectiveCommits = (commits: ParsedCommit[]): ParsedCommit[] =>
+    applyCommitOverrides(applyRevertSuppression(commits), overrides);
   const strategy = resolveVersionStrategy(loaded.config);
   const configuredPackageCount = Object.keys(
     loaded.config.packages ?? {},
@@ -190,9 +208,13 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
         excludePaths,
       );
     }
-    const effectiveCommits = applyRevertSuppression(parsedCommits);
-    const commits = effectiveCommits;
-    const analyzedType = analyzeParsedCommits(parsedCommits);
+    for (const commit of parsedCommits) {
+      originalCommits.set(commit.hash, commit);
+      overrides.get(commit.hash)?.report.packages.push(pkg.path);
+    }
+    parsedCommits = effectiveCommits(parsedCommits);
+    const commits = parsedCommits;
+    const analyzedType = analyzeParsedCommits(commits);
     const override = resolveReleaseAsOverride(commits, packageCurrentVersion);
     let releaseType: ReleaseType;
     let nextVersion: string | null;
@@ -576,6 +598,10 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
   const rootPackagePlan = adjustedPackages.find(
     (pkgPlan) => pkgPlan.path === ".",
   );
+  const overrideReport =
+    overrides.size > 0
+      ? { commitOverrides: [...overrides.values()].map(({ report }) => report) }
+      : {};
   if (!rootPackagePlan) {
     throw new Error(
       'Internal error: normalized package list must always include root path ".".',
@@ -595,6 +621,7 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
       releaseBranchPrefix,
       baselineSha,
       commits: rootPackagePlan.commits,
+      ...overrideReport,
     };
   }
 
@@ -602,7 +629,7 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
 
   if (monorepoMode === "fixed") {
     const analyzedFixedType = analyzeParsedCommits(
-      adjustedPackages.flatMap((pkgPlan) => pkgPlan.parsedCommits),
+      effectiveCommits([...originalCommits.values()]),
     );
     const fixedBaseVersion = rootPackagePlan.currentVersion;
     // A `Release-As:` footer on the shared (root) version pins every package.
@@ -637,6 +664,7 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
       releaseBranchPrefix,
       baselineSha,
       commits: adjusted.flatMap((pkgPlan) => pkgPlan.commits),
+      ...overrideReport,
       packages: adjusted
         .filter((pkgPlan) => !pkgPlan.implicitRoot || hasExplicitRootPackage)
         .map(({ implicitRoot: _implicitRoot, ...pkgPlan }) => pkgPlan),
@@ -644,7 +672,7 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
   }
 
   const analyzedOverallType = analyzeParsedCommits(
-    adjustedPackages.flatMap((pkgPlan) => pkgPlan.parsedCommits),
+    effectiveCommits([...originalCommits.values()]),
   );
   const overallBaseVersion = rootPackagePlan.currentVersion;
   // A root-level `Release-As:` footer drives the aggregate version too, keeping
@@ -672,6 +700,7 @@ export function createReleasePlan(cwd = process.cwd()): ReleasePlan {
     releaseBranchPrefix,
     baselineSha,
     commits: adjustedPackages.flatMap((pkgPlan) => pkgPlan.commits),
+    ...overrideReport,
     packages: visiblePackages.map(
       ({ implicitRoot: _implicitRoot, ...pkgPlan }) => pkgPlan,
     ),

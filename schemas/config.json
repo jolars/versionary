@@ -84,6 +84,48 @@
         }
       ]
     },
+    "commit-overrides": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+      },
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "skip": {
+                "type": "boolean",
+                "const": true
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": ["skip"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Complete replacement Conventional Commit message, including any body and footers."
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": ["message"],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
     "packages": {
       "type": "object",
       "propertyNames": {

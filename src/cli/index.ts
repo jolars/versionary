@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
+import path from "node:path";
+import { parseArgs } from "node:util";
+import { writeCommitOverride } from "../config/commit-overrides.js";
 import { loadConfig } from "../config/load-config.js";
+import { resolveCommitSha } from "../git/commit-overrides.js";
 import {
   prependChangelog,
   renderReleasePlanChangelog,
@@ -28,6 +32,56 @@ import {
   readPendingReleaseTargets,
 } from "../release/state.js";
 import { verifyProject } from "../release/verify-project.js";
+import type { VersionaryCommitOverride } from "../types/config.js";
+
+function recordCommitOverride(
+  command: "exclude" | "correct",
+  args: string[],
+): number {
+  const { values, positionals } = parseArgs({
+    args,
+    allowPositionals: true,
+    options: {
+      reason: { type: "string" },
+      ...(command === "correct"
+        ? { message: { type: "string" as const } }
+        : {}),
+    },
+  });
+  if (positionals.length !== 1 || (command === "correct" && !values.message)) {
+    throw new Error(
+      `Usage: versionary ${command} <sha>${command === "correct" ? ' --message "<commit message>"' : ""} [--reason "<reason>"]`,
+    );
+  }
+  const reason = values.reason?.trim();
+  if (values.reason !== undefined && !reason) {
+    throw new Error("The exclusion or correction reason must not be empty.");
+  }
+  const cwd = process.cwd();
+  const loaded = loadConfig(cwd);
+  const hash = resolveCommitSha(cwd, positionals[0]);
+  const override: VersionaryCommitOverride = {
+    ...(command === "exclude"
+      ? { skip: true as const }
+      : { message: values.message as string }),
+    ...(reason ? { reason } : {}),
+  };
+  const plan = createReleasePlan(cwd, {
+    commitOverrides: { ...loaded.config["commit-overrides"], [hash]: override },
+  });
+  if (
+    !plan.commitOverrides?.find((entry) => entry.hash === hash)?.packages.length
+  ) {
+    throw new Error(
+      `Commit ${hash} is outside every configured package's unreleased commit window.`,
+    );
+  }
+  writeCommitOverride(loaded, hash, override);
+  console.log(
+    `${command === "exclude" ? "Excluded" : "Corrected"} ${hash} in ${path.basename(loaded.path)}. Commit the configuration change to share it with CI.`,
+  );
+  return 0;
+}
 
 /**
  * What a dry run would actually release. `plan.nextVersion` is the repository
@@ -538,6 +592,10 @@ async function main(): Promise<number> {
     return printVerifyResult();
   }
 
+  if (command === "exclude" || command === "correct") {
+    return recordCommitOverride(command, args);
+  }
+
   if (command === "plan") {
     const plan = createReleasePlan();
     console.log(JSON.stringify(plan, null, 2));
@@ -661,6 +719,12 @@ async function main(): Promise<number> {
   );
   console.log("  verify  Validate config and basic repository shape");
   console.log("  plan    Print release plan");
+  console.log(
+    '  exclude <sha> [--reason "..."]  Exclude a commit from release analysis and notes',
+  );
+  console.log(
+    '  correct <sha> --message "..." [--reason "..."]  Correct a commit for release analysis and notes',
+  );
   console.log("  changelog [--write]  Print or write changelog section");
   console.log("  pr [--dry-run]      Prepare release PR commit and branch");
   console.log(

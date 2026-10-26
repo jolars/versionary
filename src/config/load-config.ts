@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { parse as parseJsonc } from "jsonc-parser";
+import { parseCommitOverrideMessage } from "../git/commit-overrides.js";
 import {
   listKnownReleaseTypes,
   resolveVersionStrategy,
@@ -158,6 +159,19 @@ export function loadConfig(cwd = process.cwd()): LoadedConfig {
     warnForDeprecatedConfig(found.path);
   }
   validateReleaseTypes(normalized.config);
+  for (const [hash, override] of Object.entries(
+    normalized.config["commit-overrides"] ?? {},
+  )) {
+    if (override.message !== undefined) {
+      try {
+        parseCommitOverrideMessage(override.message);
+      } catch (error) {
+        throw new Error(
+          `Invalid commit-overrides["${hash}"]: ${(error as Error).message}`,
+        );
+      }
+    }
+  }
 
   return {
     path: found.path,

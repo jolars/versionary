@@ -22,6 +22,7 @@ export type {
 export { resolveVersionStrategy } from "./strategy/resolve.js";
 export type {
   VersionaryArtifactRule,
+  VersionaryCommitOverride,
   VersionaryConfig,
   VersionaryPackage,
 } from "./types/config.js";

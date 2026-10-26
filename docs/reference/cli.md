@@ -134,7 +134,39 @@ changelog file and format, any per-package targets, and the grouped commits.
 versionary plan
 ```
 
-If there are no releasable commits, the plan's `nextVersion` is absent.
+If there are no releasable commits, the plan's `nextVersion` is `null`.
+
+When [commit overrides](./configuration#commit-overrides) are configured, the
+plan also includes `commitOverrides`. Each entry shows its `hash`,
+`originalMessage`, `override`, and the `packages` where it still applies. An
+empty `packages` array identifies an override consumed by earlier releases.
+
+## `exclude` and `correct`
+
+Record release metadata for an existing commit without changing Git history:
+
+```bash
+versionary exclude a1b2c3d --reason "Fixes an unreleased regression"
+versionary correct e4f5a6b --message "perf: cache commit lookups"
+```
+
+`exclude` removes the commit's contribution to version bumps and generated
+release notes. Its code remains in the release. `correct` uses the supplied
+Conventional Commit message for both the bump and notes. The supplied message
+replaces the complete original message, including any body and footers.
+
+Both commands accept an optional `--reason`. `correct` requires `--message`.
+SHAs may be abbreviated to at least four hexadecimal characters, provided the
+prefix is unambiguous. Versionary resolves the full SHA and writes it under
+[`commit-overrides`](./configuration#commit-overrides) in the existing
+configuration file, preserving JSONC comments. Commit that change to share it
+with CI. The commands do not create Git commits.
+
+The target must be in the current branch's history and in at least one
+configured package's unreleased commit window. Ambiguous or unknown SHAs,
+invalid replacement messages, and already-released targets fail without editing
+the configuration. In a monorepo, an override applies only to packages where
+the target is still unreleased, using the target's original changed files.
 
 ## `changelog`
 
