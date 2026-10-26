@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.7.0](https://github.com/jolars/versionary/compare/v1.6.1...v1.7.0) (2026-10-26)
+
+### Features
+
+- support commit exclusions and corrections ([`248a0fb`](https://github.com/jolars/versionary/commit/248a0fb8ae3012c0919d8435a4c9002991f837ce))
+
+### Bug Fixes
+
+- **deps:** update Vue to fix SSR XSS ([`896d15d`](https://github.com/jolars/versionary/commit/896d15d0d80b3e8b4ea2b4689dafaa2521993ac8))
+
 ## [1.6.1](https://github.com/jolars/versionary/compare/v1.6.0...v1.6.1) (2026-10-19)
 
 ### Bug Fixes
