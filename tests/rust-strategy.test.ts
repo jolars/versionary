@@ -70,27 +70,8 @@ describe("rustVersionStrategy", () => {
   it.runIf(cargoOnPath())(
     "preserves external dependency versions in root and nested lockfiles",
     () => {
-      const cwd = makeTempDir("locked-dependencies");
-      const registry = makeTempDir("local-registry");
-      // Lockfile resolution needs only registry metadata, so no crate archives are necessary.
-      const writeRegistryVersions = (versions: string[]) =>
-        write(
-          registry,
-          "index/ex/te/external-dep",
-          `${versions
-            .map((version) =>
-              JSON.stringify({
-                name: "external-dep",
-                vers: version,
-                deps: [],
-                cksum: "0".repeat(64),
-                features: {},
-                yanked: false,
-              }),
-            )
-            .join("\n")}\n`,
-        );
-      writeRegistryVersions(["1.0.0"]);
+      const cwd = useFixture("locked-dependencies");
+      const registry = path.join(cwd, "registry");
       write(
         cwd,
         ".cargo/config.toml",
@@ -102,43 +83,6 @@ describe("rustVersionStrategy", () => {
           "",
         ].join("\n"),
       );
-      write(
-        cwd,
-        "Cargo.toml",
-        [
-          "[package]",
-          'name = "demo"',
-          'version = "0.1.0"',
-          'edition = "2021"',
-          "[dependencies]",
-          'external-dep = "1"',
-          "",
-        ].join("\n"),
-      );
-      write(cwd, "src/lib.rs", "");
-      write(
-        cwd,
-        "examples/consumer/Cargo.toml",
-        [
-          "[workspace]",
-          "[package]",
-          'name = "consumer"',
-          'version = "0.1.0"',
-          'edition = "2021"',
-          "[dependencies]",
-          'demo = { path = "../..", version = "0.1.0" }',
-          "",
-        ].join("\n"),
-      );
-      write(cwd, "examples/consumer/src/lib.rs", "");
-      for (const dir of [".", "examples/consumer"]) {
-        execFileSync("cargo", ["generate-lockfile"], {
-          cwd: path.join(cwd, dir),
-          stdio: "pipe",
-        });
-      }
-
-      writeRegistryVersions(["1.0.0", "1.1.0"]);
       rustVersionStrategy.writeVersion(
         cwd,
         { version: 1, "release-type": "rust" },
