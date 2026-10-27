@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1](https://github.com/jolars/versionary/compare/v1.7.0...v1.7.1) (2026-10-27)
+
+### Bug Fixes
+
+- **python:** discover nested package versions ([`c6d5732`](https://github.com/jolars/versionary/commit/c6d5732fac651405a9f3425b4d37b8c8bbb05130))
+- **rust:** preserve locked dependency versions ([`f0a928b`](https://github.com/jolars/versionary/commit/f0a928bed1d02faa812a6e7c0c00eb9bd384c478)), fixes [#108](https://github.com/jolars/versionary/issues/108)
+
 ## [1.7.0](https://github.com/jolars/versionary/compare/v1.6.1...v1.7.0) (2026-10-26)
 
 ### Features
