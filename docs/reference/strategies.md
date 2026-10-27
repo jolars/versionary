@@ -106,7 +106,9 @@ shipping.
   `src/<pkg>/__init__.py`) to update a `__version__ = "X.Y.Z"` assignment
   instead of the TOML.
 - **`__init__.py` discovery:** when using `pyproject.toml`, a matching
-  `__init__.py` with `__version__` in standard locations is also updated.
+  `__init__.py` with `__version__` in standard locations is also updated. These
+  locations are relative to the manifest's directory, including for nested
+  monorepo packages.
 - **Package name:** `[project].name`, falling back to `[tool.poetry].name`.
 - **Lockfiles:** `poetry.lock`, `uv.lock`, and `pdm.lock` at the package root
   are refreshed by shelling out to the matching tool (`poetry lock --no-update`,

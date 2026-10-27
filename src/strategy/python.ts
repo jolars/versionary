@@ -311,15 +311,17 @@ function normalizeModuleName(name: string): string {
 function findAuxiliaryInitPy(
   cwd: string,
   parsed: ParsedPyProject,
+  versionFile: string,
 ): string | null {
   const packageName = packageNameFromParsed(parsed);
   if (!packageName) {
     return null;
   }
   const moduleName = normalizeModuleName(packageName);
+  const packageDirectory = path.dirname(versionFile);
   const candidates = [
-    path.join("src", moduleName, "__init__.py"),
-    path.join(moduleName, "__init__.py"),
+    path.join(packageDirectory, "src", moduleName, "__init__.py"),
+    path.join(packageDirectory, moduleName, "__init__.py"),
   ];
   for (const candidate of candidates) {
     const absolute = path.join(cwd, candidate);
@@ -427,7 +429,7 @@ export const pythonVersionStrategy: VersionStrategy = {
       fs.writeFileSync(versionPath, updated, "utf8");
       written.push(versionFile);
       const parsed = parsePyProject(updated, versionFile);
-      const initPy = findAuxiliaryInitPy(cwd, parsed);
+      const initPy = findAuxiliaryInitPy(cwd, parsed, versionFile);
       if (initPy && tryUpdateInitPyVersion(cwd, initPy, version)) {
         written.push(initPy);
       }

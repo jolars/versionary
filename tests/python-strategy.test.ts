@@ -243,6 +243,29 @@ describe("pythonVersionStrategy pyproject.toml mode", () => {
     );
   });
 
+  it.each(["src/demo/__init__.py", "demo/__init__.py"])(
+    "updates nested package %s without changing the root package",
+    (modulePath) => {
+      const cwd = makeTempDir("write-nested-init");
+      const manifest = "packages/client/pyproject.toml";
+      writeFile(cwd, manifest, '[project]\nname = "demo"\nversion = "1.0.0"\n');
+      writeFile(cwd, modulePath, '__version__ = "9.0.0"\n');
+      const nestedModule = path.join("packages/client", modulePath);
+      writeFile(cwd, nestedModule, '__version__ = "1.0.0"\n');
+
+      const updated = pythonVersionStrategy.writeVersion(
+        cwd,
+        { ...baseConfig, "version-file": manifest },
+        "1.1.0",
+      );
+
+      expect(updated).toEqual([manifest, nestedModule]);
+      expect(readFile(cwd, manifest)).toContain('version = "1.1.0"');
+      expect(readFile(cwd, nestedModule)).toBe('__version__ = "1.1.0"\n');
+      expect(readFile(cwd, modulePath)).toBe('__version__ = "9.0.0"\n');
+    },
+  );
+
   it("normalizes hyphenated package names to underscored module dirs", () => {
     const cwd = makeTempDir("write-init-hyphen");
     writeFile(
