@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { appendFileSync, readFileSync } from "node:fs";
+import { isReleaseCommitMessage } from "../release/commit.js";
 
 interface RunJsonResult {
   action?: string;
@@ -65,10 +66,10 @@ function getRemoteRefSha(cwd: string, ref: string): string | null {
   }
 }
 
-function hasVersionaryReleaseMarker(cwd: string, sha: string): boolean {
+function isReleaseCommit(cwd: string, sha: string): boolean {
   try {
     const message = runGit(cwd, ["show", "-s", "--format=%B", sha]);
-    return /^Versionary-Release:\s*true$/imu.test(message);
+    return isReleaseCommitMessage(message);
   } catch {
     return false;
   }
@@ -187,7 +188,7 @@ function main(): void {
       // Descendant pushes must not turn an otherwise valid release into a
       // recovery cycle.
       const releaseCanPublish =
-        hasVersionaryReleaseMarker(cwd, sha) && isAncestor(cwd, sha, remoteSha);
+        isReleaseCommit(cwd, sha) && isAncestor(cwd, sha, remoteSha);
       if (!releaseCanPublish) {
         skipRun(
           "stale-run-skipped",

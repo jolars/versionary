@@ -232,15 +232,39 @@ process.exit(91);
     expect(actionOutput).toContain("[]");
   });
 
-  it("publishes a stale release-marker push only while it remains on the branch", () => {
-    const cwd = makeTempDir("versionary-action-release-");
-    const binDir = path.join(cwd, "bin");
-    const outputPath = path.join(cwd, "github-output.txt");
-    fs.mkdirSync(binDir);
+  it.each([
+    {
+      name: "release trailer",
+      message: "chore(release): v1.2.3\n\nVersionary-Release: true",
+    },
+    { name: "release subject", message: "chore(release): v1.2.3" },
+    {
+      name: "squashed release subject",
+      message: "chore(release): v1.2.3 (#15)",
+    },
+    {
+      name: "squashed package release subject",
+      message: "chore(release): shrinkage-python-v0.2.0 (#15)",
+    },
+    {
+      name: "squashed cohort release subject",
+      message: "chore(release): v1.2.3 (+1 more) (#15)",
+    },
+    {
+      name: "squashed release list",
+      message: "chore(release): v1.2.3, parser-v0.4.0 (#15)",
+    },
+  ])(
+    "publishes a stale $name only while it remains on the branch",
+    ({ message }) => {
+      const cwd = makeTempDir("versionary-action-release-");
+      const binDir = path.join(cwd, "bin");
+      const outputPath = path.join(cwd, "github-output.txt");
+      fs.mkdirSync(binDir);
 
-    writeExecutable(
-      path.join(binDir, "git"),
-      `#!/usr/bin/env node
+      writeExecutable(
+        path.join(binDir, "git"),
+        `#!/usr/bin/env node
 const args = process.argv.slice(2);
 if (args[0] === "config") {
   process.stdout.write("configured\\n");
@@ -258,7 +282,7 @@ if (args[0] === "ls-remote") {
   process.exit(0);
 }
 if (args[0] === "show" && args[1] === "-s") {
-  process.stdout.write("chore(release): v1.2.3\\n\\nVersionary-Release: true\\n");
+  process.stdout.write(process.env.TEST_COMMIT_MESSAGE + "\\n");
   process.exit(0);
 }
 if (args[0] === "merge-base" && args[1] === "--is-ancestor") {
@@ -267,10 +291,10 @@ if (args[0] === "merge-base" && args[1] === "--is-ancestor") {
 process.stderr.write("Unexpected git invocation: " + args.join(" ") + "\\n");
 process.exit(2);
 `,
-    );
-    writeExecutable(
-      path.join(binDir, "npx"),
-      `#!/usr/bin/env node
+      );
+      writeExecutable(
+        path.join(binDir, "npx"),
+        `#!/usr/bin/env node
 process.stdout.write(JSON.stringify({
   action: "release-published",
   message: "Published v1.2.3.",
@@ -278,68 +302,71 @@ process.stdout.write(JSON.stringify({
   tagNames: ["v1.2.3"]
 }) + "\\n");
 `,
-    );
+      );
 
-    const testsDir = path.dirname(fileURLToPath(import.meta.url));
-    const repoRoot = path.resolve(testsDir, "..");
-    const actionEntrypoint = path.join(repoRoot, "action", "index.js");
-    const eventSha = "1111111111111111111111111111111111111111";
-    const remoteSha = "2222222222222222222222222222222222222222";
-    const stdout = execFileSync(process.execPath, [actionEntrypoint], {
-      cwd,
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        PATH: `${binDir}${path.delimiter}${process.env.PATH ?? ""}`,
-        GITHUB_EVENT_NAME: "push",
-        GITHUB_OUTPUT: outputPath,
-        GITHUB_REF: "refs/heads/main",
-        GITHUB_REPOSITORY: "jolars/libslope",
-        GITHUB_SHA: eventSha,
-        INPUT_TOKEN: "test-token",
-        TEST_IS_ANCESTOR: "true",
-        TEST_REMOTE_SHA: remoteSha,
-      },
-      stdio: ["ignore", "pipe", "pipe"],
-    }).trim();
+      const testsDir = path.dirname(fileURLToPath(import.meta.url));
+      const repoRoot = path.resolve(testsDir, "..");
+      const actionEntrypoint = path.join(repoRoot, "action", "index.js");
+      const eventSha = "1111111111111111111111111111111111111111";
+      const remoteSha = "2222222222222222222222222222222222222222";
+      const stdout = execFileSync(process.execPath, [actionEntrypoint], {
+        cwd,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          PATH: `${binDir}${path.delimiter}${process.env.PATH ?? ""}`,
+          GITHUB_EVENT_NAME: "push",
+          GITHUB_OUTPUT: outputPath,
+          GITHUB_REF: "refs/heads/main",
+          GITHUB_REPOSITORY: "jolars/libslope",
+          GITHUB_SHA: eventSha,
+          INPUT_TOKEN: "test-token",
+          TEST_COMMIT_MESSAGE: message,
+          TEST_IS_ANCESTOR: "true",
+          TEST_REMOTE_SHA: remoteSha,
+        },
+        stdio: ["ignore", "pipe", "pipe"],
+      }).trim();
 
-    expect(JSON.parse(stdout)).toMatchObject({
-      action: "release-published",
-      releaseCreated: true,
-      tagNames: ["v1.2.3"],
-    });
+      expect(JSON.parse(stdout)).toMatchObject({
+        action: "release-published",
+        releaseCreated: true,
+        tagNames: ["v1.2.3"],
+      });
 
-    const actionOutput = fs.readFileSync(outputPath, "utf8");
-    expect(actionOutput).toContain("release_created<<");
-    expect(actionOutput).toContain("true");
-    expect(actionOutput).toContain("tag_name<<");
-    expect(actionOutput).toContain("v1.2.3");
+      const actionOutput = fs.readFileSync(outputPath, "utf8");
+      expect(actionOutput).toContain("release_created<<");
+      expect(actionOutput).toContain("true");
+      expect(actionOutput).toContain("tag_name<<");
+      expect(actionOutput).toContain("v1.2.3");
 
-    const removedOutputPath = path.join(cwd, "removed-output.txt");
-    const removedStdout = execFileSync(process.execPath, [actionEntrypoint], {
-      cwd,
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        PATH: `${binDir}${path.delimiter}${process.env.PATH ?? ""}`,
-        GITHUB_EVENT_NAME: "push",
-        GITHUB_OUTPUT: removedOutputPath,
-        GITHUB_REF: "refs/heads/main",
-        GITHUB_REPOSITORY: "jolars/libslope",
-        GITHUB_SHA: eventSha,
-        INPUT_TOKEN: "test-token",
-        TEST_IS_ANCESTOR: "false",
-        TEST_REMOTE_SHA: remoteSha,
-      },
-      stdio: ["ignore", "pipe", "pipe"],
-    }).trim();
+      const removedOutputPath = path.join(cwd, "removed-output.txt");
+      const removedStdout = execFileSync(process.execPath, [actionEntrypoint], {
+        cwd,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          PATH: `${binDir}${path.delimiter}${process.env.PATH ?? ""}`,
+          GITHUB_EVENT_NAME: "push",
+          GITHUB_OUTPUT: removedOutputPath,
+          GITHUB_REF: "refs/heads/main",
+          GITHUB_REPOSITORY: "jolars/libslope",
+          GITHUB_SHA: eventSha,
+          INPUT_TOKEN: "test-token",
+          TEST_COMMIT_MESSAGE: message,
+          TEST_IS_ANCESTOR: "false",
+          TEST_REMOTE_SHA: remoteSha,
+        },
+        stdio: ["ignore", "pipe", "pipe"],
+      }).trim();
 
-    expect(JSON.parse(removedStdout)).toMatchObject({
-      action: "stale-run-skipped",
-      releaseCreated: false,
-      tagNames: [],
-    });
-  });
+      expect(JSON.parse(removedStdout)).toMatchObject({
+        action: "stale-run-skipped",
+        releaseCreated: false,
+        tagNames: [],
+      });
+    },
+  );
 
   it("exports all package review requests while retaining primary outputs", () => {
     const cwd = makeTempDir("versionary-action-multiple-prs-");

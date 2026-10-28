@@ -13,7 +13,16 @@ execFileSync("pnpm", ["exec", "tsc", "-p", "tsconfig.json"], {
   stdio: "inherit",
 });
 
-const compiled = fs.readFileSync(compiledEntrypoint, "utf8");
+// Inline the shared matcher so the action can run without installed modules.
+const releaseCommitMatcher = fs
+  .readFileSync(path.join(repoRoot, "dist", "release", "commit.js"), "utf8")
+  .replace(/^export /gmu, "");
+const compiled = fs
+  .readFileSync(compiledEntrypoint, "utf8")
+  .replace(
+    'import { isReleaseCommitMessage } from "../release/commit.js";',
+    () => releaseCommitMatcher,
+  );
 const generated = execFileSync(
   "biome",
   ["check", "--write", "--stdin-file-path", actionEntrypoint],

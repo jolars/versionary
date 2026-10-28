@@ -268,11 +268,30 @@ function collectPendingReleaseCohorts(
   const filePath = getBaselineStatePath(cwd);
   const packageStates = readPackageStates(cwd);
   const sidecarPaths = new Set(packageStates.map((state) => state.path));
-  const byBranch = new Map<string, ReleaseTargetState[]>();
+  // A branch can be reused after only part of its original package set changes.
+  // The baseline separates completed releases from the next release on it.
+  const byBranch = new Map<
+    string,
+    Map<string | undefined, ReleaseTargetState[]>
+  >();
+  const addTargets = (
+    branch: string,
+    baselineSha: string | undefined,
+    targets: ReleaseTargetState[],
+  ): void => {
+    const byBaseline =
+      byBranch.get(branch) ??
+      new Map<string | undefined, ReleaseTargetState[]>();
+    byBaseline.set(baselineSha, [
+      ...(byBaseline.get(baselineSha) ?? []),
+      ...targets,
+    ]);
+    byBranch.set(branch, byBaseline);
+  };
   for (const state of packageStates) {
-    const targets = byBranch.get(state["release-branch"]) ?? [];
-    targets.push(state["release-target"]);
-    byBranch.set(state["release-branch"], targets);
+    addTargets(state["release-branch"], state[BASELINE_SHA_KEY], [
+      state["release-target"],
+    ]);
   }
   if (fs.existsSync(filePath)) {
     const parsed = parseStateFile(fs.readFileSync(filePath, "utf8"), filePath);
@@ -282,34 +301,45 @@ function collectPendingReleaseCohorts(
     if (legacyPending.length > 0) {
       const branch =
         loadConfig(cwd).config["release-branch"] ?? "versionary/release";
-      byBranch.set(branch, [...(byBranch.get(branch) ?? []), ...legacyPending]);
+      addTargets(branch, parsed[BASELINE_SHA_KEY], legacyPending);
     }
   }
 
   const pending: PendingReleaseCohort[] = [];
-  for (const [branch, unsortedTargets] of byBranch) {
-    const targets = [...unsortedTargets].sort((a, b) =>
-      a.path.localeCompare(b.path),
-    );
-    const tagged = targets.filter((target) => hasLocalTag(cwd, target.tag));
-    if (tagged.length === targets.length && !options.includeFullyTagged) {
-      continue;
-    }
-    if (
-      tagged.length > 0 &&
-      tagged.length < targets.length &&
-      !options.allowPartiallyTagged
-    ) {
-      const existingTags = tagged.map((target) => target.tag).join(", ");
-      const missingTags = targets
-        .filter((target) => !tagged.includes(target))
-        .map((target) => target.tag)
-        .join(", ");
-      throw new Error(
-        `Pending release cohort on ${branch} is partially tagged and cannot move safely. Existing tags: ${existingTags}. Missing tags: ${missingTags}. Rerun the original release workflow to complete it.`,
+  for (const [branch, byBaseline] of byBranch) {
+    const targets: ReleaseTargetState[] = [];
+    for (const cohortTargets of byBaseline.values()) {
+      const tagged = cohortTargets.filter((target) =>
+        hasLocalTag(cwd, target.tag),
       );
+      if (
+        tagged.length === cohortTargets.length &&
+        !options.includeFullyTagged
+      ) {
+        continue;
+      }
+      if (
+        tagged.length > 0 &&
+        tagged.length < cohortTargets.length &&
+        !options.allowPartiallyTagged
+      ) {
+        const existingTags = tagged.map((target) => target.tag).join(", ");
+        const missingTags = cohortTargets
+          .filter((target) => !tagged.includes(target))
+          .map((target) => target.tag)
+          .join(", ");
+        throw new Error(
+          `Pending release cohort on ${branch} is partially tagged and cannot move safely. Existing tags: ${existingTags}. Missing tags: ${missingTags}. Rerun the original release workflow to complete it.`,
+        );
+      }
+      targets.push(...cohortTargets);
     }
-    pending.push({ branch, targets });
+    if (targets.length > 0) {
+      pending.push({
+        branch,
+        targets: targets.sort((a, b) => a.path.localeCompare(b.path)),
+      });
+    }
   }
   return pending.sort((a, b) => a.branch.localeCompare(b.branch));
 }

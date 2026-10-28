@@ -10,6 +10,7 @@ import {
   readBaselineSha,
   readPendingReleaseCohorts,
   readPendingReleaseTargets,
+  readRecordedPendingReleaseTargets,
   readReleaseTargets,
   writeBaselineSha,
   writePackageReleaseState,
@@ -114,6 +115,42 @@ describe("simple baseline state", () => {
     expect(hasFullyUntaggedPendingRelease(cwd)).toBe(true);
   });
 
+  it.each(["package", "legacy"])(
+    "keeps completed %s state out of a later release on the same branch",
+    (stateFormat) => {
+      const cwd = makeRepo();
+      const branch = "versionary/release";
+      const previous = [
+        { path: ".", version: "1.1.0", tag: "v1.1.0" },
+        { path: "packages/b", version: "2.0.1", tag: "b-v2.0.1" },
+      ];
+      if (stateFormat === "legacy") {
+        writeBaselineSha(cwd, "previous-base", previous);
+      } else {
+        writePackageReleaseState(cwd, "previous-base", previous, branch);
+      }
+      for (const target of previous) {
+        git(cwd, "tag", target.tag);
+      }
+      const current = { path: ".", version: "1.2.0", tag: "v1.2.0" };
+      writePackageReleaseState(cwd, "current-base", [current], branch);
+
+      expect(readPendingReleaseCohorts(cwd)).toEqual([
+        { branch, targets: [current] },
+      ]);
+      expect(readPendingReleaseTargets(cwd)).toEqual([current]);
+      expect(readRecordedPendingReleaseTargets(cwd)).toEqual([
+        current,
+        previous[1],
+      ]);
+      expect(readReleaseTargets(cwd)).toEqual([current, previous[1]]);
+      expect(hasFullyUntaggedPendingRelease(cwd)).toBe(true);
+
+      git(cwd, "tag", current.tag);
+      expect(readPendingReleaseCohorts(cwd)).toEqual([]);
+    },
+  );
+
   it("rejects partial tags within one package cohort", () => {
     const cwd = makeRepo();
     writePackageReleaseState(
@@ -132,6 +169,33 @@ describe("simple baseline state", () => {
       { path: "packages/a", version: "1.1.0", tag: "a-v1.1.0" },
       { path: "packages/b", version: "2.0.1", tag: "b-v2.0.1" },
     ]);
+  });
+
+  it("rejects partial tags in a cohort split across state formats", () => {
+    const cwd = makeRepo();
+    const targets = [
+      { path: ".", version: "1.2.0", tag: "v1.2.0" },
+      { path: "packages/b", version: "2.0.1", tag: "b-v2.0.1" },
+    ];
+    writeBaselineSha(cwd, "base", targets);
+    writePackageReleaseState(cwd, "base", [targets[0]], "versionary/release");
+    git(cwd, "tag", targets[1].tag);
+
+    expect(() => readPendingReleaseCohorts(cwd)).toThrow(/partially tagged/i);
+    expect(readPendingReleaseTargets(cwd)).toEqual(targets);
+  });
+
+  it("recovers untagged releases sharing a branch in one candidate", () => {
+    const cwd = makeRepo();
+    const branch = "versionary/release";
+    const targets = [
+      { path: ".", version: "1.2.0", tag: "v1.2.0" },
+      { path: "packages/b", version: "2.0.1", tag: "b-v2.0.1" },
+    ];
+    writePackageReleaseState(cwd, "base-a", [targets[0]], branch);
+    writePackageReleaseState(cwd, "base-b", [targets[1]], branch);
+
+    expect(readPendingReleaseCohorts(cwd)).toEqual([{ branch, targets }]);
   });
 
   it("detects package state introduced by the head commit", () => {

@@ -3,6 +3,16 @@ import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { appendFileSync, readFileSync } from "node:fs";
 
+function isReleaseCommitMessage(commitMessage) {
+  if (/^Versionary-Release:\s*true$/imu.test(commitMessage)) {
+    return true;
+  }
+  const subject = commitMessage.split("\n")[0]?.trim() ?? "";
+  return /^chore\(release\):\s+(?:(?:v\d+\.\d+\.\d+|\S+-v\d+\.\d+\.\d+)(?:,\s+(?:v\d+\.\d+\.\d+|\S+-v\d+\.\d+\.\d+))*|(?:v\d+\.\d+\.\d+|\S+-v\d+\.\d+\.\d+)\s+\(\+\d+\s+more\))(?:\s+\(#\d+\))?$/u.test(
+    subject,
+  );
+}
+
 function getInput(name) {
   const canonical = `INPUT_${name.replace(/ /g, "_").toUpperCase()}`;
   const underscoreAlias = canonical.replace(/-/g, "_");
@@ -49,10 +59,10 @@ function getRemoteRefSha(cwd, ref) {
     return null;
   }
 }
-function hasVersionaryReleaseMarker(cwd, sha) {
+function isReleaseCommit(cwd, sha) {
   try {
     const message = runGit(cwd, ["show", "-s", "--format=%B", sha]);
-    return /^Versionary-Release:\s*true$/imu.test(message);
+    return isReleaseCommitMessage(message);
   } catch {
     return false;
   }
@@ -158,7 +168,7 @@ function main() {
       // Descendant pushes must not turn an otherwise valid release into a
       // recovery cycle.
       const releaseCanPublish =
-        hasVersionaryReleaseMarker(cwd, sha) && isAncestor(cwd, sha, remoteSha);
+        isReleaseCommit(cwd, sha) && isAncestor(cwd, sha, remoteSha);
       if (!releaseCanPublish) {
         skipRun(
           "stale-run-skipped",
