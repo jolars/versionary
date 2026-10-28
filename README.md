@@ -68,6 +68,7 @@ The full documentation lives at <https://versionary.dev/>:
 - [GitHub Actions setup](https://versionary.dev/guide/github-actions)
   (including tokens and permissions)
 - [Release workflows](https://versionary.dev/guide/workflows)
+- [Julia registration with Registrator and TagBot](https://versionary.dev/guide/julia)
 - [Monorepos](https://versionary.dev/guide/monorepos)
 - [Conventional Commits](https://versionary.dev/guide/conventional-commits)
   and [Versioning](https://versionary.dev/guide/versioning)
@@ -83,8 +84,9 @@ PR automation, and tags + SCM release metadata (e.g. GitHub Releases).
 
 Out of scope (intentional): publishing artifacts to language registries,
 replacing package-specific publish tooling, and external/user-provided plugin
-loading. Use your CI/CD platform for registry publishing, triggered from a
-created release/tag.
+loading. Use your CI/CD platform for registry publishing, triggered from release
+outputs or a created release/tag. External release mode supports registration
+before tagging, including [Julia's Registrator and TagBot workflow](https://versionary.dev/guide/julia).
 
 ## Contributing
 

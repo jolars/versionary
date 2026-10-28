@@ -34,6 +34,7 @@ export interface VersionaryPackage {
 export interface VersionaryConfig {
   version: 1;
   "review-mode"?: "direct" | "pr";
+  "release-mode"?: "versionary" | "external";
   "version-file"?: string;
   "changelog-file"?: string;
   "changelog-format"?: VersionaryChangelogFormat;

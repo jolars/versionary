@@ -15,6 +15,7 @@ import { isReleaseCommitMessage } from "./pr.js";
 import { executeIdempotentReleaseTarget } from "./recovery.js";
 import {
   hasReleaseStateChangeAtHead,
+  readExternalReleaseTargets,
   readPendingReleaseTargets,
   readRecordedPendingReleaseTargets,
 } from "./state.js";
@@ -92,7 +93,9 @@ export function extractReleaseNotes(
         })
       : lines.findIndex(
           (line) =>
-            line.startsWith(`## ${version} -`) ||
+            new RegExp(`^##\\s+${escapeRegExp(version)}(?:\\s|$)`, "u").test(
+              line,
+            ) ||
             line.startsWith(`## [${version}](`) ||
             line.startsWith(`# ${shortVersion} -`) ||
             line.startsWith(`# [${shortVersion}](`) ||
@@ -228,6 +231,7 @@ export type RunReleaseResult =
       action: "release-skipped";
       reason: string;
     }
+  | ExternalReleaseResult
   | {
       action: "release-dry-run";
       message: string;
@@ -259,6 +263,80 @@ export type RunReleaseResult =
       }[];
     };
 
+export type ExternalReleaseResult = {
+  message: string;
+  releaseTargets: {
+    path: string;
+    tag: string;
+    version: string;
+    dependencies: string[];
+    sha: string;
+    notes: string;
+  }[];
+} & ({ action: "release-ready" } | { action: "release-waiting" });
+
+function describeExternalRelease(
+  cwd: string,
+  config: VersionaryConfig,
+  options: RunReleaseOptions,
+): RunReleaseResult {
+  const targets = readExternalReleaseTargets(cwd);
+  if (targets.length === 0) {
+    return {
+      action: "release-skipped",
+      reason: "No untagged external release targets found.",
+    };
+  }
+  const head = execFileSync("git", ["rev-parse", "HEAD"], {
+    cwd,
+    encoding: "utf8",
+  }).trim();
+  const strategy = resolveVersionStrategy(config);
+  const { changelogFile } = getChangelogDefaults({
+    ...config,
+    defaultChangelogFormat: strategy.getDefaultChangelogFormat?.(),
+  });
+  const releaseTargets = releaseTargetHandoff(targets, options.logger).map(
+    (target) => {
+      const file = resolveTargetChangelogFile(
+        config,
+        changelogFile,
+        target.path,
+      );
+      const content = execFileSync("git", ["show", `${target.sha}:${file}`], {
+        cwd,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      const notes = extractReleaseNotes(
+        content,
+        target.version,
+        resolveTargetChangelogFormat(config, target.path),
+      );
+      if (!notes) {
+        throw new Error(
+          `No release notes for ${target.tag} in ${file} at ${target.sha}. Correct the release PR before handing it to external tooling.`,
+        );
+      }
+      return { ...target, notes };
+    },
+  );
+  const ready = targets.some((target) => target.sha === head);
+  if (options["dry-run"]) {
+    return {
+      action: "release-dry-run",
+      message: `Dry run: would hand off external releases ${targets.map((target) => target.tag).join(", ")}`,
+      targets: targets.map(({ tag, version }) => ({ tag, version })),
+      releaseTargets,
+    };
+  }
+  return {
+    action: ready ? "release-ready" : "release-waiting",
+    message: `${ready ? "Ready for external release" : "Waiting for external release"}: ${targets.map((target) => target.tag).join(", ")}`,
+    releaseTargets,
+  };
+}
+
 export interface RunReleaseOptions {
   logger?: VersionaryPluginContext["logger"];
   "dry-run"?: boolean;
@@ -268,6 +346,10 @@ export async function runReleaseDetailed(
   cwd = process.cwd(),
   options: RunReleaseOptions = {},
 ): Promise<RunReleaseResult> {
+  const loaded = loadConfig(cwd);
+  if (loaded.config["release-mode"] === "external") {
+    return describeExternalRelease(cwd, loaded.config, options);
+  }
   const commitMessage = getHeadCommitMessage(cwd);
   if (
     !isReleaseCommitMessage(commitMessage) &&
@@ -279,7 +361,6 @@ export async function runReleaseDetailed(
     };
   }
 
-  const loaded = loadConfig(cwd);
   const strategy = resolveVersionStrategy(loaded.config);
   const { changelogFile } = getChangelogDefaults({
     ...loaded.config,

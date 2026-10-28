@@ -24,6 +24,11 @@ key, and a single `run` entrypoint that does the right thing based on context.
 
 ## The `run` command
 
+Set `release-mode: "external"` when another tool creates tags and GitHub
+releases. Versionary emits the merged commit and release notes, then waits for
+the expected tags. See [Julia package releases](./julia) for a complete
+Registrator and TagBot workflow.
+
 `run` is the recommended CI entrypoint. In `pr` mode, it inspects the most recent
 commit and auto-dispatches:
 

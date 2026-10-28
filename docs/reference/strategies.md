@@ -128,6 +128,9 @@ shipping.
 
 ## julia
 
+Use [`release-mode: "external"`](/guide/julia) to keep Registrator and TagBot
+responsible for registration and tags while Versionary prepares release PRs.
+
 - **Version source:** `Project.toml`, the root-level `version` field (Julia
   keeps `name`/`version` as root keys, not under a `[table]`).
 - The update is line-based to preserve formatting, comments, quote style, and

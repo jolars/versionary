@@ -53,8 +53,10 @@ function findCyclicPaths(graph: Map<string, Set<string>>): string[] {
   return cyclic.sort(comparePaths);
 }
 
-export interface ReleaseTargetOrder {
-  ordered: ReleaseTargetState[];
+export interface ReleaseTargetOrder<
+  T extends ReleaseTargetState = ReleaseTargetState,
+> {
+  ordered: T[];
   cyclicPaths: string[];
 }
 
@@ -68,15 +70,15 @@ export interface ReleaseTargetOrder {
  * degrading it must not block tagging; callers surface `cyclicPaths` so the
  * cycle still gets reported.
  */
-export function orderReleaseTargets(
-  targets: readonly ReleaseTargetState[],
-): ReleaseTargetOrder {
+export function orderReleaseTargets<T extends ReleaseTargetState>(
+  targets: readonly T[],
+): ReleaseTargetOrder<T> {
   const graph = buildDependencyGraph(targets);
   const remaining = [...targets].sort((left, right) =>
     comparePaths(left.path, right.path),
   );
   const emitted = new Set<string>();
-  const ordered: ReleaseTargetState[] = [];
+  const ordered: T[] = [];
 
   while (remaining.length > 0) {
     const readyIndex = remaining.findIndex((target) =>
@@ -97,10 +99,10 @@ export function orderReleaseTargets(
   return { ordered, cyclicPaths: findCyclicPaths(graph) };
 }
 
-export function releaseTargetHandoff(
-  targets: readonly ReleaseTargetState[],
+export function releaseTargetHandoff<T extends ReleaseTargetState>(
+  targets: readonly T[],
   logger?: { warn: (message: string) => void },
-): Array<ReleaseTargetState & { dependencies: string[] }> {
+): Array<T & { dependencies: string[] }> {
   const { ordered, cyclicPaths } = orderReleaseTargets(targets);
   if (cyclicPaths.length > 0) {
     const quoted = cyclicPaths.map((path) => `"${path}"`).join(", ");

@@ -1,0 +1,89 @@
+name: Julia releases
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      retry-registration:
+        description: Request registration again for the pending release
+        type: boolean
+        default: false
+concurrency:
+  group: julia-release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: '1'
+      - uses: julia-actions/cache@v3
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1
+  versionary:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          token: ${{ secrets.RELEASE_TOKEN }}
+      - id: versionary
+        uses: jolars/versionary@v1.8.0
+        with:
+          token: ${{ secrets.RELEASE_TOKEN }}
+      - name: Request Julia registration
+        if: >-
+          steps.versionary.outputs.release_ready == 'true' ||
+          (github.event_name == 'workflow_dispatch' && inputs.retry-registration &&
+           steps.versionary.outputs.action == 'release-waiting')
+        uses: actions/github-script@v8
+        env:
+          RELEASE_TARGETS: ${{ steps.versionary.outputs.release_targets }}
+          RETRY_REGISTRATION: ${{ inputs.retry-registration || false }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const targets = JSON.parse(process.env.RELEASE_TARGETS);
+            const retry = process.env.RETRY_REGISTRATION === "true";
+            if (!Array.isArray(targets) || targets.length === 0) {
+              throw new Error("Versionary did not supply any external release targets.");
+            }
+            for (const target of targets) {
+              if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(target.sha) ||
+                  typeof target.path !== "string" || !target.path ||
+                  /\s/.test(target.path) ||
+                  typeof target.version !== "string" || !target.version ||
+                  typeof target.notes !== "string" || !target.notes.trim()) {
+                throw new Error("Invalid external release target.");
+              }
+              const marker = "<!-- versionary:registrator " +
+                JSON.stringify([target.path, target.version, target.sha]) + " -->";
+              const comments = await github.paginate(
+                github.rest.repos.listCommentsForCommit,
+                { ...context.repo, commit_sha: target.sha, per_page: 100 },
+              );
+              const requested = comments.some(comment =>
+                comment.user?.login === "github-actions[bot]" &&
+                comment.body?.includes(marker),
+              );
+              if (requested && !retry) {
+                core.info("Registration was already requested for " + target.tag + ".");
+                continue;
+              }
+              const subdir = target.path === "." ? "" : " subdir=" + target.path;
+              await github.rest.repos.createCommitComment({
+                ...context.repo,
+                commit_sha: target.sha,
+                body: "@JuliaRegistrator register" + subdir +
+                  "\n\nRelease notes:\n\n" + target.notes + "\n\n" + marker,
+              });
+              core.info("Requested registration for " + target.tag + " at " + target.sha + ".");
+            }

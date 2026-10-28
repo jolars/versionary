@@ -34,6 +34,12 @@ In the default `pr` mode, it reads the last commit and dispatches:
 
 See [Release workflows](/guide/workflows) for what counts as a release commit.
 
+With `release-mode: "external"`, `run` emits `release-ready` on a merged
+release commit and `release-waiting` on later commits until its expected tags
+exist. `releaseTargets` includes the saved `sha` and `notes` for each untagged
+target. Both actions set `releaseCreated: false` and leave `tagNames` empty.
+See [Julia packages](/guide/julia) for an integration example.
+
 **Flags**
 
 - `--json` — emit a machine-readable result instead of human text.

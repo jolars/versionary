@@ -106,6 +106,7 @@ function skipRun(action, message) {
   setOutput("action", action);
   setOutput("message", message);
   setOutput("release_created", "false");
+  setOutput("release_ready", "false");
   setOutput("tag_name", "");
   setOutput("tag_names", "[]");
   setOutput("release_targets", "[]");
@@ -209,10 +210,14 @@ function main() {
     : [];
   const firstTag = tagNames[0] ?? "";
   const releaseCreated =
-    payload.releaseCreated === true || tagNames.length > 0 ? "true" : "false";
+    (payload.releaseCreated ?? tagNames.length > 0) ? "true" : "false";
   setOutput("action", payload.action ?? "");
   setOutput("message", payload.message ?? "");
   setOutput("release_created", releaseCreated);
+  setOutput(
+    "release_ready",
+    payload.action === "release-ready" ? "true" : "false",
+  );
   setOutput("tag_name", firstTag);
   setOutput("tag_names", JSON.stringify(tagNames));
   setOutput(

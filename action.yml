@@ -20,17 +20,20 @@ inputs:
 outputs:
   action:
     description: Versionary action taken (noop, fork-skipped, stale-run-skipped,
-      pr-prepared, release-published, release-skipped)
+      pr-prepared, release-published, release-ready, release-waiting, release-skipped)
   message:
     description: Human-readable result message
   release_created:
     description: Whether this run published at least one release
+  release_ready:
+    description: Whether this run has a release ready for external tooling
   tag_name:
     description: Primary release tag (first tag when multiple targets release)
   tag_names:
     description: JSON array of published release tags
   release_targets:
-    description: Dependency-ordered JSON array of released package targets
+    description: Dependency-ordered JSON array of release targets; external
+      targets also include the merged commit SHA and release notes
   review_url:
     description: Primary review request URL when release PRs were prepared
   review_requests:

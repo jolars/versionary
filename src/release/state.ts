@@ -239,6 +239,74 @@ export function readPendingReleaseTargets(
   }).flatMap((cohort) => cohort.targets);
 }
 
+export function readExternalReleaseTargets(
+  cwd = process.cwd(),
+): (ReleaseTargetState & { sha: string })[] {
+  return readPendingReleaseTargets(cwd)
+    .filter((target) => !hasLocalTag(cwd, target.tag))
+    .map((target) => {
+      const sidecar = path.join(
+        getPackageStateDirectory(cwd),
+        packageStateFileName(target.path),
+      );
+      const statePath = fs.existsSync(sidecar)
+        ? sidecar
+        : getBaselineStatePath(cwd);
+      const relativePath = path.relative(cwd, statePath);
+      const identity = (raw: string): string | null => {
+        const state = fs.existsSync(sidecar)
+          ? parsePackageStateFile(raw, statePath)
+          : parseStateFile(raw, statePath);
+        const recorded =
+          "release-target" in state
+            ? state["release-target"]
+            : state[PENDING_RELEASE_TARGETS_KEY]?.find(
+                (entry) => entry.path === target.path,
+              );
+        return recorded
+          ? JSON.stringify([
+              state[BASELINE_SHA_KEY],
+              recorded.path,
+              recorded.version,
+              recorded.tag,
+            ])
+          : null;
+      };
+      const expected = identity(fs.readFileSync(statePath, "utf8"));
+      // Walk the current intent back to its introduction on trunk. Formatting
+      // release state after merging must not move an in-flight registration.
+      const commits = execFileSync(
+        "git",
+        ["log", "--first-parent", "--format=%H", "--", relativePath],
+        { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+      )
+        .trim()
+        .split("\n")
+        .filter(Boolean);
+      let sha = "";
+      for (const commit of commits) {
+        let raw: string;
+        try {
+          raw = execFileSync("git", ["show", `${commit}:${relativePath}`], {
+            cwd,
+            encoding: "utf8",
+            stdio: ["ignore", "pipe", "pipe"],
+          });
+        } catch {
+          break;
+        }
+        if (identity(raw) !== expected) break;
+        sha = commit;
+      }
+      if (!sha) {
+        throw new Error(
+          `External release ${target.tag} requires committed release state. Merge the release PR before requesting registration.`,
+        );
+      }
+      return { ...target, sha };
+    });
+}
+
 // Every target the release state records, including cohorts whose tags already
 // exist. `release` needs these to tell "this repo never recorded a release"
 // apart from "this release was already published"; only the former may fall

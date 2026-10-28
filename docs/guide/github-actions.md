@@ -206,9 +206,10 @@ untouched.
 | `action`          | `noop`, `fork-skipped`, `pr-prepared`, `release-published`, `release-skipped`, … |
 | `message`         | Human-readable result summary.                                |
 | `release_created` | `"true"` when at least one release was published.             |
+| `release_ready`   | `"true"` when a merged release is ready for external tooling. |
 | `tag_name`        | First published tag (single-target flows).                    |
 | `tag_names`       | JSON array of all published tags.                             |
-| `release_targets` | Dependency-first JSON array of released package targets.      |
+| `release_targets` | Dependency-first release targets; external targets also include `sha` and `notes`. |
 | `review_url`      | Primary release PR URL when PRs were prepared.                 |
 | `review_requests` | JSON array of all package/cohort release PR results.           |
 | `branch`          | Primary release branch name when PRs were prepared.            |
@@ -217,6 +218,10 @@ untouched.
 The primary outputs preserve compatibility with single-PR workflows. Parse
 `review_requests` when
 [`separate-release-prs`](/guide/monorepos#separate-release-prs) is enabled.
+
+For registration before tagging, see [Julia packages](./julia). In external
+mode, use `release_ready` to trigger downstream work. `release_created` remains
+false until Versionary itself creates a release.
 
 ## Publishing to a registry
 

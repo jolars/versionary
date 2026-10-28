@@ -25,7 +25,11 @@ import {
   reconcileSeparateReviewRequests,
   resolveReleaseHighlights,
 } from "../release/pr.js";
-import { runRelease, runReleaseDetailed } from "../release/release.js";
+import {
+  type ExternalReleaseResult,
+  runRelease,
+  runReleaseDetailed,
+} from "../release/release.js";
 import {
   hasFullyUntaggedPendingRelease,
   hasReleaseStateChangeAtHead,
@@ -149,6 +153,8 @@ interface RunJsonResult {
     | "pr-dry-run"
     | "release-skipped"
     | "release-dry-run"
+    | "release-ready"
+    | "release-waiting"
     | "release-published";
   message: string;
   releaseCreated: boolean;
@@ -162,6 +168,8 @@ interface RunJsonResult {
     tag: string;
     version: string;
     dependencies: string[];
+    sha?: string;
+    notes?: string;
   }[];
   targets?: {
     tag: string;
@@ -178,6 +186,23 @@ function parseFlags(args: string[]): CliFlags {
 
 function emitJson(payload: RunJsonResult): void {
   process.stdout.write(`${JSON.stringify(payload)}\n`);
+}
+
+function printExternalRelease(
+  result: ExternalReleaseResult,
+  flags: CliFlags,
+): void {
+  if (flags.json) {
+    emitJson({
+      action: result.action,
+      message: result.message,
+      releaseCreated: false,
+      tagNames: [],
+      releaseTargets: result.releaseTargets,
+    });
+  } else {
+    console.log(result.message);
+  }
 }
 
 function reviewResultPayload(
@@ -244,12 +269,41 @@ async function recoverPendingReleaseIfNeeded(
   logger?: Console,
 ): Promise<boolean> {
   const cwd = process.cwd();
+  const loaded = loadConfig(cwd);
+  if (loaded.config["release-mode"] === "external") {
+    const result = await runReleaseDetailed(cwd, {
+      logger,
+      "dry-run": flags["dry-run"],
+    });
+    if (
+      result.action === "release-ready" ||
+      result.action === "release-waiting"
+    ) {
+      printExternalRelease(result, flags);
+      return true;
+    }
+    if (result.action === "release-dry-run") {
+      if (flags.json) {
+        emitJson({
+          action: result.action,
+          message: result.message,
+          releaseCreated: false,
+          tagNames: result.targets.map((target) => target.tag),
+          releaseTargets: result.releaseTargets,
+          targets: result.targets,
+        });
+      } else {
+        console.log(result.message);
+      }
+      return true;
+    }
+    return false;
+  }
   if (!hasFullyUntaggedPendingRelease(cwd)) {
     return false;
   }
 
   const pendingTargets = readPendingReleaseTargets(cwd);
-  const loaded = loadConfig(cwd);
   const releaseBranch = loaded.config["release-branch"] ?? "versionary/release";
   if (loaded.config["separate-release-prs"]) {
     const prepared = preparePendingSeparateReleasePrs(cwd, {
@@ -403,6 +457,13 @@ async function main(): Promise<number> {
         logger,
         "dry-run": flags["dry-run"],
       });
+      if (
+        release.action === "release-ready" ||
+        release.action === "release-waiting"
+      ) {
+        printExternalRelease(release, flags);
+        return 0;
+      }
       if (release.action === "release-skipped") {
         if (flags.json) {
           emitJson({

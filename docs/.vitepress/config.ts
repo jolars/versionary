@@ -44,7 +44,10 @@ export default defineConfig({
         },
         {
           text: "Automation",
-          items: [{ text: "GitHub Actions", link: "/guide/github-actions" }],
+          items: [
+            { text: "GitHub Actions", link: "/guide/github-actions" },
+            { text: "Julia packages", link: "/guide/julia" },
+          ],
         },
       ],
       "/reference/": [

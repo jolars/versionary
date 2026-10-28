@@ -28,7 +28,14 @@ afterEach(() => {
 });
 
 describe("GitHub Action entrypoint", () => {
-  function runWithEvent(event: string | null | undefined, token = "") {
+  function runWithEvent(
+    event: string | null | undefined,
+    token = "",
+    payload: Record<string, unknown> = {
+      action: "noop",
+      releaseCreated: false,
+    },
+  ) {
     const cwd = makeTempDir("versionary-action-event-");
     const outputPath = path.join(cwd, "github-output.txt");
     const eventPath = path.join(cwd, "event.json");
@@ -47,7 +54,7 @@ fs.appendFileSync(process.env.TEST_INVOCATIONS_PATH, ${JSON.stringify(command)} 
 if (${JSON.stringify(command)} === "git") {
   process.exit(process.argv[2] === "config" ? 0 : 1);
 }
-process.stdout.write(JSON.stringify({ action: "noop", releaseCreated: false }));
+process.stdout.write(${JSON.stringify(JSON.stringify(payload))});
 `,
       );
     }
@@ -106,6 +113,7 @@ process.stdout.write(JSON.stringify({ action: "noop", releaseCreated: false }));
         message:
           "Skipping release automation in a fork without a release token.",
         release_created: "false",
+        release_ready: "false",
         tag_name: "",
         tag_names: "[]",
         release_targets: "[]",
@@ -149,6 +157,41 @@ process.stdout.write(JSON.stringify({ action: "noop", releaseCreated: false }));
     expect(JSON.parse(result.stdout)).toMatchObject({ action: "noop" });
     expect(result.outputs.action).toBe("noop");
     expect(result.invocations).toContain("npx");
+  });
+
+  it("exports external targets without claiming their tags were published", () => {
+    const targets = [
+      {
+        path: ".",
+        version: "1.0.1",
+        tag: "v1.0.1",
+        dependencies: [],
+        sha: "a".repeat(40),
+        notes: "### Fixes\n\nReviewed notes.",
+      },
+    ];
+    const result = runWithEvent("{}", "test-token", {
+      action: "release-ready",
+      releaseCreated: false,
+      tagNames: [],
+      releaseTargets: targets,
+    });
+    expect(result.status).toBe(0);
+    expect(result.outputs.release_ready).toBe("true");
+    expect(result.outputs.release_created).toBe("false");
+    expect(result.outputs.tag_names).toBe("[]");
+    expect(JSON.parse(result.outputs.release_targets ?? "")).toEqual(targets);
+  });
+
+  it("does not report dry-run tag names as published releases", () => {
+    const result = runWithEvent("{}", "test-token", {
+      action: "release-dry-run",
+      releaseCreated: false,
+      tagNames: ["v1.0.1"],
+    });
+    expect(result.status).toBe(0);
+    expect(result.outputs.release_ready).toBe("false");
+    expect(result.outputs.release_created).toBe("false");
   });
 
   it("skips a stale push before invoking Versionary", () => {

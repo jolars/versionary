@@ -27,6 +27,7 @@ is the single source of truth for the config shape.
 | `$schema`                    | string                | —                        | JSON Schema URL for editor support. |
 | `release-type`               | string \| string[]    | `"simple"`               | The [strategy](/reference/strategies) (or array of strategies) used to read/write versions. |
 | `review-mode`                | `"direct"` \| `"pr"`  | `"pr"`                   | Release style. `pr` opens a release PR; `direct` commits to the triggering branch and publishes in one run. See [workflows](/guide/workflows). |
+| `release-mode`               | `"versionary"` \\| `"external"` | `"versionary"` | Who creates tags and release metadata. `external` emits the merged commit and notes, then waits for downstream tags. See [Julia packages](/guide/julia). |
 | `version-file`               | string                | strategy-specific        | Path to the primary version source. Default depends on `release-type` (see table below). |
 | `changelog-file`             | string                | `CHANGELOG.md` / `NEWS.md` | Path to the changelog. Defaults to `NEWS.md` for the R strategy, `CHANGELOG.md` otherwise. |
 | `changelog-format`           | `"markdown-changelog"` \| `"r-news"` | strategy-specific | Changelog format. Defaults to `r-news` for the R strategy, `markdown-changelog` otherwise. |
