@@ -12,7 +12,7 @@ inputs:
   versionary-version:
     description: Versionary npm version or dist-tag
     required: false
-    default: 1.7.1
+    default: 1.8.0
   working-directory:
     description: Working directory containing versionary.jsonc/json
     required: false
@@ -20,7 +20,8 @@ inputs:
 outputs:
   action:
     description: Versionary action taken (noop, fork-skipped, stale-run-skipped,
-      pr-prepared, release-published, release-ready, release-waiting, release-skipped)
+      pr-prepared, release-published, release-ready, release-waiting,
+      release-skipped)
   message:
     description: Human-readable result message
   release_created:
@@ -32,8 +33,8 @@ outputs:
   tag_names:
     description: JSON array of published release tags
   release_targets:
-    description: Dependency-ordered JSON array of release targets; external
-      targets also include the merged commit SHA and release notes
+    description: Dependency-ordered JSON array of release targets; external targets
+      also include the merged commit SHA and release notes
   review_url:
     description: Primary review request URL when release PRs were prepared
   review_requests:
