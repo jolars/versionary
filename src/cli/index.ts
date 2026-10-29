@@ -3,6 +3,7 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { parseArgs } from "node:util";
+import { type CiDecision, evaluateCi } from "../ci.js";
 import { writeCommitOverride } from "../config/commit-overrides.js";
 import { loadConfig } from "../config/load-config.js";
 import { resolveCommitSha } from "../git/commit-overrides.js";
@@ -184,7 +185,7 @@ function parseFlags(args: string[]): CliFlags {
   };
 }
 
-function emitJson(payload: RunJsonResult): void {
+function emitJson(payload: RunJsonResult | CiDecision): void {
   process.stdout.write(`${JSON.stringify(payload)}\n`);
 }
 
@@ -411,6 +412,15 @@ async function main(): Promise<number> {
   const [, , command, ...args] = process.argv;
   const flags = parseFlags(args);
   const logger = flags.json ? undefined : console;
+  if (command === "ci") {
+    const decision = evaluateCi();
+    if (flags.json) {
+      emitJson(decision);
+    } else {
+      console.log(decision.message);
+    }
+    return 0;
+  }
   if (!command || command === "run") {
     if (loadConfig(process.cwd()).config["review-mode"] === "direct") {
       const release = await runDirectRelease(process.cwd(), {
@@ -779,6 +789,7 @@ async function main(): Promise<number> {
     "  run [--json] [--dry-run]  Auto-dispatch release PR/update or release publish by context",
   );
   console.log("  verify  Validate config and basic repository shape");
+  console.log("  ci [--json]  Decide whether CI should run checks");
   console.log("  plan    Print release plan");
   console.log(
     '  exclude <sha> [--reason "..."]  Exclude a commit from release analysis and notes',

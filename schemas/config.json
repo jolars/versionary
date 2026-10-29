@@ -19,6 +19,11 @@
       "type": "string",
       "enum": ["versionary", "external"]
     },
+    "release-pr-checks": {
+      "description": "Whether CI integration runs checks on Versionary release PRs.",
+      "type": "string",
+      "enum": ["run", "skip"]
+    },
     "version-file": {
       "type": "string"
     },

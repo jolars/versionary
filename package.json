@@ -36,6 +36,7 @@
     "gen:schema": "tsx scripts/generate-schema.ts && biome format --write schemas/config.json",
     "test": "vitest run",
     "verify": "tsx src/cli/index.ts verify",
+    "ci": "tsx src/cli/index.ts ci",
     "run": "tsx src/cli/index.ts run",
     "plan": "tsx src/cli/index.ts plan",
     "exclude": "tsx src/cli/index.ts exclude",

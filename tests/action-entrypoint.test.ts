@@ -35,12 +35,14 @@ describe("GitHub Action entrypoint", () => {
       action: "noop",
       releaseCreated: false,
     },
+    actionCommand = "run",
   ) {
     const cwd = makeTempDir("versionary-action-event-");
     const outputPath = path.join(cwd, "github-output.txt");
     const eventPath = path.join(cwd, "event.json");
     const binDir = path.join(cwd, "bin");
     const invocationsPath = path.join(cwd, "invocations.txt");
+    const argsPath = path.join(cwd, "npx-args.json");
     fs.mkdirSync(binDir);
     if (typeof event === "string") {
       fs.writeFileSync(eventPath, event, "utf8");
@@ -54,6 +56,7 @@ fs.appendFileSync(process.env.TEST_INVOCATIONS_PATH, ${JSON.stringify(command)} 
 if (${JSON.stringify(command)} === "git") {
   process.exit(process.argv[2] === "config" ? 0 : 1);
 }
+fs.writeFileSync(process.env.TEST_ARGS_PATH, JSON.stringify(process.argv.slice(2)));
 process.stdout.write(${JSON.stringify(JSON.stringify(payload))});
 `,
       );
@@ -73,7 +76,10 @@ process.stdout.write(${JSON.stringify(JSON.stringify(payload))});
           GITHUB_OUTPUT: outputPath,
           GITHUB_REPOSITORY: "contributor/project",
           INPUT_TOKEN: token,
+          INPUT_COMMAND: actionCommand,
+          INPUT_VERSIONARY_VERSION: "test-version",
           TEST_INVOCATIONS_PATH: invocationsPath,
+          TEST_ARGS_PATH: argsPath,
         },
       },
     );
@@ -89,8 +95,69 @@ process.stdout.write(${JSON.stringify(JSON.stringify(payload))});
     const invocations = fs.existsSync(invocationsPath)
       ? fs.readFileSync(invocationsPath, "utf8").trim().split("\n")
       : [];
-    return { ...result, outputs, invocations };
+    const npxArgs = fs.existsSync(argsPath)
+      ? JSON.parse(fs.readFileSync(argsPath, "utf8"))
+      : [];
+    return { ...result, outputs, invocations, npxArgs };
   }
+
+  it.each([true, false])(
+    "exports run_checks %s without a token or Git changes in CI mode",
+    (runChecks) => {
+      const result = runWithEvent(
+        "{}",
+        "",
+        {
+          action: "ci-evaluated",
+          message: "CI policy evaluated.",
+          runChecks,
+          isReleasePr: !runChecks,
+        },
+        "ci",
+      );
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.invocations).toEqual(["npx"]);
+      expect(result.npxArgs).toEqual([
+        "--yes",
+        "versionary@test-version",
+        "ci",
+        "--json",
+      ]);
+      expect(result.outputs).toEqual({
+        action: "ci-evaluated",
+        message: "CI policy evaluated.",
+        run_checks: String(runChecks),
+        is_release_pr: String(!runChecks),
+      });
+    },
+  );
+
+  it.each([undefined, "false", null])(
+    "rejects an invalid CI decision %j",
+    (runChecks) => {
+      const result = runWithEvent(
+        "{}",
+        "",
+        {
+          action: "ci-evaluated",
+          runChecks,
+          isReleasePr: true,
+        },
+        "ci",
+      );
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("invalid CI decision");
+      expect(result.outputs).toEqual({});
+      expect(result.invocations).toEqual(["npx"]);
+    },
+  );
+
+  it("rejects unsupported commands before invoking Git or Versionary", () => {
+    const result = runWithEvent("{}", "", {}, "plan");
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("Unsupported command");
+    expect(result.invocations).toEqual([]);
+  });
 
   it.each(["", " \t\n"])(
     "skips a fork with an empty token (%j) before invoking git or Versionary",

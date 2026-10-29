@@ -54,10 +54,89 @@ For parallel release lines such as `main` and `1.x`, use the
 [maintenance workflow recipe](./workflows#maintenance-releases). It gives each
 line its own release PR branch and explicitly selects the base branch.
 
+## Skipping checks on release PRs
+
+Set [`release-pr-checks: "skip"`](/reference/configuration#release-pr-checks)
+to skip expensive checks on Versionary release PRs while keeping checks and
+publication running after merging. This is useful with
+[`separate-release-prs`](/guide/monorepos#separate-release-prs), where each
+package PR would otherwise repeat the same checks. The default is `"run"`.
+
+```jsonc
+{
+  "version": 1,
+  "release-pr-checks": "skip"
+}
+```
+
+Wire the workflow to Versionary's decision once. A small job runs the Action
+with `command: ci` and exposes its `run_checks` output. Build, test, and lint
+jobs use that output in their conditions:
+
+```yaml
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    outputs:
+      run_checks: ${{ steps.policy.outputs.run_checks }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+      - id: policy
+        uses: jolars/versionary@v1
+        with:
+          command: ci
+
+  test:
+    needs: ci
+    if: ${{ !cancelled() && needs.ci.outputs.run_checks != 'false' }}
+    runs-on: ubuntu-latest
+    steps:
+      # Your existing test steps.
+```
+
+The decision job checks out the PR's base commit, so its configuration comes
+from the branch receiving the release. It needs only `contents: read`, a
+shallow checkout, and no release token. It evaluates policy without changing
+Git configuration, branches, tags, or releases. Use a Versionary release that
+includes `release-pr-checks` and the Action's `command: ci` mode.
+
+Versionary recognizes the configured `release-branch` and, when
+`separate-release-prs` is enabled, its generated package and cohort branches.
+Reserve these names for Versionary. Custom and maintenance release branches
+use their own base branch's configuration, so the workflow needs no branch
+matching expressions. Checks run on ordinary PRs, fork PRs, pushes, and
+events with incomplete PR metadata. Direct release mode also keeps checks
+enabled.
+
+The job condition skips checks only when Versionary explicitly returns
+`"false"`. If the decision job fails, checks still run. Once the workflow is
+wired, changing `release-pr-checks` in the base branch's configuration controls
+the behavior.
+
+Keep the release job on pushes to the base branch and make it depend on both
+the decision job and your checks with `needs: [ci, test]`. Because checks still
+run on pushes, publishing continues to wait for successful CI. The complete
+[CI workflow example](https://github.com/jolars/versionary/blob/main/examples/release-pr-ci.yml)
+shows this setup with a Node.js test job; replace its test steps with your own
+ecosystem's checks.
+
+For other integrations, [`versionary ci --json`](/reference/cli#ci) exposes the
+same decision from the checked-out configuration.
+
+A [conditionally skipped job](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-jobs-with-conditions)
+satisfies its required status check. If your branch rules require individual
+matrix check names, keep those jobs and apply the condition to their expensive
+steps instead. Avoid adding `[skip ci]` to release commits: GitHub can then
+skip the entire post-merge push workflow and leave required checks pending.
+See [GitHub's skip instructions](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/skip-workflow-runs).
+
 ## Forked repositories
 
-The action skips release automation successfully when the repository running
-the workflow is a fork and its `token` input is empty. It reports
+With the default `command: run`, the action skips release automation successfully
+when the repository running the workflow is a fork and its `token` input is
+empty. It reports
 `action: fork-skipped`, `release_created: "false"`, and a message explaining
 the skip. It does this before invoking Git or the Versionary CLI.
 
@@ -87,8 +166,9 @@ A single job that does everything (the quick-start above) needs
 
 ## Choosing a token
 
-The action needs a token for two things: **GitHub API calls** (PRs, releases,
-comments) and **git push authentication** for the release branch and tags.
+With `command: run`, the action needs a token for two things: **GitHub API calls**
+(PRs, releases, comments) and **git push authentication** for the release branch
+and tags.
 Whatever you pass becomes the author of those actions—there is no API to set a
 separate author—so pick a token based on the identity you want releases
 attributed to.
@@ -195,7 +275,8 @@ untouched.
 
 | Input               | Required | Default  | Description                                            |
 | ------------------- | -------- | -------- | ------------------------------------------------------ |
-| `token`             | conditional | —     | GitHub token for SCM integration and git push; omit to skip a fork. |
+| `command`           | no       | `run`    | `run` orchestrates releases; `ci` evaluates check policy without a token. |
+| `token`             | conditional | —     | GitHub token for `command: run`; omit to skip a fork. Unused by `command: ci`. |
 | `versionary-version`| no       | pinned   | npm version or dist-tag of Versionary to run.          |
 | `working-directory` | no       | `.`      | Directory containing `versionary.jsonc`/`.json`.       |
 
@@ -203,8 +284,10 @@ untouched.
 
 | Output            | Description                                                   |
 | ----------------- | ------------------------------------------------------------- |
-| `action`          | `noop`, `fork-skipped`, `pr-prepared`, `release-published`, `release-skipped`, … |
+| `action`          | `ci-evaluated`, `noop`, `fork-skipped`, `pr-prepared`, `release-published`, `release-skipped`, … |
 | `message`         | Human-readable result summary.                                |
+| `run_checks`      | `"true"` or `"false"` from `command: ci`; use to gate CI jobs. |
+| `is_release_pr`   | `"true"` when `command: ci` recognizes a Versionary release PR. |
 | `release_created` | `"true"` when at least one release was published.             |
 | `release_ready`   | `"true"` when a merged release is ready for external tooling. |
 | `tag_name`        | First published tag (single-target flows).                    |
@@ -214,6 +297,9 @@ untouched.
 | `review_requests` | JSON array of all package/cohort release PR results.           |
 | `branch`          | Primary release branch name when PRs were prepared.            |
 | `title`           | Primary release PR title when PRs were prepared.               |
+
+`command: ci` sets `action`, `message`, `run_checks`, and `is_release_pr`.
+The release outputs apply to `command: run`.
 
 The primary outputs preserve compatibility with single-PR workflows. Parse
 `review_requests` when

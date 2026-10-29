@@ -122,6 +122,12 @@ export const configSchema = z
     version: z.literal(1),
     "review-mode": z.enum(["direct", "pr"]).optional(),
     "release-mode": z.enum(["versionary", "external"]).optional(),
+    "release-pr-checks": z
+      .enum(["run", "skip"])
+      .optional()
+      .describe(
+        "Whether CI integration runs checks on Versionary release PRs.",
+      ),
     "version-file": z.string().optional(),
     "changelog-file": z.string().optional(),
     "changelog-format": z.enum(["markdown-changelog", "r-news"]).optional(),

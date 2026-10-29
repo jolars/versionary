@@ -14,6 +14,7 @@ If no command is given, `run` is used.
 | ----------- | -------------------------------------------------------------- |
 | `run`       | Auto-dispatch: prepare/update a release PR, or publish a release. |
 | `verify`    | Validate config and repository shape.                          |
+| `ci`        | Decide whether CI should run checks, without changing the repository. |
 | `plan`      | Print the computed release plan as JSON.                       |
 | `changelog` | Print or write the next release's changelog section.           |
 | `pr`        | Prepare the release PR commit and branch.                      |
@@ -117,6 +118,39 @@ compatibility projections of the first entry.
 | `release-skipped`   | Release skipped (e.g. nothing to publish).         |
 | `release-dry-run`   | Would publish a release (dry run).                 |
 | `release-published` | Release published.                                 |
+
+## `ci`
+
+Evaluates [`release-pr-checks`](./configuration#release-pr-checks) and the
+GitHub event context without changing the repository or contacting the SCM
+provider. It needs configuration but no version files, release token, or Git
+history. Both the run and skip decisions exit `0`; invalid configuration exits
+`1`.
+
+```bash
+versionary ci --json
+```
+
+```json
+{
+  "action": "ci-evaluated",
+  "message": "Skipping checks for Versionary release PR versionary/release.",
+  "runChecks": false,
+  "isReleasePr": true
+}
+```
+
+Without `--json`, the command prints the message. The GitHub Action exposes
+the same decision through `command: ci`, with `run_checks` and `is_release_pr`
+outputs.
+
+The command reads `GITHUB_EVENT_NAME`, `GITHUB_EVENT_PATH`, and
+`GITHUB_REPOSITORY`. For `pull_request` and `pull_request_target`, it recognizes
+the configured release branch and generated separate package branches only
+when both PR repositories match the workflow repository. Other events,
+including post-merge pushes and merge queues, keep checks enabled. Missing,
+unreadable, or incomplete event data also keeps checks enabled. See the
+[CI workflow recipe](/guide/github-actions#skipping-checks-on-release-prs).
 
 ## `verify`
 

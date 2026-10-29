@@ -74,6 +74,12 @@ all fully untagged cohorts present in the merged state are published together.
 `separate-release-prs` requires a non-empty `packages` map and cannot be used
 with fixed monorepo mode or `review-mode: "direct"`.
 
+To avoid repeating expensive checks for every package PR, use the
+[selective CI recipe](/guide/github-actions#skipping-checks-on-release-prs).
+Set `release-pr-checks: "skip"` and wire check jobs to the Action's
+`run_checks` output. Versionary recognizes release branches and keeps checks
+and publication running after merging.
+
 ## Per-package strategies
 
 A package may use a different [strategy](/reference/strategies) than the root.

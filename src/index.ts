@@ -1,3 +1,4 @@
+export { type CiDecision, evaluateCi } from "./ci.js";
 export { loadConfig } from "./config/load-config.js";
 export { verifyProject } from "./release/verify-project.js";
 export {

@@ -27,11 +27,12 @@ is the single source of truth for the config shape.
 | `$schema`                    | string                | —                        | JSON Schema URL for editor support. |
 | `release-type`               | string \| string[]    | `"simple"`               | The [strategy](/reference/strategies) (or array of strategies) used to read/write versions. |
 | `review-mode`                | `"direct"` \| `"pr"`  | `"pr"`                   | Release style. `pr` opens a release PR; `direct` commits to the triggering branch and publishes in one run. See [workflows](/guide/workflows). |
+| `release-pr-checks`          | `"run"` \| `"skip"`    | `"run"`                  | Whether the CI integration runs checks on Versionary release PRs. Requires [workflow integration](/guide/github-actions#skipping-checks-on-release-prs). |
 | `release-mode`               | `"versionary"` \\| `"external"` | `"versionary"` | Who creates tags and release metadata. `external` emits the merged commit and notes, then waits for downstream tags. See [Julia packages](/guide/julia). |
 | `version-file`               | string                | strategy-specific        | Path to the primary version source. Default depends on `release-type` (see table below). |
 | `changelog-file`             | string                | `CHANGELOG.md` / `NEWS.md` | Path to the changelog. Defaults to `NEWS.md` for the R strategy, `CHANGELOG.md` otherwise. |
 | `changelog-format`           | `"markdown-changelog"` \| `"r-news"` | strategy-specific | Changelog format. Defaults to `r-news` for the R strategy, `markdown-changelog` otherwise. |
-| `release-branch`             | string                | `"versionary/release"`   | Branch used for the release PR/commit. |
+| `release-branch`             | string                | `"versionary/release"`   | Branch used for the release PR/commit and prefix for separate package PRs. See [selective CI](/guide/github-actions#skipping-checks-on-release-prs). |
 | `separate-release-prs`       | boolean               | `false`                  | Open an independent release PR for each releasable package or coupled package cohort. See [monorepos](/guide/monorepos#separate-release-prs). |
 | `baseline-file`              | string                | `".versionary-manifest.json"` | File tracking the baseline SHA for deterministic commit ranges. |
 | `bootstrap-sha`              | string                | —                        | First-run baseline commit when adopting Versionary on existing history. |
@@ -44,6 +45,23 @@ is the single source of truth for the config shape.
 | `exclude-paths`              | string[]              | —                        | Glob/path prefixes whose changes don't, on their own, count toward a bump. Applies repo-wide and to every package. |
 | `commit-overrides`           | object                | —                        | Exclusions or replacement messages keyed by full commit SHA. See [commit overrides](#commit-overrides). |
 | `include-commit-authors`     | boolean               | —                        | Accepted by the schema; not yet wired into changelog rendering. |
+
+### `release-pr-checks`
+
+Set `"skip"` to let Versionary's CI integration skip expensive checks on its
+release PRs. The default, `"run"`, keeps checks enabled. This is a repository-wide
+policy shared by combined release PRs and separate package or cohort PRs.
+
+The setting takes effect through [`versionary ci --json`](/reference/cli#ci)
+or the Action's `command: ci` mode. Wire build, test, and lint jobs to the
+decision's `run_checks` output using the
+[workflow recipe](/guide/github-actions#skipping-checks-on-release-prs). Adding
+the setting alone does not change GitHub's workflow rules.
+
+Versionary skips checks only when the event identifies a release branch in the
+same repository. Ordinary PRs, fork PRs, pushes after merging, and unknown event
+contexts keep checks enabled. Direct release mode always runs checks. Invalid
+configuration fails the decision command rather than producing a skip result.
 
 ### `commit-overrides`
 

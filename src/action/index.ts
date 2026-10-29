@@ -13,6 +13,8 @@ interface RunJsonResult {
   branch?: string;
   title?: string;
   reviewRequests?: unknown;
+  runChecks?: boolean;
+  isReleasePr?: boolean;
 }
 
 function getInput(name: string): string {
@@ -131,7 +133,45 @@ function skipRun(action: string, message: string): void {
   setOutput("title", "");
 }
 
+function runCi(): void {
+  const cwd = getInput("working-directory") || ".";
+  const version = getInput("versionary-version") || "0.7.0";
+  const raw = execFileSync(
+    "npx",
+    ["--yes", `versionary@${version}`, "ci", "--json"],
+    { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+  ).trim();
+  let payload: RunJsonResult;
+  try {
+    payload = JSON.parse(raw) as RunJsonResult;
+  } catch {
+    throw new Error("Failed parsing Versionary CI JSON output.");
+  }
+  if (
+    payload?.action !== "ci-evaluated" ||
+    typeof payload.runChecks !== "boolean" ||
+    typeof payload.isReleasePr !== "boolean"
+  ) {
+    throw new Error("Versionary returned an invalid CI decision.");
+  }
+  process.stdout.write(`${raw}\n`);
+  setOutput("action", payload.action);
+  setOutput("message", payload.message ?? "");
+  setOutput("run_checks", String(payload.runChecks));
+  setOutput("is_release_pr", String(payload.isReleasePr));
+}
+
 function main(): void {
+  const command = getInput("command") || "run";
+  if (command === "ci") {
+    runCi();
+    return;
+  }
+  if (command !== "run") {
+    throw new Error(
+      `Unsupported command "${command}". Expected "run" or "ci".`,
+    );
+  }
   const token = getInput("token");
   if (!token) {
     if (isForkRepository()) {
