@@ -11,12 +11,13 @@ inputs:
     default: run
   token:
     description: GitHub token used by release orchestration. Required for command
-      run except when skipping a fork without a token; not needed for command ci.
+      run except when skipping a fork without a token; not needed for command
+      ci.
     required: false
   versionary-version:
     description: Versionary npm version or dist-tag
     required: false
-    default: 1.8.0
+    default: 1.9.0
   working-directory:
     description: Working directory containing versionary.jsonc/json
     required: false

@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.9.0](https://github.com/jolars/versionary/compare/v1.8.0...v1.9.0) (2026-10-29)
+
+### Features
+
+- add configurable checks for release PRs ([`5333fee`](https://github.com/jolars/versionary/commit/5333feed4b4aa4f63330542369adcd368ef9fff3))
+
 ## [1.8.0](https://github.com/jolars/versionary/compare/v1.7.1...v1.8.0) (2026-10-28)
 
 ### Features
