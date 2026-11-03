@@ -7,6 +7,8 @@ interface RunJsonResult {
   action?: string;
   message?: string;
   releaseCreated?: boolean;
+  releaseReady?: boolean;
+  externalReleaseTargets?: unknown;
   tagNames?: unknown;
   releaseTargets?: unknown;
   reviewUrl?: string;
@@ -127,6 +129,7 @@ function skipRun(action: string, message: string): void {
   setOutput("tag_name", "");
   setOutput("tag_names", "[]");
   setOutput("release_targets", "[]");
+  setOutput("external_release_targets", "[]");
   setOutput("review_url", "");
   setOutput("review_requests", "[]");
   setOutput("branch", "");
@@ -284,7 +287,9 @@ function main(): void {
   setOutput("release_created", releaseCreated);
   setOutput(
     "release_ready",
-    payload.action === "release-ready" ? "true" : "false",
+    (payload.releaseReady ?? payload.action === "release-ready")
+      ? "true"
+      : "false",
   );
   setOutput("tag_name", firstTag);
   setOutput("tag_names", JSON.stringify(tagNames));
@@ -292,6 +297,17 @@ function main(): void {
     "release_targets",
     JSON.stringify(
       Array.isArray(payload.releaseTargets) ? payload.releaseTargets : [],
+    ),
+  );
+  setOutput(
+    "external_release_targets",
+    JSON.stringify(
+      Array.isArray(payload.externalReleaseTargets)
+        ? payload.externalReleaseTargets
+        : payload.action === "release-ready" ||
+            payload.action === "release-waiting"
+          ? (payload.releaseTargets ?? [])
+          : [],
     ),
   );
   setOutput("review_url", payload.reviewUrl ?? "");

@@ -163,6 +163,10 @@
           "package-name": {
             "type": "string"
           },
+          "release-mode": {
+            "type": "string",
+            "enum": ["versionary", "external"]
+          },
           "changelog-file": {
             "type": "string"
           },

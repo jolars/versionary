@@ -16,7 +16,8 @@ PRs or interpret registry approval policies.
 
 ## Configuration
 
-This workflow requires Versionary 1.8.0 or later. Install the
+Use a Versionary release that includes package-level `release-mode` and the
+`external_release_targets` output. Install the
 [Registrator GitHub App](https://github.com/JuliaRegistries/Registrator.jl#install-registrator)
 on the package repository and configure:
 
@@ -32,8 +33,30 @@ on the package repository and configure:
 
 `review-mode` chooses how version changes are reviewed. `release-mode` chooses
 who creates tags and GitHub release metadata. Its default, `versionary`, keeps
-the normal workflow. `external` delegates that work for the whole repository
-and also supports direct releases.
+the normal workflow. `external` delegates that work and also supports direct
+releases. Package-level
+`release-mode` values override the repository default, so a Julia client can
+use Registrator and TagBot alongside Versionary-managed Python or Rust clients:
+
+```jsonc
+{
+  "version": 1,
+  "review-mode": "pr",
+  "separate-release-prs": true,
+  "packages": {
+    "packages/python": { "release-type": "python" },
+    "packages/julia": {
+      "release-type": "julia",
+      "release-mode": "external"
+    }
+  }
+}
+```
+
+A pending external version stays fixed until its tag appears. Independent
+packages can still prepare and publish releases. Packages that depend on a
+pending external version wait with it; a fixed-version monorepo waits as a
+whole. Versionary never recreates an external registration as a recovery PR.
 
 For an existing package, set `bootstrap-sha` to the commit that introduced its
 current manually managed version. This excludes earlier release history from
@@ -57,8 +80,9 @@ which Registrator accepts. It needs `contents: write` to create a commit
 comment. No separate Registrator token or Julia installation is needed.
 
 On a merged release commit, Versionary returns `release-ready` and sets the
-Action's `release_ready` output to `"true"`. Each `release_targets` entry adds
-`sha` and `notes` to the usual `path`, `version`, `tag`, and `dependencies`.
+Action's `release_ready` output to `"true"`. Each `external_release_targets`
+entry includes `sha` and `notes` alongside `path`, `version`, `tag`, and
+`dependencies`.
 The example posts `@JuliaRegistrator register` on `sha`, followed by a
 `Release notes:` section containing `notes`.
 
@@ -86,13 +110,18 @@ and [TagBot's changelogs](https://github.com/JuliaRegistries/TagBot#changelogs).
 
 ## Waiting and retries
 
-Versionary reports `release-waiting` on later commits until all expected tags
-exist locally. Fetch tags before running it. While waiting, it preserves the
-merged commits and reads their notes from Git history. It does not bump versions
-or create recovery PRs. Partially tagged cohorts are expected while independent
-registrations finish. Planning resumes once TagBot's tags are available.
+Versionary reports `release-waiting` when only external releases remain pending.
+It resumes planning each package once its expected tag exists locally. Fetch
+tags before running it. While a package waits, Versionary preserves its merged
+commit and reads its notes from Git history. It does not bump that package or
+create a recovery PR for it. Partially tagged cohorts are expected while
+independent registrations finish.
 
-Both external actions report `release_created: "false"` and empty `tag_names`.
+Use `external_release_targets` for registration, including retries while an
+unrelated package publishes. Mixed runs can report both `release_created` and
+`release_ready` as `"true"`; only Versionary-managed releases appear in
+`tag_names`. External-only runs also expose their handoff in `release_targets`
+for compatibility, with `release_created: "false"` and empty `tag_names`.
 Submitting registration does not mean a version was accepted or released.
 
 The example identifies comments by package path, version, and commit to avoid

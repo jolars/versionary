@@ -27,7 +27,11 @@ import type {
 } from "../types/config.js";
 import { releaseTypeBetween, resolveReleaseAsOverride } from "./release-as.js";
 import { bumpVersion, maxReleaseType, type ReleaseType } from "./semver.js";
-import { readBaselineSha, readReleaseTargets } from "./state.js";
+import {
+  readBaselineSha,
+  readExternalReleaseWaitPaths,
+  readReleaseTargets,
+} from "./state.js";
 
 type BumpReason =
   | "direct"
@@ -124,6 +128,7 @@ export function createReleasePlan(
     options.commitOverrides ?? loaded.config["commit-overrides"] ?? {},
   );
   const originalCommits = new Map<string, ParsedCommit>();
+  const originalCommitPaths = new Map<string, Set<string>>();
   // Keep the original revert relationships even when either commit is excluded.
   const effectiveCommits = (commits: ParsedCommit[]): ParsedCommit[] =>
     applyCommitOverrides(applyRevertSuppression(commits), overrides);
@@ -156,6 +161,10 @@ export function createReleasePlan(
       loaded.config.packages?.[packagePath],
     );
   const monorepoMode = getMode(loaded.config["monorepo-mode"]);
+  const waitingPaths = readExternalReleaseWaitPaths(cwd);
+  if (monorepoMode === "fixed" && waitingPaths.size > 0) {
+    for (const pkg of normalizedPackages) waitingPaths.add(pkg.path);
+  }
 
   const buildPackagePlan = (pkg: {
     path: string;
@@ -196,7 +205,9 @@ export function createReleasePlan(
     ];
     const isImplicitRoot = !hasPackages && pkg.path === ".";
     let parsedCommits: ParsedCommit[];
-    if (isImplicitRoot && excludePaths.length === 0) {
+    if (waitingPaths.has(pkg.path)) {
+      parsedCommits = [];
+    } else if (isImplicitRoot && excludePaths.length === 0) {
       parsedCommits = getParsedCommitsSinceLastTag(cwd, baselineSha);
     } else {
       parsedCommits = getParsedCommitsForPath(
@@ -210,6 +221,9 @@ export function createReleasePlan(
     }
     for (const commit of parsedCommits) {
       originalCommits.set(commit.hash, commit);
+      const paths = originalCommitPaths.get(commit.hash) ?? new Set<string>();
+      paths.add(pkg.path);
+      originalCommitPaths.set(commit.hash, paths);
       overrides.get(commit.hash)?.report.packages.push(pkg.path);
     }
     parsedCommits = effectiveCommits(parsedCommits);
@@ -401,6 +415,28 @@ export function createReleasePlan(
     }
   }
 
+  // A dependent cannot publish against a sibling version still awaiting acceptance.
+  for (let iteration = 0; iteration < workingPlans.length; iteration += 1) {
+    for (const [dependent, dependencies] of dependenciesByPath) {
+      if ([...dependencies].some((dependency) => waitingPaths.has(dependency)))
+        waitingPaths.add(dependent);
+    }
+  }
+  for (const pkg of workingPlans) {
+    if (waitingPaths.has(pkg.path)) {
+      pkg.nextVersion = null;
+      pkg.releaseType = null;
+      pkg.commits = [];
+      pkg.parsedCommits = [];
+      const context = strategyContextByPath.get(pkg.path);
+      if (context) context.nextVersion = null;
+    }
+  }
+  for (const [hash, paths] of originalCommitPaths) {
+    if ([...paths].every((packagePath) => waitingPaths.has(packagePath)))
+      originalCommits.delete(hash);
+  }
+
   /**
    * Every package reachable by following dependency edges down from a
    * publishable package that is currently releasing. Staleness matters
@@ -498,7 +534,7 @@ export function createReleasePlan(
         ) ?? [];
       for (const impactedPath of impacted) {
         const target = workingPlanByPath.get(impactedPath);
-        if (!target || target.nextVersion) {
+        if (!target || target.nextVersion || waitingPaths.has(target.path)) {
           continue;
         }
         forcePatchBump(target, "dependency-propagation");
@@ -512,7 +548,11 @@ export function createReleasePlan(
     // from the change existing, not from how it was labeled.
     const reachableDependencies = collectReleasingDependencyClosure();
     for (const candidate of workingPlans) {
-      if (candidate.nextVersion || candidate.commits.length === 0) {
+      if (
+        candidate.nextVersion ||
+        candidate.commits.length === 0 ||
+        waitingPaths.has(candidate.path)
+      ) {
         continue;
       }
       if (!reachableDependencies.has(candidate.path)) {
@@ -544,6 +584,7 @@ export function createReleasePlan(
     }
   }
   const adjustedPackages = propagatedPackages.map((pkgPlan) => {
+    if (waitingPaths.has(pkgPlan.path)) return pkgPlan;
     if (pkgPlan.bumpReason === "release-as") {
       // An explicit override pins this package's version; do not let a
       // followed source recompute it out from under the requested version.

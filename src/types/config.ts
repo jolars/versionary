@@ -17,6 +17,7 @@ export interface VersionaryArtifactRule {
 }
 
 export interface VersionaryPackage {
+  "release-mode"?: "versionary" | "external";
   "release-type"?: string | string[];
   "package-name"?: string;
   "changelog-file"?: string;

@@ -292,6 +292,7 @@ untouched.
 | `release_ready`   | `"true"` when a merged release is ready for external tooling. |
 | `tag_name`        | First published tag (single-target flows).                    |
 | `tag_names`       | JSON array of all published tags.                             |
+| `external_release_targets` | Pending external targets with saved `sha` and reviewed `notes`, including mixed release runs. |
 | `release_targets` | Dependency-first release targets; external targets also include `sha` and `notes`. |
 | `review_url`      | Primary release PR URL when PRs were prepared.                 |
 | `review_requests` | JSON array of all package/cohort release PR results.           |

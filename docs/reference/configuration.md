@@ -165,10 +165,24 @@ A map keyed by package path (`"."` for the repository root). Used with
 | `follows`               | string[]                                  | Source packages this package follows; see [follows](/guide/monorepos#follows). |
 | `extra-files`           | artifact-rule[]                           | Additional files to update with the new version (see below). |
 | `release-draft`         | boolean                                   | Override whether this package's GitHub Release is created as a draft. |
+| `release-mode`          | `"versionary"` \| `"external"` | Override who creates this package's tags and release metadata. |
 | `release-latest`        | boolean                                   | Override whether this package's new GitHub Release requests Latest promotion. |
 
 See the [monorepos guide](/guide/monorepos) for tag naming, `follows`, and
 filtering semantics.
+
+### `release-mode`
+
+A package inherits the repository's `release-mode`, which defaults to
+`versionary`. Set a Julia package to `external` to let Registrator and TagBot
+finish its release. You can also select `versionary` for a package under an
+`external` repository default.
+
+Versionary publishes managed targets and emits `external_release_targets` for
+pending external targets separately. Independent packages can keep releasing
+while registration is pending. Dependent packages and fixed-version cohorts
+wait until the external tags exist. External targets are excluded from
+Versionary's recovery PRs. See [Julia packages](/guide/julia) for the workflow.
 
 ### `release-draft`
 
@@ -197,14 +211,14 @@ configuration:
     },
     "packages/julia": {
       "release-type": "julia",
-      "release-draft": true
+      "release-mode": "external"
     }
   }
 }
 ```
 
-Here, the Python package inherits `false`, while the R and Julia packages
-create draft GitHub Releases. Draft selection does not change package grouping
+Here, Python inherits `false`, R creates a draft GitHub Release, and Julia
+delegates tagging and release metadata to TagBot. Draft selection does not change package grouping
 or release PR planning.
 
 ### `release-latest`

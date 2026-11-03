@@ -12,6 +12,7 @@ import {
   renderReleasePlanChangelog,
 } from "../release/changelog.js";
 import { runDirectRelease } from "../release/direct.js";
+import { hasExternalReleaseMode } from "../release/mode.js";
 import { createReleasePlan, type ReleasePlan } from "../release/plan.js";
 import {
   closeStaleReviewRequestIfExists,
@@ -27,6 +28,7 @@ import {
   resolveReleaseHighlights,
 } from "../release/pr.js";
 import {
+  describeExternalRelease,
   type ExternalReleaseResult,
   runRelease,
   runReleaseDetailed,
@@ -159,6 +161,8 @@ interface RunJsonResult {
     | "release-published";
   message: string;
   releaseCreated: boolean;
+  releaseReady?: boolean;
+  externalReleaseTargets?: ExternalReleaseResult["releaseTargets"];
   tagNames: string[];
   reviewUrl?: string;
   branch?: string;
@@ -185,7 +189,22 @@ function parseFlags(args: string[]): CliFlags {
   };
 }
 
+let externalAtStart: ExternalReleaseResult | undefined;
+
 function emitJson(payload: RunJsonResult | CiDecision): void {
+  if (
+    payload.action !== "ci-evaluated" &&
+    externalAtStart &&
+    !payload.externalReleaseTargets
+  ) {
+    payload = {
+      ...payload,
+      externalReleaseTargets: externalAtStart.releaseTargets,
+      releaseReady:
+        payload.action === "release-ready" &&
+        externalAtStart.action === "release-ready",
+    };
+  }
   process.stdout.write(`${JSON.stringify(payload)}\n`);
 }
 
@@ -200,6 +219,8 @@ function printExternalRelease(
       releaseCreated: false,
       tagNames: [],
       releaseTargets: result.releaseTargets,
+      externalReleaseTargets: result.releaseTargets,
+      releaseReady: result.action === "release-ready",
     });
   } else {
     console.log(result.message);
@@ -271,7 +292,11 @@ async function recoverPendingReleaseIfNeeded(
 ): Promise<boolean> {
   const cwd = process.cwd();
   const loaded = loadConfig(cwd);
-  if (loaded.config["release-mode"] === "external") {
+  if (
+    hasExternalReleaseMode(loaded.config) &&
+    !hasFullyUntaggedPendingRelease(cwd) &&
+    !createReleasePlan(cwd).nextVersion
+  ) {
     const result = await runReleaseDetailed(cwd, {
       logger,
       "dry-run": flags["dry-run"],
@@ -411,6 +436,22 @@ async function recoverPendingReleaseIfNeeded(
 async function main(): Promise<number> {
   const [, , command, ...args] = process.argv;
   const flags = parseFlags(args);
+  if (
+    (command === "run" || command === "pr") &&
+    hasExternalReleaseMode(loadConfig(process.cwd()).config)
+  ) {
+    // Preparing a PR can check out its branch; only hand off already-merged intent.
+    const external = describeExternalRelease(
+      process.cwd(),
+      loadConfig(process.cwd()).config,
+      {},
+    );
+    if (
+      external.action === "release-ready" ||
+      external.action === "release-waiting"
+    )
+      externalAtStart = external;
+  }
   const logger = flags.json ? undefined : console;
   if (command === "ci") {
     const decision = evaluateCi();
@@ -432,6 +473,12 @@ async function main(): Promise<number> {
       if (flags.json) {
         emitJson({
           action: release.action,
+          externalReleaseTargets:
+            "externalReleaseTargets" in release
+              ? release.externalReleaseTargets
+              : undefined,
+          releaseReady:
+            "releaseReady" in release ? release.releaseReady : undefined,
           message,
           releaseCreated:
             release.action === "release-published" &&
@@ -491,6 +538,8 @@ async function main(): Promise<number> {
         if (flags.json) {
           emitJson({
             action: "release-dry-run",
+            externalReleaseTargets: release.externalReleaseTargets,
+            releaseReady: false,
             message: release.message,
             releaseCreated: false,
             tagNames: release.targets.map((target) => target.tag),
@@ -516,6 +565,8 @@ async function main(): Promise<number> {
         const primary = reviewRequests[0];
         emitJson({
           action: "release-published",
+          externalReleaseTargets: release.externalReleaseTargets,
+          releaseReady: release.releaseReady,
           message: release.message,
           releaseCreated: release.releases.length > 0,
           tagNames: release.releases.map((target) => target.tag),

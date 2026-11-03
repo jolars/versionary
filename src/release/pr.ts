@@ -47,7 +47,6 @@ import {
   hasFullyUntaggedPendingRelease,
   type ReleaseTargetState,
   readPendingReleaseCohorts,
-  readPendingReleaseTargets,
   writeBaselineSha,
   writePackageReleaseState,
 } from "./state.js";
@@ -387,7 +386,9 @@ export function preparePendingReleasePr(
   cwd = process.cwd(),
   options: { logger?: VersionaryPluginContext["logger"]; branch?: string } = {},
 ): PendingReleasePrResult {
-  const targets = readPendingReleaseTargets(cwd);
+  const targets = readPendingReleaseCohorts(cwd).flatMap(
+    (cohort) => cohort.targets,
+  );
   if (!hasFullyUntaggedPendingRelease(cwd)) {
     throw new Error("No unpublished pending release found to recover.");
   }

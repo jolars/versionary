@@ -184,6 +184,7 @@ process.stdout.write(${JSON.stringify(JSON.stringify(payload))});
         tag_name: "",
         tag_names: "[]",
         release_targets: "[]",
+        external_release_targets: "[]",
         review_url: "",
         review_requests: "[]",
         branch: "",
@@ -248,6 +249,36 @@ process.stdout.write(${JSON.stringify(JSON.stringify(payload))});
     expect(result.outputs.release_created).toBe("false");
     expect(result.outputs.tag_names).toBe("[]");
     expect(JSON.parse(result.outputs.release_targets ?? "")).toEqual(targets);
+    expect(JSON.parse(result.outputs.external_release_targets ?? "")).toEqual(
+      targets,
+    );
+  });
+
+  it("exports independent publication and registration in one run", () => {
+    const external = [
+      {
+        path: "julia",
+        tag: "JuliaDemo-v1.0.1",
+        version: "1.0.1",
+        sha: "a".repeat(40),
+        notes: "Reviewed notes.",
+        dependencies: [],
+      },
+    ];
+    const result = runWithEvent("{}", "test-token", {
+      action: "release-published",
+      releaseCreated: true,
+      releaseReady: true,
+      tagNames: ["node-v1.0.1"],
+      releaseTargets: [{ path: "node", tag: "node-v1.0.1" }],
+      externalReleaseTargets: external,
+    });
+    expect(result.outputs.release_created).toBe("true");
+    expect(result.outputs.release_ready).toBe("true");
+    expect(JSON.parse(result.outputs.external_release_targets ?? "")).toEqual(
+      external,
+    );
+    expect(JSON.parse(result.outputs.tag_names ?? "")).toEqual(["node-v1.0.1"]);
   });
 
   it("does not report dry-run tag names as published releases", () => {

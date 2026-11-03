@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { loadConfig } from "../config/load-config.js";
+import { resolveTargetReleaseMode } from "./mode.js";
 
 const MANIFEST_VERSION_KEY = "manifest-version";
 const BASELINE_SHA_KEY = "baseline-sha";
@@ -239,72 +240,99 @@ export function readPendingReleaseTargets(
   }).flatMap((cohort) => cohort.targets);
 }
 
+export function readPendingExternalReleaseTargets(
+  cwd = process.cwd(),
+): ReleaseTargetState[] {
+  const { config } = loadConfig(cwd);
+  return readPendingReleaseTargets(cwd).filter(
+    (target) =>
+      resolveTargetReleaseMode(config, target.path) === "external" &&
+      !hasLocalTag(cwd, target.tag),
+  );
+}
+
+export function readExternalReleaseWaitPaths(cwd = process.cwd()): Set<string> {
+  const targets = readPendingReleaseTargets(cwd);
+  const waiting = new Set(
+    readPendingExternalReleaseTargets(cwd).map((target) => target.path),
+  );
+  for (let iteration = 0; iteration < targets.length; iteration += 1) {
+    for (const target of targets) {
+      if (
+        !hasLocalTag(cwd, target.tag) &&
+        target.dependencies?.some((dependency) => waiting.has(dependency))
+      ) {
+        waiting.add(target.path);
+      }
+    }
+  }
+  return waiting;
+}
+
 export function readExternalReleaseTargets(
   cwd = process.cwd(),
 ): (ReleaseTargetState & { sha: string })[] {
-  return readPendingReleaseTargets(cwd)
-    .filter((target) => !hasLocalTag(cwd, target.tag))
-    .map((target) => {
-      const sidecar = path.join(
-        getPackageStateDirectory(cwd),
-        packageStateFileName(target.path),
+  return readPendingExternalReleaseTargets(cwd).map((target) => {
+    const sidecar = path.join(
+      getPackageStateDirectory(cwd),
+      packageStateFileName(target.path),
+    );
+    const statePath = fs.existsSync(sidecar)
+      ? sidecar
+      : getBaselineStatePath(cwd);
+    const relativePath = path.relative(cwd, statePath);
+    const identity = (raw: string): string | null => {
+      const state = fs.existsSync(sidecar)
+        ? parsePackageStateFile(raw, statePath)
+        : parseStateFile(raw, statePath);
+      const recorded =
+        "release-target" in state
+          ? state["release-target"]
+          : state[PENDING_RELEASE_TARGETS_KEY]?.find(
+              (entry) => entry.path === target.path,
+            );
+      return recorded
+        ? JSON.stringify([
+            state[BASELINE_SHA_KEY],
+            recorded.path,
+            recorded.version,
+            recorded.tag,
+          ])
+        : null;
+    };
+    const expected = identity(fs.readFileSync(statePath, "utf8"));
+    // Walk the current intent back to its introduction on trunk. Formatting
+    // release state after merging must not move an in-flight registration.
+    const commits = execFileSync(
+      "git",
+      ["log", "--first-parent", "--format=%H", "--", relativePath],
+      { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    )
+      .trim()
+      .split("\n")
+      .filter(Boolean);
+    let sha = "";
+    for (const commit of commits) {
+      let raw: string;
+      try {
+        raw = execFileSync("git", ["show", `${commit}:${relativePath}`], {
+          cwd,
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"],
+        });
+      } catch {
+        break;
+      }
+      if (identity(raw) !== expected) break;
+      sha = commit;
+    }
+    if (!sha) {
+      throw new Error(
+        `External release ${target.tag} requires committed release state. Merge the release PR before requesting registration.`,
       );
-      const statePath = fs.existsSync(sidecar)
-        ? sidecar
-        : getBaselineStatePath(cwd);
-      const relativePath = path.relative(cwd, statePath);
-      const identity = (raw: string): string | null => {
-        const state = fs.existsSync(sidecar)
-          ? parsePackageStateFile(raw, statePath)
-          : parseStateFile(raw, statePath);
-        const recorded =
-          "release-target" in state
-            ? state["release-target"]
-            : state[PENDING_RELEASE_TARGETS_KEY]?.find(
-                (entry) => entry.path === target.path,
-              );
-        return recorded
-          ? JSON.stringify([
-              state[BASELINE_SHA_KEY],
-              recorded.path,
-              recorded.version,
-              recorded.tag,
-            ])
-          : null;
-      };
-      const expected = identity(fs.readFileSync(statePath, "utf8"));
-      // Walk the current intent back to its introduction on trunk. Formatting
-      // release state after merging must not move an in-flight registration.
-      const commits = execFileSync(
-        "git",
-        ["log", "--first-parent", "--format=%H", "--", relativePath],
-        { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
-      )
-        .trim()
-        .split("\n")
-        .filter(Boolean);
-      let sha = "";
-      for (const commit of commits) {
-        let raw: string;
-        try {
-          raw = execFileSync("git", ["show", `${commit}:${relativePath}`], {
-            cwd,
-            encoding: "utf8",
-            stdio: ["ignore", "pipe", "pipe"],
-          });
-        } catch {
-          break;
-        }
-        if (identity(raw) !== expected) break;
-        sha = commit;
-      }
-      if (!sha) {
-        throw new Error(
-          `External release ${target.tag} requires committed release state. Merge the release PR before requesting registration.`,
-        );
-      }
-      return { ...target, sha };
-    });
+    }
+    return { ...target, sha };
+  });
 }
 
 // Every target the release state records, including cohorts whose tags already
@@ -323,16 +351,22 @@ export function readRecordedPendingReleaseTargets(
 export function readPendingReleaseCohorts(
   cwd = process.cwd(),
 ): PendingReleaseCohort[] {
-  return collectPendingReleaseCohorts(cwd, {});
+  return collectPendingReleaseCohorts(cwd, {
+    excludeExternal: true,
+    excludedPaths: readExternalReleaseWaitPaths(cwd),
+  });
 }
 
 function collectPendingReleaseCohorts(
   cwd: string,
   options: {
+    excludeExternal?: boolean;
+    excludedPaths?: Set<string>;
     allowPartiallyTagged?: boolean;
     includeFullyTagged?: boolean;
   },
 ): PendingReleaseCohort[] {
+  const { config } = loadConfig(cwd);
   const filePath = getBaselineStatePath(cwd);
   const packageStates = readPackageStates(cwd);
   const sidecarPaths = new Set(packageStates.map((state) => state.path));
@@ -347,6 +381,14 @@ function collectPendingReleaseCohorts(
     baselineSha: string | undefined,
     targets: ReleaseTargetState[],
   ): void => {
+    if (options.excludeExternal) {
+      targets = targets.filter(
+        (target) =>
+          resolveTargetReleaseMode(config, target.path) === "versionary" &&
+          !options.excludedPaths?.has(target.path),
+      );
+    }
+    if (targets.length === 0) return;
     const byBaseline =
       byBranch.get(branch) ??
       new Map<string | undefined, ReleaseTargetState[]>();
@@ -412,7 +454,7 @@ function collectPendingReleaseCohorts(
   return pending.sort((a, b) => a.branch.localeCompare(b.branch));
 }
 
-function hasLocalTag(cwd: string, tag: string): boolean {
+export function hasLocalTag(cwd: string, tag: string): boolean {
   try {
     execFileSync(
       "git",
