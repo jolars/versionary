@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.10.0](https://github.com/jolars/versionary/compare/v1.9.0...v1.10.0) (2026-11-03)
+
+### Features
+
+- support per-package release modes ([`a09e593`](https://github.com/jolars/versionary/commit/a09e5933f80c4bc8e5372651984ec25c7d39e6f3))
+
 ## [1.9.0](https://github.com/jolars/versionary/compare/v1.8.0...v1.9.0) (2026-10-29)
 
 ### Features

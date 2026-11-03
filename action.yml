@@ -17,7 +17,7 @@ inputs:
   versionary-version:
     description: Versionary npm version or dist-tag
     required: false
-    default: 1.9.0
+    default: 1.10.0
   working-directory:
     description: Working directory containing versionary.jsonc/json
     required: false
@@ -42,7 +42,8 @@ outputs:
   tag_names:
     description: JSON array of published release tags
   external_release_targets:
-    description: JSON array of pending external release targets with commit SHAs and reviewed notes
+    description: JSON array of pending external release targets with commit SHAs and
+      reviewed notes
   release_targets:
     description: Dependency-ordered JSON array of release targets; external targets
       also include the merged commit SHA and release notes
