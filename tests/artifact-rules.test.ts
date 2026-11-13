@@ -445,6 +445,35 @@ describe("artifact rules", () => {
     expect(read(cwd, "pkg/README.md")).toContain("series: 1.2\n");
   });
 
+  it("uses the supplied release date in regex replacements", () => {
+    const cwd = makeTempDir();
+    write(cwd, "pkg/release.txt", "1.2.2 2000-01-01\n");
+    const config: VersionaryConfig = {
+      version: 1,
+      packages: {
+        pkg: {
+          "extra-files": [
+            {
+              type: "regex",
+              path: "release.txt",
+              pattern: "[^\\n]+",
+              replacement: "{{version}} {{date}}",
+            },
+          ],
+        },
+      },
+    };
+
+    applyConfiguredArtifactRules(cwd, config, basePlan(), "2026-11-11");
+    expect(read(cwd, "pkg/release.txt")).toBe("1.2.3 2026-11-11\n");
+    // Reapplying the same release keeps the date stable.
+    applyConfiguredArtifactRules(cwd, config, basePlan(), "2026-11-11");
+    expect(read(cwd, "pkg/release.txt")).toBe("1.2.3 2026-11-11\n");
+    expect(() => applyConfiguredArtifactRules(cwd, config, basePlan())).toThrow(
+      "requires a release date",
+    );
+  });
+
   it("does not interpret `$` sequences in replacement output", () => {
     const cwd = makeTempDir();
     write(cwd, "pkg/README.md", "price: OLD\n");

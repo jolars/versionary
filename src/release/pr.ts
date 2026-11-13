@@ -640,6 +640,7 @@ export function prepareReleasePr(
     cwd,
     loaded.config,
     plan,
+    finalizeContext.releaseDate,
   );
   const packageReleaseMetadata = buildPackageReleaseMetadata(
     cwd,
@@ -913,6 +914,7 @@ function materializeCandidateChanges(
     cwd,
     loaded.config,
     plan,
+    finalizeContext.releaseDate,
   );
   const packageReleaseMetadata = buildPackageReleaseMetadata(
     cwd,

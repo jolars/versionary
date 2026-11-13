@@ -224,9 +224,14 @@ function parseRegexPattern(pattern: string): RegExp {
 
 const REPLACEMENT_TOKEN_PATTERN = /\{\{\s*([A-Za-z]+)\s*\}\}/gu;
 
-function renderReplacementTemplate(template: string, version: string): string {
+function renderReplacementTemplate(
+  template: string,
+  version: string,
+  releaseDate?: string,
+): string {
   const parsed = parseVersion(version);
-  const tokens: Record<string, string> = {
+  const tokens: Record<string, string | undefined> = {
+    date: releaseDate,
     version,
     major: String(parsed.major),
     minor: String(parsed.minor),
@@ -236,6 +241,11 @@ function renderReplacementTemplate(template: string, version: string): string {
   };
   return template.replace(REPLACEMENT_TOKEN_PATTERN, (_whole, name: string) => {
     const key = name.toLowerCase();
+    if (key === "date" && releaseDate === undefined) {
+      throw new Error(
+        "The {{date}} replacement token requires a release date.",
+      );
+    }
     const value = tokens[key];
     if (value === undefined) {
       throw new Error(
@@ -256,6 +266,7 @@ function applyRegexRule(
   version: string,
   expectedMatches: number,
   replacementTemplate?: string,
+  releaseDate?: string,
 ): string {
   const regex = parseRegexPattern(pattern);
   const matchFlags = regex.flags.includes("g")
@@ -275,7 +286,7 @@ function applyRegexRule(
   const renderedReplacement =
     replacementTemplate === undefined
       ? undefined
-      : renderReplacementTemplate(replacementTemplate, version);
+      : renderReplacementTemplate(replacementTemplate, version, releaseDate);
   let updated = content;
   for (let index = matches.length - 1; index >= 0; index -= 1) {
     const match = matches[index];
@@ -569,6 +580,7 @@ function applyArtifactRuleToContent(
   content: string,
   rule: VersionaryArtifactRule,
   version: string,
+  releaseDate?: string,
 ): string {
   if (rule.type === "regex") {
     if (!rule.pattern) {
@@ -580,6 +592,7 @@ function applyArtifactRuleToContent(
       version,
       rule["expected-matches"] ?? 1,
       rule.replacement,
+      releaseDate,
     );
   }
   if (rule.type === "json") {
@@ -615,6 +628,7 @@ function applyArtifactRulesForPackage(
   packagePath: string,
   packageConfig: VersionaryPackage,
   version: string,
+  releaseDate?: string,
 ): string[] {
   const rules = packageConfig["extra-files"] ?? [];
   if (rules.length === 0) {
@@ -632,7 +646,7 @@ function applyArtifactRulesForPackage(
     const existing = fs.readFileSync(targetPath, "utf8");
     let next: string;
     try {
-      next = applyArtifactRuleToContent(existing, rule, version);
+      next = applyArtifactRuleToContent(existing, rule, version, releaseDate);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       throw new Error(
@@ -649,6 +663,7 @@ export function applyConfiguredArtifactRules(
   cwd: string,
   config: VersionaryConfig,
   plan: ReleasePlan,
+  releaseDate?: string,
 ): string[] {
   const packageConfigs = config.packages ?? {};
   if (!plan.packages || plan.packages.length === 0) {
@@ -669,6 +684,7 @@ export function applyConfiguredArtifactRules(
       packagePlan.path,
       packageConfig,
       packagePlan.nextVersion,
+      releaseDate,
     );
     for (const file of files) {
       updated.add(file);

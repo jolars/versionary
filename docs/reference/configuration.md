@@ -303,6 +303,7 @@ following `{{token}}` placeholders are available:
 | `{{major}}`      | the major component (`1`)              |
 | `{{minor}}`      | the minor component (`2`)              |
 | `{{patch}}`      | the patch component (`3`)              |
+| `{{date}}`       | release baseline commit date (`YYYY-MM-DD`), also used by the LaTeX strategy |
 | `{{prerelease}}` | dot-joined prerelease identifiers      |
 | `{{build}}`      | dot-joined build-metadata identifiers  |
 
