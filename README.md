@@ -30,9 +30,6 @@ It is built to:
 - keep a small, stable core with clear extension points
 - handle trunk-based development and monorepo workflows cleanly
 
-> **Status:** early, alpha-stage development. Breaking changes are expected
-> before `1.0.0`.
-
 ## Quick start
 
 Install:
