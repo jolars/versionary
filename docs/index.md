@@ -5,6 +5,10 @@ hero:
   name: Versionary
   text: Automated releases, your way.
   tagline: Software-agnostic versioning, changelogs, tags, and release metadata driven by Conventional Commits and Semantic Versioning.
+  image:
+    light: /logo/logo.png
+    dark: /logo/logo-dark.png
+    alt: "Versionary mascots: x, y, and z."
   actions:
     - theme: brand
       text: Get started

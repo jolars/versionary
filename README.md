@@ -1,4 +1,4 @@
-# Versionary
+# Versionary <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/jolars/versionary/main/assets/logo/logo-small-dark.png" /><img src="https://raw.githubusercontent.com/jolars/versionary/main/assets/logo/logo-small.png" align="right" width="189" alt="Versionary logo" /></picture>
 
 Versionary is a software-agnostic automated release tool focused on SemVer,
 Conventional Commits, release-PR workflows, and extensibility.

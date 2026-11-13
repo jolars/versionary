@@ -11,8 +11,35 @@ export default defineConfig({
   sitemap: {
     hostname: "https://versionary.dev",
   },
-  head: [["link", { rel: "icon", href: "/favicon.svg" }]],
+  head: [
+    [
+      "link",
+      {
+        rel: "icon",
+        type: "image/png",
+        href: "/favicon-96x96.png",
+        sizes: "96x96",
+      },
+    ],
+    ["link", { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" }],
+    ["link", { rel: "shortcut icon", href: "/favicon.ico" }],
+    [
+      "link",
+      {
+        rel: "apple-touch-icon",
+        sizes: "180x180",
+        href: "/apple-touch-icon.png",
+      },
+    ],
+    ["meta", { name: "apple-mobile-web-app-title", content: "Versionary" }],
+    ["link", { rel: "manifest", href: "/site.webmanifest" }],
+  ],
   themeConfig: {
+    logo: {
+      light: "/logo/logo-small.png",
+      dark: "/logo/logo-small-dark.png",
+      alt: "",
+    },
     nav: [
       { text: "Guide", link: "/guide/introduction" },
       { text: "Reference", link: "/reference/cli" },
