@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.11.0](https://github.com/jolars/versionary/compare/v1.10.0...v1.11.0) (2026-11-13)
+
+### Features
+
+- support `{{date}}` in regex replacements ([`82e68dd`](https://github.com/jolars/versionary/commit/82e68ddac536e26dbff34baf3dede7b976520d5a))
+
 ## [1.10.0](https://github.com/jolars/versionary/compare/v1.9.0...v1.10.0) (2026-11-03)
 
 ### Features
