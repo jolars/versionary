@@ -1,9 +1,12 @@
 # Versionary <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/jolars/versionary/main/assets/logo/logo-small-dark.png" /><img src="https://raw.githubusercontent.com/jolars/versionary/main/assets/logo/logo-small.png" align="right" width="189" alt="Versionary logo" /></picture>
 
-Versionary is a software-agnostic automated release tool focused on SemVer,
-Conventional Commits, release-PR workflows, and extensibility.
+[![ci](https://github.com/jolars/versionary/actions/workflows/ci.yml/badge.svg)](https://github.com/jolars/versionary/actions/workflows/ci.yml)
+[![npm
+version](https://img.shields.io/npm/v/versionary.svg)](https://www.npmjs.com/package/versionary)
 
-📖 **Documentation: <https://versionary.dev/>**
+Versionary is a software-agnostic automated release tool focused on SemVer,
+Conventional Commits, release-PR workflows, and extensibility. Read the
+documentation at <https://versionary.dev/>.
 
 ## Why this exists
 
@@ -55,25 +58,24 @@ npx versionary verify
 npx versionary plan
 ```
 
-Then automate it in CI—see the
-[Getting started](https://versionary.dev/guide/getting-started) and
-[GitHub Actions](https://versionary.dev/guide/github-actions)
-guides.
+Then automate it in CI—see the [Getting
+started](https://versionary.dev/guide/getting-started) and [GitHub
+Actions](https://versionary.dev/guide/github-actions) guides.
 
 ## Documentation
 
 The full documentation lives at <https://versionary.dev/>:
 
 - [Getting started](https://versionary.dev/guide/getting-started)
-- [GitHub Actions setup](https://versionary.dev/guide/github-actions)
-  (including tokens and permissions)
+- [GitHub Actions setup](https://versionary.dev/guide/github-actions) (including
+  tokens and permissions)
 - [Release workflows](https://versionary.dev/guide/workflows)
-- [Julia registration with Registrator and TagBot](https://versionary.dev/guide/julia)
+- [Julia registration with Registrator and
+  TagBot](https://versionary.dev/guide/julia)
 - [Monorepos](https://versionary.dev/guide/monorepos)
-- [Conventional Commits](https://versionary.dev/guide/conventional-commits)
-  and [Versioning](https://versionary.dev/guide/versioning)
-- Reference:
-  [CLI](https://versionary.dev/reference/cli),
+- [Conventional Commits](https://versionary.dev/guide/conventional-commits) and
+  [Versioning](https://versionary.dev/guide/versioning)
+- Reference: [CLI](https://versionary.dev/reference/cli),
   [Configuration](https://versionary.dev/reference/configuration),
   [Strategies](https://versionary.dev/reference/strategies)
 
@@ -86,7 +88,8 @@ Out of scope (intentional): publishing artifacts to language registries,
 replacing package-specific publish tooling, and external/user-provided plugin
 loading. Use your CI/CD platform for registry publishing, triggered from release
 outputs or a created release/tag. External release mode supports registration
-before tagging, including [Julia's Registrator and TagBot workflow](https://versionary.dev/guide/julia).
+before tagging, including [Julia's Registrator and TagBot
+workflow](https://versionary.dev/guide/julia).
 
 ## Contributing
 
@@ -97,8 +100,10 @@ commit conventions.
 
 Runtime code uses a flat `src/` layout with clear module boundaries:
 
-- `src/cli/`: command router (`run`, `verify`, `plan`, `changelog`, `pr`, `release`)
-- `src/release/`: release orchestration (plan/changelog/PR/release/state/recovery)
+- `src/cli/`: command router (`run`, `verify`, `plan`, `changelog`, `pr`,
+  `release`)
+- `src/release/`: release orchestration
+  (plan/changelog/PR/release/state/recovery)
 - `src/strategy/`: strategy contracts, resolver, and built-in implementations
   (`simple`, `node`, `rust`, `r`, `latex`, `python`, `julia`)
 - `src/scm/`: SCM client contracts and provider implementation(s)
