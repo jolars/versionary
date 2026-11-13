@@ -84,57 +84,7 @@ PR automation, and tags + SCM release metadata (e.g. GitHub Releases).
 Out of scope (intentional): publishing artifacts to language registries,
 replacing package-specific publish tooling, and external/user-provided plugin
 loading. Use your CI/CD platform for registry publishing, triggered from release
-outputs or a created release/tag. External release mode supports registration
-before tagging, including [Julia's Registrator and TagBot
-workflow](https://versionary.dev/guide/julia).
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, commands, and
-commit conventions.
-
-## Architecture layout (canonical)
-
-Runtime code uses a flat `src/` layout with clear module boundaries:
-
-- `src/cli/`: command router (`run`, `verify`, `plan`, `changelog`, `pr`,
-  `release`)
-- `src/release/`: release orchestration
-  (plan/changelog/PR/release/state/recovery)
-- `src/strategy/`: strategy contracts, resolver, and built-in implementations
-  (`simple`, `node`, `rust`, `r`, `latex`, `python`, `julia`)
-- `src/scm/`: SCM client contracts and provider implementation(s)
-- `src/config/`: config loading and schema validation
-- `src/git/`: git commit/range and repository URL helpers
-- `src/types/`: shared config/plugin-facing types
-
-Configuration is loaded from `versionary.jsonc` by default (or
-`versionary.json`). The config schema lives in `src/config/schema.ts`; the
-editor-facing `schemas/config.json` is generated via `pnpm gen:schema`.
-
-## Adding a new release strategy
-
-New language strategies can be added internally without changing release
-orchestration. A new strategy should implement the `VersionStrategy` contract in
-`src/strategy/types.ts` and be wired in `src/strategy/resolve.ts`.
-
-Checklist for new strategies:
-
-- define strategy `name`
-- define `getVersionFile(config)` defaults and config override behavior
-- implement `readVersion(cwd, config)` with explicit malformed-file errors
-- implement `writeVersion(cwd, config, version)` returning deterministic updated
-  file paths
-- optionally implement `readPackageName(cwd, config)` so monorepo release tags
-  can derive from language metadata (similar to Node/Rust/R)
-- optionally implement `propagateDependentPatchImpacts(cwd, packages)` if
-  dependency updates in this ecosystem should trigger dependent package patch
-  bumps
-- optionally implement `finalizeVersionWrites(cwd, writes, context)` for
-  ecosystem post-processing after all target version files are written
-- add focused strategy tests for ecosystem-specific behavior and edge cases
-- add/extend strategy contract tests in `tests/strategy-contract.test.ts`
-- update schema/docs for new `release-type` behavior and defaults
+outputs or a created release/tag.
 
 ## Install from GitHub
 
@@ -150,6 +100,11 @@ You can install directly from a git ref:
 
 The package runs a `prepare` build during git installation so the `versionary`
 CLI binary is available after install.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, commands, and
+commit conventions.
 
 ## License
 
