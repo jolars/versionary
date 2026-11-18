@@ -26,7 +26,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     inherit (finalAttrs) pname src;
     pnpm = pnpm_10;
     fetcherVersion = 5;
-    hash = lib.fakeHash;
+    hash = "sha256-ajkpIC6LLJ3ts6W8V6xAip8kbTP9+8NpEx4ZET6lccY=";
   };
 
   buildPhase = ''
@@ -37,7 +37,8 @@ stdenvNoCC.mkDerivation (finalAttrs: {
 
   installPhase = ''
     runHook preInstall
-    pnpm prune --prod --offline --ignore-scripts
+    rm -rf node_modules
+    pnpm install --prod --offline --frozen-lockfile --ignore-scripts
     mkdir -p "$out/lib/versionary"
     cp -r dist package.json node_modules "$out/lib/versionary/"
     makeWrapper ${lib.getExe nodejs} "$out/bin/versionary" \
