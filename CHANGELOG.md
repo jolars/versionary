@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.11.1](https://github.com/jolars/versionary/compare/v1.11.0...v1.11.1) (2026-11-18)
+
+### Bug Fixes
+
+- add correct flake lock ([`b8c4fc6`](https://github.com/jolars/versionary/commit/b8c4fc6669b6c09f4e19cdbc5ef3c388ef00685e))
+
 ## [1.11.0](https://github.com/jolars/versionary/compare/v1.10.0...v1.11.0) (2026-11-13)
 
 ### Features
